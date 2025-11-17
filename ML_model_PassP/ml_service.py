@@ -29,7 +29,7 @@ categorical_features = ['route_id', 'day_of_week', 'time_of_day', 'weather']
 numerical_features = ['stop_id']
 
 # Store encoder columns (these were determined during training)
-# You may need to load or regenerate these based on your training data
+# Must match exactly what the model was trained with
 ENCODER_COLUMNS = [
     'stop_id',
     'route_id_B',
@@ -39,12 +39,12 @@ ENCODER_COLUMNS = [
     'day_of_week_Thursday',
     'day_of_week_Tuesday',
     'day_of_week_Wednesday',
-    'time_of_day_10-12',
     'time_of_day_12-14',
     'time_of_day_14-16',
     'time_of_day_16-18',
     'time_of_day_18-20',
     'time_of_day_20-22',
+    'time_of_day_6-8',
     'time_of_day_8-10',
     'weather_rain'
 ]
