@@ -1,125 +1,93 @@
-# Smart Bus Backend - Sri Lanka Smart Bus Safety Project
+# 🚍 Smart Bus Safety Project - Sri Lanka
 
-This backend system handles IoT data ingestion, violation detection, maintenance logs, and provides APIs for the Passenger, Conductor, and Authority applications.
+A comprehensive IoT-based bus safety and passenger capacity prediction system.
 
-## Features
-
-- **Mock IoT Data Ingestion**: Accept and process simulated ESP32 sensor data
-- **Automated Violation Logging**: Detect and log safety violations (footboard usage, overcrowding)
-- **Role-Based Access Control**: JWT authentication with passenger/conductor/authority roles
-- **ML Service Integration**: Placeholder for external machine learning model integration
-- **Maintenance Management**: CRUD operations for bus maintenance logs
-
-## Project Structure
+## 📁 Project Structure
 
 ```
-smart-bus-backend/
-├── src/
-│   ├── api/              # API route definitions
-│   ├── config/           # Database and configuration
-│   ├── controllers/      # Request handlers
-│   ├── middleware/       # Auth and error handling
-│   ├── models/           # Mongoose schemas
-│   ├── services/         # Business logic (ML, violations)
-│   └── server.js         # Main entry point
-├── .env                  # Environment variables
-├── .gitignore
-├── package.json
-└── README.md
+Research-Project-25-26J-511-/
+├── backend/              # Node.js Backend API
+│   ├── src/             # Source code
+│   ├── package.json     # Node dependencies
+│   ├── .env            # Environment variables
+│   └── README.md       # Backend documentation
+│
+├── ML_model_PassP/      # Machine Learning Service
+│   ├── ml_service.py   # Flask ML API
+│   ├── xgb_bus_model.joblib  # Trained model
+│   └── venv/          # Python virtual environment
+│
+└── ESP32_Setup/        # IoT Hardware Setup
+    └── src/           # ESP32 firmware
 ```
 
-## Installation
+## 🚀 Quick Start
 
-1. **Install Dependencies**
+### 1. Start Backend Services
 
-   ```bash
-   npm install
-   ```
-
-2. **Configure Environment Variables**
-
-   - Copy `.env` and update values as needed
-   - Set a strong `JWT_SECRET`
-   - Configure `MONGO_URI` for your MongoDB instance
-
-3. **Start MongoDB**
-
-   - Ensure MongoDB is running locally on port 27017
-   - Or update `MONGO_URI` to point to your MongoDB instance
-
-4. **Run the Server**
-
-   ```bash
-   # Development mode with auto-reload
-   npm run dev
-
-   # Production mode
-   npm start
-   ```
-
-## API Endpoints
-
-### Authentication (`/api/auth`)
-
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login and get JWT token
-
-### IoT Data (`/api/iot`)
-
-- `POST /api/iot/mock-data` - Ingest mock IoT data from ESP32
-
-### Bus Data (`/api/bus`)
-
-- `GET /api/bus/:busId/status` - Get current bus status
-- `GET /api/bus/:busId/violations` - Get violation history
-- `GET /api/bus/predict/:routeId` - Get ML-based occupancy prediction
-
-### Maintenance (`/api/maintenance`)
-
-- `POST /api/maintenance` - Report maintenance issue
-- `GET /api/maintenance/:busId` - Get maintenance logs for a bus
-- `PUT /api/maintenance/:id` - Update maintenance log status
-
-## Mock IoT Data Format
-
-Send POST request to `/api/iot/mock-data`:
-
-```json
-{
-  "licensePlate": "NP-1234",
-  "currentOccupancy": 45,
-  "gps": {
-    "lat": 6.9271,
-    "lon": 79.8612
-  },
-  "footboardStatus": true,
-  "speed": 10
-}
+```bash
+cd backend
+./start-services.sh
 ```
 
-## ML Service Integration
+This will start:
 
-The ML service is abstracted in `src/services/ml.service.js`. To integrate your external ML model:
+- **Node.js API** on port 3000
+- **Python ML Service** on port 5001
 
-1. Open `src/services/ml.service.js`
-2. Replace the mock logic with an API call to your ML service
-3. No other backend changes required
+### 2. Stop Services
 
-## Database Models
+```bash
+cd backend
+./stop-services.sh
+```
 
-- **User**: Authentication and role management
-- **Bus**: Bus registration and current status
-- **BusDataLog**: Historical IoT data logs
-- **ViolationLog**: Automatically logged safety violations
-- **MaintenanceLog**: Maintenance reports and status
+## 📚 Documentation
 
-## Development Notes
+- **Backend API**: See `backend/README.md`
+- **ML Integration**: See `backend/ML_INTEGRATION_GUIDE.md`
+- **API Testing**: See `backend/API_TESTING.md`
+- **Quick Reference**: See `backend/QUICKSTART.md`
 
-- The system automatically detects violations when IoT data is received
-- Violation rules are defined in `src/services/violation.service.js`
-- JWT tokens are required for protected routes
-- Use MongoDB Compass to view data during development
+## 🔗 Service URLs
 
-## License
+- **Backend API**: http://localhost:3000
+- **ML Service**: http://localhost:5001
+- **Health Check**: http://localhost:5001/health
 
-MIT
+## 🛠️ Development
+
+### Backend Development
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+### ML Service Development
+
+```bash
+cd ML_model_PassP
+source venv/bin/activate
+python ml_service.py
+```
+
+## 📦 Requirements
+
+- **Node.js** 16+ and npm
+- **Python** 3.13+
+- **MongoDB** (local or Atlas)
+- **Git**
+
+## 🎯 Key Features
+
+- **Real-time IoT Data Processing** (ESP32)
+- **Passenger Capacity Prediction** (XGBoost ML)
+- **Safety Violation Detection**
+- **Multi-role Authentication** (Passenger, Conductor, Authority)
+- **RESTful API** with JWT authentication
+
+---
+
+**For detailed setup and configuration, see the documentation in the `backend/` folder.**
