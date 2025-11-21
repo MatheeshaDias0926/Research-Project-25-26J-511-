@@ -50,10 +50,10 @@ bool sensor2WasTriggered = false;
 
 // Footboard detection
 unsigned long sensor1BlockedStartTime = 0;
-bool sensor1BlockedFor3Sec = false;
+bool sensor1BlockedFor2Sec = false;
 bool footboardDetected = false;
-const unsigned long FOOTBOARD_BLOCK_TIME = 3000;  // 3 seconds
-const unsigned long FOOTBOARD_WAIT_TIME = 2000;   // 2 seconds wait for sensor2
+const unsigned long FOOTBOARD_BLOCK_TIME = 2000;  // 2 seconds
+const unsigned long FOOTBOARD_WAIT_TIME = 1000;   // 1 second wait for sensor2
 
 // Debounce
 unsigned long lastDebounceTime1 = 0;
@@ -387,28 +387,28 @@ void playExitSound() {
 }
 
 void checkFootboardDetection() {
-  // Track how long sensor 1 has been blocked
-  if (sensor1State == LOW && currentState == IDLE) {
+  // Track how long sensor 1 has been blocked (works in IDLE or SENSOR1_TRIGGERED states)
+  if (sensor1State == LOW && (currentState == IDLE || currentState == SENSOR1_TRIGGERED)) {
     if (sensor1BlockedStartTime == 0) {
       sensor1BlockedStartTime = millis();
       Serial.println("[FOOTBOARD] Sensor 1 blocked, monitoring...");
     }
     
-    // Check if blocked for more than 3 seconds
-    if (!sensor1BlockedFor3Sec && (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_TIME)) {
-      sensor1BlockedFor3Sec = true;
-      Serial.println("[FOOTBOARD] Sensor 1 blocked for 3+ seconds!");
+    // Check if blocked for more than 2 seconds
+    if (!sensor1BlockedFor2Sec && (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_TIME)) {
+      sensor1BlockedFor2Sec = true;
+      Serial.println("[FOOTBOARD] Sensor 1 blocked for 2+ seconds!");
     }
     
-    // After 3 sec block + 2 sec wait (total 5 sec), check if sensor2 was triggered
-    if (sensor1BlockedFor3Sec && 
+    // After 2 sec block + 1 sec wait (total 3 sec), check if sensor2 was triggered
+    if (sensor1BlockedFor2Sec && 
         (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_TIME + FOOTBOARD_WAIT_TIME)) {
       
       if (!sensor2WasTriggered && sensor2State == HIGH) {
         // Footboard violation detected!
         footboardDetected = true;
         Serial.println("\n*** FOOTBOARD VIOLATION DETECTED ***");
-        Serial.println("Sensor 1 blocked for 3+ sec, Sensor 2 not triggered within 2 sec");
+        Serial.println("Sensor 1 blocked for 2+ sec, Sensor 2 not triggered within 1 sec");
         
         // Show warning on display
         showFootboardWarning();
@@ -419,10 +419,13 @@ void checkFootboardDetection() {
         // Send violation to backend immediately
         sendFootboardViolation();
         
-        // Reset footboard detection
+        // Reset footboard detection and state machine
         sensor1BlockedStartTime = 0;
-        sensor1BlockedFor3Sec = false;
+        sensor1BlockedFor2Sec = false;
         footboardDetected = false;
+        sensor1WasTriggered = false;
+        sensor2WasTriggered = false;
+        currentState = IDLE;  // Force back to IDLE
       }
     }
   } else {
@@ -430,7 +433,7 @@ void checkFootboardDetection() {
     if (sensor1State == HIGH && sensor1BlockedStartTime > 0) {
       Serial.println("[FOOTBOARD] Sensor 1 cleared, reset monitoring");
       sensor1BlockedStartTime = 0;
-      sensor1BlockedFor3Sec = false;
+      sensor1BlockedFor2Sec = false;
     }
   }
 }
