@@ -2,17 +2,25 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <TM1637Display.h>
 
-// WiFi credentials - UPDATE THESE
+// WiFi credentials
 const char* ssid = "Wi-fi";
 const char* password = "123456788";
 
-// Backend API endpoint
-const char* serverUrl = "http://localhost:3000/api/iot/iot-data";
+// Backend API endpoint - Use your Mac's IP address
+const char* serverUrl = "http://172.20.10.11:3000/api/iot/iot-data";
 
 // IR Sensor pins
 #define SENSOR1_PIN 18  // Outer sensor
 #define SENSOR2_PIN 19  // Inner sensor
+
+// TM1637 Display pins
+#define DISPLAY_CLK 22  // Clock pin
+#define DISPLAY_DIO 23  // Data pin
+
+// Buzzer pin
+#define BUZZER_PIN 21   // Buzzer signal pin
 
 // Sensor states
 bool sensor1State = HIGH;  // HIGH = no obstacle, LOW = obstacle detected
@@ -34,39 +42,72 @@ enum CountingState {
 
 CountingState currentState = IDLE;
 unsigned long lastStateChange = 0;
-const unsigned long STATE_TIMEOUT = 2000; // 2 seconds timeout
+const unsigned long STATE_TIMEOUT = 5000;  // 5 seconds timeout for slow hand movement
+
+// Track if sensor was triggered during this sequence
+bool sensor1WasTriggered = false;
+bool sensor2WasTriggered = false;
 
 // Debounce
 unsigned long lastDebounceTime1 = 0;
 unsigned long lastDebounceTime2 = 0;
-const unsigned long debounceDelay = 50;
+const unsigned long debounceDelay = 50;  // Stable debounce
 
 // Send interval
 unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 5000; // Send data every 5 seconds
+const unsigned long sendInterval = 300000;  // 5 minutes (300000ms)
+
+// TM1637 Display object
+TM1637Display display(DISPLAY_CLK, DISPLAY_DIO);
 
 // Function declarations
 void connectWiFi();
 void readSensors();
 void processCountingLogic();
 void sendDataToBackend();
+void updateDisplay();
+void playBuzzer(int duration, int frequency);
+void playEntrySound();
+void playExitSound();
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  
-  Serial.println("\n=== ESP32 Passenger Counter ===");
-  
+
+  Serial.println("\n=== ESP32 Passenger Counter - Module M1 ===");
+
   // Configure IR sensor pins
   pinMode(SENSOR1_PIN, INPUT);
   pinMode(SENSOR2_PIN, INPUT);
-  
-  Serial.println("IR Sensors initialized on pins:");
-  Serial.print("  Sensor 1 (Outer): GPIO ");
+
+  Serial.println("IR Sensors initialized:");
+  Serial.print(" Sensor 1 (Outer): GPIO ");
   Serial.println(SENSOR1_PIN);
-  Serial.print("  Sensor 2 (Inner): GPIO ");
+  Serial.print(" Sensor 2 (Inner): GPIO ");
   Serial.println(SENSOR2_PIN);
+
+  // Configure buzzer pin
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
+  Serial.print(" Buzzer: GPIO ");
+  Serial.println(BUZZER_PIN);
+
+  // Initialize TM1637 Display
+  display.setBrightness(0x0f);  // Set brightness (0x00-0x0f, max brightness)
+  display.clear();
+  Serial.print(" Display: CLK=GPIO");
+  Serial.print(DISPLAY_CLK);
+  Serial.print(", DIO=GPIO");
+  Serial.println(DISPLAY_DIO);
+
+  // Show initial count (0)
+  updateDisplay();
   
+  // Startup beep
+  playBuzzer(200, 1000);
+  delay(100);
+  playBuzzer(200, 1500);
+
   // Connect to WiFi
   connectWiFi();
 }
@@ -74,32 +115,33 @@ void setup() {
 void loop() {
   // Read sensor states with debouncing
   readSensors();
-  
+
   // Process passenger counting state machine
   processCountingLogic();
-  
-  // Send data periodically
+
+  // Send data periodically (every 5 minutes)
   if (millis() - lastSendTime >= sendInterval) {
+    Serial.println("\n[SCHEDULED SEND - 5 min interval]");
     sendDataToBackend();
     lastSendTime = millis();
   }
-  
-  delay(10); // Small delay to prevent excessive polling
+
+  delay(10);  // Small delay to prevent excessive polling
 }
 
 void connectWiFi() {
   Serial.print("\nConnecting to WiFi: ");
   Serial.println(ssid);
-  
+
   WiFi.begin(ssid, password);
-  
+
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 30) {
     delay(500);
     Serial.print(".");
     attempts++;
   }
-  
+
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\nWiFi Connected!");
     Serial.print("IP Address: ");
@@ -116,6 +158,7 @@ void readSensors() {
   if (reading1 != lastSensor1State) {
     lastDebounceTime1 = millis();
   }
+
   if ((millis() - lastDebounceTime1) > debounceDelay) {
     if (reading1 != sensor1State) {
       sensor1State = reading1;
@@ -124,12 +167,13 @@ void readSensors() {
     }
   }
   lastSensor1State = reading1;
-  
+
   // Read Sensor 2 with debouncing
   bool reading2 = digitalRead(SENSOR2_PIN);
   if (reading2 != lastSensor2State) {
     lastDebounceTime2 = millis();
   }
+
   if ((millis() - lastDebounceTime2) > debounceDelay) {
     if (reading2 != sensor2State) {
       sensor2State = reading2;
@@ -141,75 +185,112 @@ void readSensors() {
 }
 
 void processCountingLogic() {
-  // Check for timeout
+  // Check for timeout and process if both sensors were triggered
   if (currentState != IDLE && (millis() - lastStateChange > STATE_TIMEOUT)) {
-    Serial.println("State timeout - resetting to IDLE");
+    Serial.println("State timeout!");
+    
+    // Check if we detected a sequence even if not completed perfectly
+    if ((currentState == SENSOR1_TRIGGERED || currentState == BOTH_TRIGGERED_IN) && 
+        sensor2WasTriggered) {
+      // Entry sequence detected (Sensor1 -> Sensor2)
+      passengerCount++;
+      Serial.println("*** PERSON ENTERED (timeout detected) ***");
+      Serial.print("Current occupancy: ");
+      Serial.println(passengerCount);
+      updateDisplay();
+      playEntrySound();
+    } 
+    else if ((currentState == SENSOR2_TRIGGERED || currentState == BOTH_TRIGGERED_OUT) && 
+             sensor1WasTriggered) {
+      // Exit sequence detected (Sensor2 -> Sensor1)
+      passengerCount--;
+      if (passengerCount < 0) passengerCount = 0;
+      Serial.println("*** PERSON EXITED (timeout detected) ***");
+      Serial.print("Current occupancy: ");
+      Serial.println(passengerCount);
+      updateDisplay();
+      playExitSound();
+    }
+    
+    // Reset state
     currentState = IDLE;
+    sensor1WasTriggered = false;
+    sensor2WasTriggered = false;
   }
-  
+
   switch (currentState) {
     case IDLE:
-      if (sensor1State == LOW && sensor2State == HIGH) {
+      // Reset trigger flags when idle
+      sensor1WasTriggered = false;
+      sensor2WasTriggered = false;
+      
+      if (sensor1State == LOW) {
         // Sensor 1 triggered first (entering)
         currentState = SENSOR1_TRIGGERED;
+        sensor1WasTriggered = true;
         lastStateChange = millis();
         Serial.println(">> State: SENSOR1_TRIGGERED (Entry started)");
-      } else if (sensor2State == LOW && sensor1State == HIGH) {
+      } else if (sensor2State == LOW) {
         // Sensor 2 triggered first (exiting)
         currentState = SENSOR2_TRIGGERED;
+        sensor2WasTriggered = true;
         lastStateChange = millis();
         Serial.println(">> State: SENSOR2_TRIGGERED (Exit started)");
       }
       break;
-      
+
     case SENSOR1_TRIGGERED:
+      // Track if sensor 2 gets triggered at any point
       if (sensor2State == LOW) {
-        // Both sensors triggered, moving inward
+        sensor2WasTriggered = true;
         currentState = BOTH_TRIGGERED_IN;
         lastStateChange = millis();
         Serial.println(">> State: BOTH_TRIGGERED_IN");
-      } else if (sensor1State == HIGH) {
-        // Sensor 1 cleared without triggering sensor 2
-        Serial.println(">> False trigger - back to IDLE");
-        currentState = IDLE;
       }
       break;
-      
+
     case BOTH_TRIGGERED_IN:
+      // Complete entry when both sensors clear
       if (sensor1State == HIGH && sensor2State == HIGH) {
-        // Person fully entered
         passengerCount++;
         Serial.println("*** PERSON ENTERED ***");
         Serial.print("Current occupancy: ");
         Serial.println(passengerCount);
+        
+        updateDisplay();
+        playEntrySound();
+        
         currentState = IDLE;
-        sendDataToBackend(); // Send immediately on change
+        sensor1WasTriggered = false;
+        sensor2WasTriggered = false;
       }
       break;
-      
+
     case SENSOR2_TRIGGERED:
+      // Track if sensor 1 gets triggered at any point
       if (sensor1State == LOW) {
-        // Both sensors triggered, moving outward
+        sensor1WasTriggered = true;
         currentState = BOTH_TRIGGERED_OUT;
         lastStateChange = millis();
         Serial.println(">> State: BOTH_TRIGGERED_OUT");
-      } else if (sensor2State == HIGH) {
-        // Sensor 2 cleared without triggering sensor 1
-        Serial.println(">> False trigger - back to IDLE");
-        currentState = IDLE;
       }
       break;
-      
+
     case BOTH_TRIGGERED_OUT:
+      // Complete exit when both sensors clear
       if (sensor1State == HIGH && sensor2State == HIGH) {
-        // Person fully exited
         passengerCount--;
-        if (passengerCount < 0) passengerCount = 0; // Prevent negative count
+        if (passengerCount < 0) passengerCount = 0;
         Serial.println("*** PERSON EXITED ***");
         Serial.print("Current occupancy: ");
         Serial.println(passengerCount);
+        
+        updateDisplay();
+        playExitSound();
+        
         currentState = IDLE;
-        sendDataToBackend(); // Send immediately on change
+        sensor1WasTriggered = false;
+        sensor2WasTriggered = false;
       }
       break;
   }
@@ -221,28 +302,28 @@ void sendDataToBackend() {
     connectWiFi();
     return;
   }
-  
+
   HTTPClient http;
-  
+
   // Create JSON payload
   JsonDocument jsonDoc;
   jsonDoc["SensorModule"] = "M1";
   jsonDoc["currentOccupancy"] = passengerCount;
-  
+
   String jsonString;
   serializeJson(jsonDoc, jsonString);
-  
+
   Serial.println("\n--- Sending Data to Backend ---");
   Serial.print("URL: ");
   Serial.println(serverUrl);
   Serial.print("JSON: ");
   Serial.println(jsonString);
-  
+
   http.begin(serverUrl);
   http.addHeader("Content-Type", "application/json");
-  
+
   int httpResponseCode = http.POST(jsonString);
-  
+
   if (httpResponseCode > 0) {
     Serial.print("HTTP Response code: ");
     Serial.println(httpResponseCode);
@@ -255,7 +336,37 @@ void sendDataToBackend() {
     Serial.print("Error: ");
     Serial.println(http.errorToString(httpResponseCode));
   }
-  
+
   http.end();
   Serial.println("-------------------------------\n");
+}
+
+void updateDisplay() {
+  // Display current passenger count (right-aligned, 4 digits)
+  display.showNumberDec(passengerCount, false);
+  Serial.print("[DISPLAY] Showing count: ");
+  Serial.println(passengerCount);
+}
+
+void playBuzzer(int duration, int frequency) {
+  // Play tone on buzzer
+  tone(BUZZER_PIN, frequency, duration);
+  delay(duration);
+  noTone(BUZZER_PIN);
+}
+
+void playEntrySound() {
+  // Entry: Two ascending beeps
+  playBuzzer(100, 1000);  // First beep (1000 Hz)
+  delay(50);
+  playBuzzer(100, 1500);  // Second beep (1500 Hz)
+  Serial.println("[BUZZER] Entry sound played");
+}
+
+void playExitSound() {
+  // Exit: Two descending beeps
+  playBuzzer(100, 1500);  // First beep (1500 Hz)
+  delay(50);
+  playBuzzer(100, 1000);  // Second beep (1000 Hz)
+  Serial.println("[BUZZER] Exit sound played");
 }
