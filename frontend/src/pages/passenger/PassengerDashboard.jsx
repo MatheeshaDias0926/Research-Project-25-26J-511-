@@ -8,6 +8,9 @@ import {
   Navigation,
 } from "lucide-react";
 import Navbar from "../../components/Navbar";
+import BusMap from "../../components/BusMap";
+import BusLogsViewer from "../../components/BusLogsViewer";
+import { useSocket } from "../../context/SocketContext";
 import api from "../../services/api";
 import { toast } from "react-toastify";
 import "./PassengerDashboard.css";
@@ -19,10 +22,40 @@ export default function PassengerDashboard() {
   const [loading, setLoading] = useState(true);
   const [searchPlate, setSearchPlate] = useState("");
   const [searching, setSearching] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
+  const { socket, connected } = useSocket();
 
   useEffect(() => {
     fetchBuses();
   }, []);
+
+  // WebSocket listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("busStatusUpdate", (data) => {
+      console.log("Bus status updated:", data);
+      setBuses((prevBuses) =>
+        prevBuses.map((bus) =>
+          bus._id === data.busId ? { ...bus, ...data.updates } : bus
+        )
+      );
+      if (selectedBus && selectedBus._id === data.busId) {
+        setSelectedBus((prev) => ({ ...prev, ...data.updates }));
+      }
+    });
+
+    socket.on("newViolation", (violation) => {
+      toast.warning(`⚠️ New violation: ${violation.type}`, {
+        autoClose: 5000,
+      });
+    });
+
+    return () => {
+      socket.off("busStatusUpdate");
+      socket.off("newViolation");
+    };
+  }, [socket, selectedBus]);
 
   const fetchBuses = async () => {
     try {
@@ -416,6 +449,61 @@ export default function PassengerDashboard() {
             </div>
           </div>
         )}
+
+        {/* Live Bus Map */}
+        <div className="mb-8 animate-fadeIn" style={{ animationDelay: "0.2s" }}>
+          <BusMap buses={buses} onRefresh={fetchBuses} />
+        </div>
+
+        {/* Bus Logs Viewer */}
+        {selectedBus && (
+          <div
+            className="mb-8 animate-fadeIn"
+            style={{ animationDelay: "0.25s" }}
+          >
+            {!showLogs ? (
+              <button
+                onClick={() => setShowLogs(true)}
+                className="w-full btn-primary text-lg py-4 shadow-xl hover:shadow-2xl"
+              >
+                📊 View Bus Data Logs
+              </button>
+            ) : (
+              <div>
+                <button
+                  onClick={() => setShowLogs(false)}
+                  className="mb-4 px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Hide Logs
+                </button>
+                <BusLogsViewer
+                  busId={selectedBus._id}
+                  licensePlate={selectedBus.licensePlate}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* WebSocket Connection Status */}
+        <div className="fixed bottom-4 right-4 z-50">
+          <div
+            className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-lg ${
+              connected
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            <div
+              className={`w-2 h-2 rounded-full ${
+                connected ? "bg-green-600 animate-pulse" : "bg-red-600"
+              }`}
+            ></div>
+            <span className="text-sm font-semibold">
+              {connected ? "Live" : "Offline"}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
