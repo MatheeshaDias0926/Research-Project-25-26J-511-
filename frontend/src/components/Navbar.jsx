@@ -11,33 +11,66 @@ export default function Navbar() {
     authority: "Transport Authority",
   };
 
+  const roleColors = {
+    passenger: "bg-blue-100 text-blue-700",
+    conductor: "bg-green-100 text-green-700",
+    authority: "bg-purple-100 text-purple-700",
+  };
+
   return (
-    <nav className="bg-white shadow-md">
+    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <Bus className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold text-gray-900">
-              Smart Bus Safety
-            </span>
+          {/* Logo Section */}
+          <Link to="/dashboard" className="flex items-center gap-3 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-blue-400 rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity"></div>
+              <div className="relative bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-110">
+                <Bus className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <div>
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                Smart Bus Safety
+              </span>
+              <div className="text-xs text-gray-500 font-medium">
+                Real-time Monitoring
+              </div>
+            </div>
           </Link>
 
+          {/* User Section */}
           {user && (
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-gray-700">
-                <User className="h-5 w-5" />
+              {/* User Info Card */}
+              <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-blue-400 rounded-full blur-sm opacity-30"></div>
+                  <div className="relative bg-gradient-to-br from-blue-100 to-blue-200 p-2 rounded-full">
+                    <User className="h-4 w-4 text-blue-600" />
+                  </div>
+                </div>
                 <div className="text-sm">
-                  <div className="font-medium">{user.username}</div>
-                  <div className="text-gray-500">{roleLabels[user.role]}</div>
+                  <div className="font-semibold text-gray-900">
+                    {user.username}
+                  </div>
+                  <div
+                    className={`text-xs px-2 py-0.5 rounded-full inline-block ${
+                      roleColors[user.role]
+                    }`}
+                  >
+                    {roleLabels[user.role]}
+                  </div>
                 </div>
               </div>
 
+              {/* Logout Button */}
               <button
                 onClick={logout}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl border border-red-200 hover:border-red-300 transition-all duration-200 shadow-sm hover:shadow-md group"
               >
-                <LogOut className="h-4 w-4" />
-                Logout
+                <LogOut className="h-4 w-4 transform group-hover:translate-x-0.5 transition-transform" />
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           )}

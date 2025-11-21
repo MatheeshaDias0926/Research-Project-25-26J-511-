@@ -66,59 +66,93 @@ export default function PassengerDashboard() {
     return (
       <div>
         <Navbar />
-        <div className="flex justify-center items-center h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+        <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+          <div className="spinner h-20 w-20"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          Passenger Dashboard
-        </h1>
+        {/* Page Header */}
+        <div className="page-header animate-fadeIn">
+          <h1 className="page-title bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            🚌 Passenger Dashboard
+          </h1>
+          <p className="page-subtitle">
+            Track buses in real-time and get occupancy predictions
+          </p>
+        </div>
 
         {/* Bus List */}
+        <div
+          className="section-header animate-fadeIn"
+          style={{ animationDelay: "0.1s" }}
+        >
+          <Bus className="h-7 w-7 text-blue-600" />
+          <h2 className="section-title">Available Buses</h2>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {buses.map((bus) => (
+          {buses.map((bus, index) => (
             <div
               key={bus._id}
               onClick={() => fetchBusStatus(bus._id)}
-              className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg ${
-                selectedBus?._id === bus._id ? "ring-2 ring-blue-600" : ""
+              className={`card-hover relative overflow-hidden animate-fadeIn ${
+                selectedBus?._id === bus._id
+                  ? "ring-4 ring-blue-500 shadow-2xl scale-105"
+                  : "hover:scale-105"
               }`}
+              style={{ animationDelay: `${0.1 + index * 0.05}s` }}
             >
-              <div className="flex items-center justify-between mb-4">
+              {/* Gradient Background Effect */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full blur-3xl opacity-10"></div>
+
+              <div className="flex items-center justify-between mb-4 relative z-10">
                 <div className="flex items-center gap-3">
-                  <Bus className="h-8 w-8 text-blue-600" />
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
+                    <Bus className="h-6 w-6 text-white" />
+                  </div>
                   <div>
-                    <h3 className="font-semibold text-lg">
+                    <h3 className="font-bold text-lg text-gray-900">
                       {bus.licensePlate}
                     </h3>
-                    <p className="text-sm text-gray-500">Route {bus.routeId}</p>
+                    <p className="text-sm font-medium text-indigo-600">
+                      Route {bus.routeId}
+                    </p>
                   </div>
                 </div>
+                {selectedBus?._id === bus._id && (
+                  <span className="badge badge-success animate-pulse-custom">
+                    ✓ Selected
+                  </span>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Capacity</span>
-                  <span className="font-medium">{bus.capacity} passengers</span>
+              <div className="space-y-3 relative z-10">
+                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                  <span className="text-sm font-medium text-gray-600">
+                    Capacity
+                  </span>
+                  <span className="font-bold text-gray-900">
+                    {bus.capacity} passengers
+                  </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Status</span>
+                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                  <span className="text-sm font-medium text-gray-600">
+                    Status
+                  </span>
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    className={`badge ${
                       bus.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
+                        ? "badge-success"
+                        : "bg-gray-200 text-gray-700"
                     }`}
                   >
-                    {bus.status}
+                    {bus.status === "active" ? "🟢 Active" : "⚪ Inactive"}
                   </span>
                 </div>
               </div>
@@ -128,29 +162,34 @@ export default function PassengerDashboard() {
 
         {/* Selected Bus Details */}
         {selectedBus && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fadeIn">
+            <div className="stats-card stats-card-blue">
+              <div className="section-header mb-6">
                 <Navigation className="h-6 w-6 text-blue-600" />
-                Current Status
-              </h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Current Status
+                </h2>
+              </div>
 
               {selectedBus.latestData ? (
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-gray-600">Occupancy</span>
-                      <span className="font-semibold">
+                <div className="space-y-5">
+                  {/* Occupancy Progress */}
+                  <div className="bg-white p-4 rounded-xl shadow-sm">
+                    <div className="flex justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-700">
+                        Occupancy
+                      </span>
+                      <span className="font-bold text-lg text-gray-900">
                         {selectedBus.latestData.currentOccupancy} /{" "}
                         {selectedBus.capacity}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-4">
+                    <div className="progress-bar">
                       <div
-                        className={`h-4 rounded-full ${getOccupancyColor(
+                        className={`progress-fill ${getOccupancyColor(
                           selectedBus.latestData.currentOccupancy,
                           selectedBus.capacity
-                        )}`}
+                        )} shadow-lg`}
                         style={{
                           width: `${Math.min(
                             (selectedBus.latestData.currentOccupancy /
@@ -161,82 +200,150 @@ export default function PassengerDashboard() {
                         }}
                       ></div>
                     </div>
+                    <div className="mt-2 text-xs text-gray-500 text-center font-medium">
+                      {Math.round(
+                        (selectedBus.latestData.currentOccupancy /
+                          selectedBus.capacity) *
+                          100
+                      )}
+                      % Full
+                    </div>
                   </div>
 
+                  {/* Location & Speed */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-3 rounded">
-                      <p className="text-sm text-gray-600">Location</p>
-                      <p className="font-medium">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border-2 border-blue-100 hover:border-blue-300 transition-colors">
+                      <p className="text-xs font-semibold text-gray-500 mb-2">
+                        📍 Location
+                      </p>
+                      <p className="font-bold text-sm text-gray-900 break-all">
                         {selectedBus.latestData.gps.lat.toFixed(4)},{" "}
                         {selectedBus.latestData.gps.lon.toFixed(4)}
                       </p>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded">
-                      <p className="text-sm text-gray-600">Speed</p>
-                      <p className="font-medium">
-                        {selectedBus.latestData.speed || 0} km/h
+                    <div className="bg-white p-4 rounded-xl shadow-sm border-2 border-green-100 hover:border-green-300 transition-colors">
+                      <p className="text-xs font-semibold text-gray-500 mb-2">
+                        ⚡ Speed
+                      </p>
+                      <p className="font-bold text-2xl text-gray-900">
+                        {selectedBus.latestData.speed || 0}
+                        <span className="text-sm text-gray-500 ml-1">km/h</span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">Footboard Status</p>
+                  {/* Footboard Status */}
+                  <div
+                    className={`p-4 rounded-xl shadow-sm border-2 ${
+                      selectedBus.latestData.footboardStatus
+                        ? "bg-yellow-50 border-yellow-300"
+                        : "bg-green-50 border-green-300"
+                    }`}
+                  >
+                    <p className="text-xs font-semibold text-gray-600 mb-2">
+                      Footboard Status
+                    </p>
                     <p
-                      className={`font-medium ${
+                      className={`font-bold text-lg ${
                         selectedBus.latestData.footboardStatus
-                          ? "text-yellow-600"
-                          : "text-green-600"
+                          ? "text-yellow-700"
+                          : "text-green-700"
                       }`}
                     >
                       {selectedBus.latestData.footboardStatus
                         ? "⚠️ Passengers on footboard"
-                        : "✅ Safe"}
+                        : "✅ Safe & Secure"}
                     </p>
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500">No real-time data available</p>
+                <div className="text-center py-8">
+                  <p className="text-gray-400 text-lg">
+                    📊 No real-time data available
+                  </p>
+                </div>
               )}
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <TrendingUp className="h-6 w-6 text-blue-600" />
-                Occupancy Prediction
-              </h2>
+            <div className="stats-card stats-card-purple">
+              <div className="section-header mb-6">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Occupancy Prediction
+                </h2>
+              </div>
 
               <button
                 onClick={getPrediction}
-                className="w-full btn-primary mb-4"
+                className="w-full btn-primary text-lg py-4 mb-6 shadow-xl hover:shadow-2xl"
               >
-                Get Prediction
+                🔮 Get AI Prediction
               </button>
 
               {prediction && (
-                <div className="space-y-4">
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <p className="text-sm text-gray-600 mb-1">
+                <div className="space-y-5 animate-fadeIn">
+                  {/* Prediction Result */}
+                  <div className="gradient-primary p-6 rounded-2xl shadow-xl text-white">
+                    <p className="text-sm font-medium opacity-90 mb-2">
                       Predicted Occupancy
                     </p>
-                    <p className="text-3xl font-bold text-blue-600">
-                      {Math.round(prediction.predictedOccupancy)} passengers
+                    <p className="text-5xl font-extrabold mb-3">
+                      {Math.round(prediction.predictedOccupancy)}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Confidence: {(prediction.confidence * 100).toFixed(1)}%
-                    </p>
+                    <p className="text-lg opacity-90">passengers</p>
+                    <div className="mt-4 pt-4 border-t border-white border-opacity-30">
+                      <p className="text-sm font-medium">
+                        Confidence:{" "}
+                        <span className="font-bold">
+                          {(prediction.confidence * 100).toFixed(1)}%
+                        </span>
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Users className="h-4 w-4" />
-                    <span>
-                      {prediction.predictedOccupancy <
-                      selectedBus.capacity * 0.7
-                        ? "Bus will have good availability"
+                  {/* Status Message */}
+                  <div
+                    className={`p-4 rounded-xl border-2 ${
+                      prediction.predictedOccupancy < selectedBus.capacity * 0.7
+                        ? "bg-green-50 border-green-300"
                         : prediction.predictedOccupancy <
                           selectedBus.capacity * 0.9
-                        ? "Bus will be moderately crowded"
-                        : "Bus will be very crowded"}
-                    </span>
+                        ? "bg-yellow-50 border-yellow-300"
+                        : "bg-red-50 border-red-300"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Users
+                        className={`h-5 w-5 mt-0.5 ${
+                          prediction.predictedOccupancy <
+                          selectedBus.capacity * 0.7
+                            ? "text-green-600"
+                            : prediction.predictedOccupancy <
+                              selectedBus.capacity * 0.9
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                        }`}
+                      />
+                      <span
+                        className={`text-sm font-semibold ${
+                          prediction.predictedOccupancy <
+                          selectedBus.capacity * 0.7
+                            ? "text-green-700"
+                            : prediction.predictedOccupancy <
+                              selectedBus.capacity * 0.9
+                            ? "text-yellow-700"
+                            : "text-red-700"
+                        }`}
+                      >
+                        {prediction.predictedOccupancy <
+                        selectedBus.capacity * 0.7
+                          ? "✅ Bus will have good availability"
+                          : prediction.predictedOccupancy <
+                            selectedBus.capacity * 0.9
+                          ? "⚠️ Bus will be moderately crowded"
+                          : "🚫 Bus will be very crowded"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}

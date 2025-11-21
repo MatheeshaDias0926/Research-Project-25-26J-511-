@@ -34,31 +34,50 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="flex justify-center">
-            <div className="bg-blue-600 rounded-full p-3">
-              <Bus className="h-12 w-12 text-white" />
+    <div className="min-h-screen flex items-center justify-center gradient-secondary py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full blur-3xl animate-pulse-custom"></div>
+        <div
+          className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full blur-3xl animate-pulse-custom"
+          style={{ animationDelay: "1.5s" }}
+        ></div>
+        <div
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl animate-pulse-custom"
+          style={{ animationDelay: "0.75s" }}
+        ></div>
+      </div>
+
+      <div className="max-w-md w-full space-y-8 relative z-10">
+        {/* Header Section */}
+        <div className="text-center animate-fadeIn">
+          <div className="flex justify-center mb-6">
+            <div className="relative">
+              <div className="absolute inset-0 bg-white opacity-20 rounded-full blur-xl"></div>
+              <div className="relative bg-white rounded-2xl p-4 shadow-2xl transform hover:scale-110 transition-transform duration-300">
+                <Bus className="h-14 w-14 text-purple-600" />
+              </div>
             </div>
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Create your account
+          <h2 className="text-4xl font-extrabold text-white mb-2 drop-shadow-lg">
+            Create Your Account
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="text-lg text-white text-opacity-90 font-medium">
             Join the Smart Bus Safety System
           </p>
         </div>
 
+        {/* Registration Form */}
         <form
-          className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg"
+          className="mt-8 space-y-5 glass-effect p-8 rounded-2xl shadow-2xl backdrop-blur-xl animate-fadeIn"
           onSubmit={handleSubmit}
+          style={{ animationDelay: "0.1s" }}
         >
           <div className="space-y-4">
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-semibold text-gray-700 mb-2"
               >
                 Username
               </label>
@@ -69,7 +88,7 @@ export default function Register() {
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className="mt-1 input-field"
+                className="input-field shadow-sm hover:shadow-md transition-shadow duration-200"
                 placeholder="Choose a username"
               />
             </div>
@@ -77,7 +96,7 @@ export default function Register() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-semibold text-gray-700 mb-2"
               >
                 Password
               </label>
@@ -88,15 +107,15 @@ export default function Register() {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="mt-1 input-field"
-                placeholder="Create a password"
+                className="input-field shadow-sm hover:shadow-md transition-shadow duration-200"
+                placeholder="Create a secure password"
               />
             </div>
 
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-semibold text-gray-700 mb-2"
               >
                 Confirm Password
               </label>
@@ -107,7 +126,7 @@ export default function Register() {
                 required
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="mt-1 input-field"
+                className="input-field shadow-sm hover:shadow-md transition-shadow duration-200"
                 placeholder="Confirm your password"
               />
             </div>
@@ -115,7 +134,7 @@ export default function Register() {
             <div>
               <label
                 htmlFor="role"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-semibold text-gray-700 mb-2"
               >
                 I am a...
               </label>
@@ -124,11 +143,11 @@ export default function Register() {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="mt-1 input-field"
+                className="input-field shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
               >
-                <option value="passenger">Passenger</option>
-                <option value="conductor">Bus Conductor</option>
-                <option value="authority">Transport Authority</option>
+                <option value="passenger">🚶 Passenger</option>
+                <option value="conductor">👨‍✈️ Bus Conductor</option>
+                <option value="authority">👮 Transport Authority</option>
               </select>
             </div>
           </div>
@@ -136,12 +155,14 @@ export default function Register() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex justify-center items-center gap-2 btn-primary disabled:opacity-50"
+            className="w-full flex justify-center items-center gap-2 btn-primary text-lg py-3.5 shadow-xl hover:shadow-2xl mt-6"
           >
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Creating account...
+                <div className="spinner h-5 w-5"></div>
+                <span className="animate-pulse-custom">
+                  Creating account...
+                </span>
               </>
             ) : (
               <>
@@ -151,16 +172,37 @@ export default function Register() {
             )}
           </button>
 
-          <div className="text-center text-sm">
-            <span className="text-gray-600">Already have an account? </span>
+          <div className="relative mt-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500 rounded-full">
+                Already registered?
+              </span>
+            </div>
+          </div>
+
+          <div className="text-center">
             <Link
               to="/login"
-              className="font-medium text-blue-600 hover:text-blue-500"
+              className="inline-flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200 group"
             >
-              Sign in here
+              Sign in to your account
+              <span className="transform group-hover:translate-x-1 transition-transform duration-200">
+                →
+              </span>
             </Link>
           </div>
         </form>
+
+        {/* Footer Info */}
+        <div
+          className="text-center text-white text-opacity-80 text-sm animate-fadeIn"
+          style={{ animationDelay: "0.2s" }}
+        >
+          <p>✓ Free to join • ✓ Instant access • ✓ Real-time updates</p>
+        </div>
       </div>
     </div>
   );

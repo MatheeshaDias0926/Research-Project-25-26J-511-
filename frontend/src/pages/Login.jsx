@@ -17,29 +17,46 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="flex justify-center">
-            <div className="bg-blue-600 rounded-full p-3">
-              <Bus className="h-12 w-12 text-white" />
+    <div className="min-h-screen flex items-center justify-center gradient-primary py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white opacity-10 rounded-full blur-3xl animate-pulse-custom"></div>
+        <div
+          className="absolute -bottom-40 -left-40 w-80 h-80 bg-white opacity-10 rounded-full blur-3xl animate-pulse-custom"
+          style={{ animationDelay: "1s" }}
+        ></div>
+      </div>
+
+      <div className="max-w-md w-full space-y-8 relative z-10">
+        {/* Header Section */}
+        <div className="text-center animate-fadeIn">
+          <div className="flex justify-center mb-6">
+            <div className="relative">
+              <div className="absolute inset-0 bg-white opacity-20 rounded-full blur-xl"></div>
+              <div className="relative bg-white rounded-2xl p-4 shadow-2xl transform hover:scale-110 transition-transform duration-300">
+                <Bus className="h-14 w-14 text-blue-600" />
+              </div>
             </div>
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+          <h2 className="text-4xl font-extrabold text-white mb-2 drop-shadow-lg">
             Smart Bus Safety System
           </h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in to your account</p>
+          <p className="text-lg text-white text-opacity-90 font-medium">
+            Sign in to your account
+          </p>
         </div>
 
+        {/* Login Form */}
         <form
-          className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg"
+          className="mt-8 space-y-6 glass-effect p-8 rounded-2xl shadow-2xl backdrop-blur-xl animate-fadeIn"
           onSubmit={handleSubmit}
+          style={{ animationDelay: "0.1s" }}
         >
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-semibold text-gray-700 mb-2"
               >
                 Username
               </label>
@@ -50,7 +67,7 @@ export default function Login() {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="mt-1 input-field"
+                className="input-field shadow-sm hover:shadow-md transition-shadow duration-200"
                 placeholder="Enter your username"
               />
             </div>
@@ -58,7 +75,7 @@ export default function Login() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-semibold text-gray-700 mb-2"
               >
                 Password
               </label>
@@ -69,7 +86,7 @@ export default function Login() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 input-field"
+                className="input-field shadow-sm hover:shadow-md transition-shadow duration-200"
                 placeholder="Enter your password"
               />
             </div>
@@ -78,12 +95,12 @@ export default function Login() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex justify-center items-center gap-2 btn-primary disabled:opacity-50"
+            className="w-full flex justify-center items-center gap-2 btn-primary text-lg py-3.5 shadow-xl hover:shadow-2xl"
           >
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Signing in...
+                <div className="spinner h-5 w-5"></div>
+                <span className="animate-pulse-custom">Signing in...</span>
               </>
             ) : (
               <>
@@ -93,16 +110,37 @@ export default function Login() {
             )}
           </button>
 
-          <div className="text-center text-sm">
-            <span className="text-gray-600">Don't have an account? </span>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500 rounded-full">
+                New to Smart Bus?
+              </span>
+            </div>
+          </div>
+
+          <div className="text-center">
             <Link
               to="/register"
-              className="font-medium text-blue-600 hover:text-blue-500"
+              className="inline-flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200 group"
             >
-              Register here
+              Create an account
+              <span className="transform group-hover:translate-x-1 transition-transform duration-200">
+                →
+              </span>
             </Link>
           </div>
         </form>
+
+        {/* Footer Info */}
+        <div
+          className="text-center text-white text-opacity-80 text-sm animate-fadeIn"
+          style={{ animationDelay: "0.2s" }}
+        >
+          <p>Secure • Reliable • Real-time Bus Tracking</p>
+        </div>
       </div>
     </div>
   );
