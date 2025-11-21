@@ -14,6 +14,7 @@ import Register from "./pages/Register";
 import PassengerDashboard from "./pages/passenger/PassengerDashboard";
 import ConductorDashboard from "./pages/conductor/ConductorDashboard";
 import AuthorityDashboard from "./pages/authority/AuthorityDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 function App() {
   const { user, loading } = useAuth();
@@ -52,6 +53,8 @@ function App() {
                   <ConductorDashboard />
                 ) : user.role === "authority" ? (
                   <AuthorityDashboard />
+                ) : user.role === "admin" ? (
+                  <AdminDashboard />
                 ) : (
                   <Navigate to="/login" />
                 )

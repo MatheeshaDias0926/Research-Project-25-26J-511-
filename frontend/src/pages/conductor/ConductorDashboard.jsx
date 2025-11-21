@@ -1,8 +1,18 @@
 import { useState, useEffect } from "react";
-import { Bus, Wrench, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  Bus,
+  Wrench,
+  AlertCircle,
+  CheckCircle,
+  Edit,
+  Trash2,
+  Save,
+  X,
+} from "lucide-react";
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
 import { toast } from "react-toastify";
+import "./ConductorDashboard.css";
 
 export default function ConductorDashboard() {
   const [buses, setBuses] = useState([]);
@@ -15,6 +25,8 @@ export default function ConductorDashboard() {
     notes: "",
   });
   const [loading, setLoading] = useState(true);
+  const [editingLog, setEditingLog] = useState(null);
+  const [editStatus, setEditStatus] = useState("");
 
   useEffect(() => {
     fetchBuses();
@@ -89,6 +101,49 @@ export default function ConductorDashboard() {
       default:
         return "bg-blue-100 text-blue-800 border-blue-200";
     }
+  };
+
+  const handleUpdateStatus = async (logId) => {
+    if (!editStatus) {
+      toast.warning("Please select a status");
+      return;
+    }
+
+    try {
+      await api.put(`/maintenance/${logId}`, { status: editStatus });
+      toast.success("Maintenance status updated successfully");
+      setEditingLog(null);
+      setEditStatus("");
+      fetchMaintenanceLogs();
+    } catch (error) {
+      toast.error("Failed to update maintenance status");
+    }
+  };
+
+  const handleDeleteLog = async (logId) => {
+    if (
+      !window.confirm("Are you sure you want to delete this maintenance log?")
+    ) {
+      return;
+    }
+
+    try {
+      await api.delete(`/maintenance/${logId}`);
+      toast.success("Maintenance log deleted successfully");
+      fetchMaintenanceLogs();
+    } catch (error) {
+      toast.error("Failed to delete maintenance log");
+    }
+  };
+
+  const startEditing = (log) => {
+    setEditingLog(log._id);
+    setEditStatus(log.status);
+  };
+
+  const cancelEditing = () => {
+    setEditingLog(null);
+    setEditStatus("");
   };
 
   const getStatusColor = (status) => {
@@ -247,18 +302,65 @@ export default function ConductorDashboard() {
                       <p className="text-sm text-gray-600 mb-2">{log.notes}</p>
                     )}
 
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          log.status
-                        )}`}
-                      >
-                        {log.status}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(log.reportedAt).toLocaleDateString()}
-                      </span>
-                    </div>
+                    {/* Status Update Section */}
+                    {editingLog === log._id ? (
+                      <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                        <div className="flex gap-2">
+                          <select
+                            value={editStatus}
+                            onChange={(e) => setEditStatus(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                          <button
+                            onClick={() => handleUpdateStatus(log._id)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                          >
+                            <Save className="h-4 w-4" />
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+                          >
+                            <X className="h-4 w-4" />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                            log.status
+                          )}`}
+                        >
+                          {log.status}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">
+                            {new Date(log.reportedAt).toLocaleDateString()}
+                          </span>
+                          <button
+                            onClick={() => startEditing(log)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Edit Status"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteLog(log._id)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Delete Log"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {log.resolvedAt && (
                       <div className="mt-2 flex items-center gap-2 text-xs text-green-600">

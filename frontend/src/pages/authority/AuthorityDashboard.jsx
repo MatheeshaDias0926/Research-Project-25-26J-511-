@@ -10,6 +10,7 @@ import {
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
 import { toast } from "react-toastify";
+import "./AuthorityDashboard.css";
 
 export default function AuthorityDashboard() {
   const [violations, setViolations] = useState([]);

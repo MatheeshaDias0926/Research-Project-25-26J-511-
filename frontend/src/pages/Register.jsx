@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Bus, UserPlus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import "./Register.css";
 
 export default function Register() {
   const [formData, setFormData] = useState({

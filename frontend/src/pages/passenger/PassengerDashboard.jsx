@@ -1,14 +1,24 @@
 import { useState, useEffect } from "react";
-import { Bus, Navigation, Users, TrendingUp } from "lucide-react";
+import {
+  Bus,
+  MapPin,
+  Users,
+  TrendingUp,
+  Search,
+  Navigation,
+} from "lucide-react";
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
 import { toast } from "react-toastify";
+import "./PassengerDashboard.css";
 
 export default function PassengerDashboard() {
   const [buses, setBuses] = useState([]);
   const [selectedBus, setSelectedBus] = useState(null);
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchPlate, setSearchPlate] = useState("");
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     fetchBuses();
@@ -31,6 +41,26 @@ export default function PassengerDashboard() {
       setSelectedBus(response.data);
     } catch (error) {
       toast.error("Failed to fetch bus status");
+    }
+  };
+
+  const searchByLicensePlate = async (e) => {
+    e.preventDefault();
+    if (!searchPlate.trim()) {
+      toast.warning("Please enter a license plate");
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const response = await api.get(`/bus/plate/${searchPlate.trim()}`);
+      await fetchBusStatus(response.data._id);
+      toast.success(`Found bus: ${response.data.licensePlate}`);
+      setSearchPlate("");
+    } catch (error) {
+      toast.error(`Bus with plate "${searchPlate}" not found`);
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -86,6 +116,42 @@ export default function PassengerDashboard() {
           <p className="page-subtitle">
             Track buses in real-time and get occupancy predictions
           </p>
+        </div>
+
+        {/* Search Bar */}
+        <div
+          className="mb-8 animate-fadeIn"
+          style={{ animationDelay: "0.05s" }}
+        >
+          <form onSubmit={searchByLicensePlate} className="flex gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                value={searchPlate}
+                onChange={(e) => setSearchPlate(e.target.value)}
+                placeholder="Search bus by license plate (e.g., NP-1234)"
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={searching}
+              className="btn-primary px-8 py-3 flex items-center gap-2 disabled:opacity-50"
+            >
+              {searching ? (
+                <>
+                  <div className="spinner h-5 w-5 border-2"></div>
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Search className="h-5 w-5" />
+                  Search
+                </>
+              )}
+            </button>
+          </form>
         </div>
 
         {/* Bus List */}
