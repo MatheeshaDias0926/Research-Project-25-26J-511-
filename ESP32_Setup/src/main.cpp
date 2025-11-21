@@ -9,7 +9,7 @@ const char* ssid = "Wi-fi";
 const char* password = "123456788";
 
 // Backend API endpoint - Use your Mac's IP address
-const char* serverUrl = "http://172.20.10.11:3000/api/iot/iot-data";
+const char* serverUrl = "http://192.168.43.31:3000/api/iot/iot-data";
 
 // IR Sensor pins
 #define SENSOR1_PIN 18  // Outer sensor
@@ -64,6 +64,29 @@ const unsigned long debounceDelay = 50;  // Stable debounce
 unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 300000;  // 5 minutes (300000ms)
 
+// GPS simulation data
+struct GPSLocation {
+  const char* name;
+  float lat;
+  float lng;
+};
+
+GPSLocation gpsLocations[] = {
+  {"Bandarawela Stand", 6.8258, 80.9982},
+  {"Bindunuwewa", 6.8448, 80.9997},
+  {"Dhowa Temple", 6.8556, 81.0208},
+  {"Kinigama", 6.8620, 81.0300},
+  {"Ella Town", 6.8756, 81.0463}
+};
+
+int currentGPSIndex = 0;
+unsigned long lastGPSUpdateTime = 0;
+const unsigned long gpsUpdateInterval = 600000;  // 10 minutes (600000ms)
+
+// Fixed values
+const char* licensePlate = "NP-1234";
+const int fixedSpeed = 60;
+
 // TM1637 Display object
 TM1637Display display(DISPLAY_CLK, DISPLAY_DIO);
 
@@ -72,7 +95,9 @@ void connectWiFi();
 void readSensors();
 void processCountingLogic();
 void checkFootboardDetection();
+void updateGPSLocation();
 void sendDataToBackend();
+void sendDataToBackend(bool isFootboardViolation);
 void sendFootboardViolation();
 void updateDisplay();
 void showFootboardWarning();
@@ -133,10 +158,13 @@ void loop() {
   // Check for footboard detection
   checkFootboardDetection();
 
+  // Update GPS location every 10 minutes
+  updateGPSLocation();
+
   // Send data periodically (every 5 minutes)
   if (millis() - lastSendTime >= sendInterval) {
     Serial.println("\n[SCHEDULED SEND - 5 min interval]");
-    sendDataToBackend();
+    sendDataToBackend(false);  // Regular send, not footboard violation
     lastSendTime = millis();
   }
 
@@ -310,7 +338,7 @@ void processCountingLogic() {
   }
 }
 
-void sendDataToBackend() {
+void sendDataToBackend(bool isFootboardViolation) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi not connected. Attempting to reconnect...");
     connectWiFi();
@@ -319,11 +347,18 @@ void sendDataToBackend() {
 
   HTTPClient http;
 
-  // Create JSON payload
+  // Create JSON payload with new format
   JsonDocument jsonDoc;
-  jsonDoc["SensorModule"] = "M1";
+  jsonDoc["licensePlate"] = licensePlate;
   jsonDoc["currentOccupancy"] = passengerCount;
-  jsonDoc["footboardStatus"] = false;  // Default false for scheduled sends
+  
+  // Add GPS location
+  JsonObject gps = jsonDoc["gps"].to<JsonObject>();
+  gps["lat"] = gpsLocations[currentGPSIndex].lat;
+  gps["lon"] = gpsLocations[currentGPSIndex].lng;
+  
+  jsonDoc["footboardStatus"] = isFootboardViolation;
+  jsonDoc["speed"] = fixedSpeed;
 
   String jsonString;
   serializeJson(jsonDoc, jsonString);
@@ -331,6 +366,8 @@ void sendDataToBackend() {
   Serial.println("\n--- Sending Data to Backend ---");
   Serial.print("URL: ");
   Serial.println(serverUrl);
+  Serial.print("Location: ");
+  Serial.println(gpsLocations[currentGPSIndex].name);
   Serial.print("JSON: ");
   Serial.println(jsonString);
 
@@ -438,47 +475,29 @@ void checkFootboardDetection() {
   }
 }
 
+void updateGPSLocation() {
+  unsigned long currentTime = millis();
+  
+  // Check if 10 minutes have elapsed
+  if (currentTime - lastGPSUpdateTime >= gpsUpdateInterval) {
+    // Move to next location
+    currentGPSIndex = (currentGPSIndex + 1) % 5;  // Wrap around after last location
+    lastGPSUpdateTime = currentTime;
+    
+    Serial.println("\n--- GPS Location Updated ---");
+    Serial.print("New Location: ");
+    Serial.println(gpsLocations[currentGPSIndex].name);
+    Serial.print("Coordinates: ");
+    Serial.print(gpsLocations[currentGPSIndex].lat, 4);
+    Serial.print(", ");
+    Serial.println(gpsLocations[currentGPSIndex].lng, 4);
+    Serial.println("----------------------------\n");
+  }
+}
+
 void sendFootboardViolation() {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi not connected. Cannot send footboard violation.");
-    return;
-  }
-
-  HTTPClient http;
-
-  // Create JSON payload with footboard violation
-  JsonDocument jsonDoc;
-  jsonDoc["SensorModule"] = "M1";
-  jsonDoc["currentOccupancy"] = passengerCount;
-  jsonDoc["footboardStatus"] = true;  // Footboard violation detected
-
-  String jsonString;
-  serializeJson(jsonDoc, jsonString);
-
-  Serial.println("\n--- Sending FOOTBOARD VIOLATION to Backend ---");
-  Serial.print("URL: ");
-  Serial.println(serverUrl);
-  Serial.print("JSON: ");
-  Serial.println(jsonString);
-
-  http.begin(serverUrl);
-  http.addHeader("Content-Type", "application/json");
-
-  int httpResponseCode = http.POST(jsonString);
-
-  if (httpResponseCode > 0) {
-    Serial.print("HTTP Response code: ");
-    Serial.println(httpResponseCode);
-    String response = http.getString();
-    Serial.print("Response: ");
-    Serial.println(response);
-  } else {
-    Serial.print("Error sending POST request. Error code: ");
-    Serial.println(httpResponseCode);
-  }
-
-  http.end();
-  Serial.println("-----------------------------------------------\n");
+  Serial.println("\n--- FOOTBOARD VIOLATION DETECTED ---");
+  sendDataToBackend(true);  // Reuse sendDataToBackend with footboard flag
 }
 
 void showFootboardWarning() {
