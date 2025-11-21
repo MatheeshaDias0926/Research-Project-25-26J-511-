@@ -4,8 +4,8 @@
 #include <ArduinoJson.h>
 
 // WiFi credentials - UPDATE THESE
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "Wi-fi";
+const char* password = "123456788";
 
 // Backend API endpoint
 const char* serverUrl = "http://localhost:3000/api/iot/iot-data";
@@ -44,6 +44,12 @@ const unsigned long debounceDelay = 50;
 // Send interval
 unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 5000; // Send data every 5 seconds
+
+// Function declarations
+void connectWiFi();
+void readSensors();
+void processCountingLogic();
+void sendDataToBackend();
 
 void setup() {
   Serial.begin(115200);
@@ -219,7 +225,7 @@ void sendDataToBackend() {
   HTTPClient http;
   
   // Create JSON payload
-  StaticJsonDocument<200> jsonDoc;
+  JsonDocument jsonDoc;
   jsonDoc["SensorModule"] = "M1";
   jsonDoc["currentOccupancy"] = passengerCount;
   
