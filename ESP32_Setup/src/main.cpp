@@ -48,6 +48,13 @@ const unsigned long STATE_TIMEOUT = 5000;  // 5 seconds timeout for slow hand mo
 bool sensor1WasTriggered = false;
 bool sensor2WasTriggered = false;
 
+// Footboard detection
+unsigned long sensor1BlockedStartTime = 0;
+bool sensor1BlockedFor3Sec = false;
+bool footboardDetected = false;
+const unsigned long FOOTBOARD_BLOCK_TIME = 3000;  // 3 seconds
+const unsigned long FOOTBOARD_WAIT_TIME = 2000;   // 2 seconds wait for sensor2
+
 // Debounce
 unsigned long lastDebounceTime1 = 0;
 unsigned long lastDebounceTime2 = 0;
@@ -64,11 +71,15 @@ TM1637Display display(DISPLAY_CLK, DISPLAY_DIO);
 void connectWiFi();
 void readSensors();
 void processCountingLogic();
+void checkFootboardDetection();
 void sendDataToBackend();
+void sendFootboardViolation();
 void updateDisplay();
+void showFootboardWarning();
 void playBuzzer(int duration, int frequency);
 void playEntrySound();
 void playExitSound();
+void playFootboardWarning();
 
 void setup() {
   Serial.begin(115200);
@@ -118,6 +129,9 @@ void loop() {
 
   // Process passenger counting state machine
   processCountingLogic();
+
+  // Check for footboard detection
+  checkFootboardDetection();
 
   // Send data periodically (every 5 minutes)
   if (millis() - lastSendTime >= sendInterval) {
@@ -309,6 +323,7 @@ void sendDataToBackend() {
   JsonDocument jsonDoc;
   jsonDoc["SensorModule"] = "M1";
   jsonDoc["currentOccupancy"] = passengerCount;
+  jsonDoc["footboardStatus"] = false;  // Default false for scheduled sends
 
   String jsonString;
   serializeJson(jsonDoc, jsonString);
@@ -369,4 +384,121 @@ void playExitSound() {
   delay(50);
   playBuzzer(100, 1000);  // Second beep (1000 Hz)
   Serial.println("[BUZZER] Exit sound played");
+}
+
+void checkFootboardDetection() {
+  // Track how long sensor 1 has been blocked
+  if (sensor1State == LOW && currentState == IDLE) {
+    if (sensor1BlockedStartTime == 0) {
+      sensor1BlockedStartTime = millis();
+      Serial.println("[FOOTBOARD] Sensor 1 blocked, monitoring...");
+    }
+    
+    // Check if blocked for more than 3 seconds
+    if (!sensor1BlockedFor3Sec && (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_TIME)) {
+      sensor1BlockedFor3Sec = true;
+      Serial.println("[FOOTBOARD] Sensor 1 blocked for 3+ seconds!");
+    }
+    
+    // After 3 sec block + 2 sec wait (total 5 sec), check if sensor2 was triggered
+    if (sensor1BlockedFor3Sec && 
+        (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_TIME + FOOTBOARD_WAIT_TIME)) {
+      
+      if (!sensor2WasTriggered && sensor2State == HIGH) {
+        // Footboard violation detected!
+        footboardDetected = true;
+        Serial.println("\n*** FOOTBOARD VIOLATION DETECTED ***");
+        Serial.println("Sensor 1 blocked for 3+ sec, Sensor 2 not triggered within 2 sec");
+        
+        // Show warning on display
+        showFootboardWarning();
+        
+        // Play warning sound
+        playFootboardWarning();
+        
+        // Send violation to backend immediately
+        sendFootboardViolation();
+        
+        // Reset footboard detection
+        sensor1BlockedStartTime = 0;
+        sensor1BlockedFor3Sec = false;
+        footboardDetected = false;
+      }
+    }
+  } else {
+    // Reset if sensor 1 is clear
+    if (sensor1State == HIGH && sensor1BlockedStartTime > 0) {
+      Serial.println("[FOOTBOARD] Sensor 1 cleared, reset monitoring");
+      sensor1BlockedStartTime = 0;
+      sensor1BlockedFor3Sec = false;
+    }
+  }
+}
+
+void sendFootboardViolation() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected. Cannot send footboard violation.");
+    return;
+  }
+
+  HTTPClient http;
+
+  // Create JSON payload with footboard violation
+  JsonDocument jsonDoc;
+  jsonDoc["SensorModule"] = "M1";
+  jsonDoc["currentOccupancy"] = passengerCount;
+  jsonDoc["footboardStatus"] = true;  // Footboard violation detected
+
+  String jsonString;
+  serializeJson(jsonDoc, jsonString);
+
+  Serial.println("\n--- Sending FOOTBOARD VIOLATION to Backend ---");
+  Serial.print("URL: ");
+  Serial.println(serverUrl);
+  Serial.print("JSON: ");
+  Serial.println(jsonString);
+
+  http.begin(serverUrl);
+  http.addHeader("Content-Type", "application/json");
+
+  int httpResponseCode = http.POST(jsonString);
+
+  if (httpResponseCode > 0) {
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
+    String response = http.getString();
+    Serial.print("Response: ");
+    Serial.println(response);
+  } else {
+    Serial.print("Error sending POST request. Error code: ");
+    Serial.println(httpResponseCode);
+  }
+
+  http.end();
+  Serial.println("-----------------------------------------------\n");
+}
+
+void showFootboardWarning() {
+  // Flash "FOOT" text on display (display shows numbers, so we show error code)
+  // Show "Err" pattern or flash the display
+  for (int i = 0; i < 3; i++) {
+    display.clear();
+    delay(200);
+    display.showNumberDec(8888, true);  // Show all segments (error indicator)
+    delay(200);
+  }
+  // Restore passenger count
+  updateDisplay();
+  Serial.println("[DISPLAY] Footboard warning shown");
+}
+
+void playFootboardWarning() {
+  // Beep-beep warning pattern (rapid beeps)
+  for (int i = 0; i < 4; i++) {
+    playBuzzer(150, 2000);  // High pitch beep
+    delay(100);
+    playBuzzer(150, 2000);  // High pitch beep
+    delay(300);
+  }
+  Serial.println("[BUZZER] Footboard warning sound played");
 }
