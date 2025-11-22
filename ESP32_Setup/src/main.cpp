@@ -501,26 +501,35 @@ void sendFootboardViolation() {
 }
 
 void showFootboardWarning() {
-  // Flash "FOOT" text on display (display shows numbers, so we show error code)
-  // Show "Err" pattern or flash the display
-  for (int i = 0; i < 3; i++) {
+  // Display "DNGR" (DANGER) pattern on 4-digit display
+  // TM1637 segments: A=0x77, D=0x5E, N=0x54, G=0x6D, R=0x50
+  // Simplified pattern for readability
+  uint8_t dngr[] = {
+    0x5E,  // D
+    0x54,  // n
+    0x6D,  // G
+    0x50   // r
+  };
+  
+  // Flash DNGR pattern 5 times
+  for (int i = 0; i < 5; i++) {
+    display.setSegments(dngr);
+    delay(300);
     display.clear();
-    delay(200);
-    display.showNumberDec(8888, true);  // Show all segments (error indicator)
     delay(200);
   }
   // Restore passenger count
   updateDisplay();
-  Serial.println("[DISPLAY] Footboard warning shown");
+  Serial.println("[DISPLAY] DNGR warning shown");
 }
 
 void playFootboardWarning() {
-  // Beep-beep warning pattern (rapid beeps)
-  for (int i = 0; i < 4; i++) {
-    playBuzzer(150, 2000);  // High pitch beep
-    delay(100);
-    playBuzzer(150, 2000);  // High pitch beep
-    delay(300);
+  // Car-like alarm sound: alternating high-low tones (siren pattern)
+  for (int i = 0; i < 6; i++) {
+    playBuzzer(200, 800);   // Low tone (800 Hz)
+    delay(50);
+    playBuzzer(200, 1200);  // High tone (1200 Hz)
+    delay(50);
   }
-  Serial.println("[BUZZER] Footboard warning sound played");
+  Serial.println("[BUZZER] Car alarm warning sound played");
 }
