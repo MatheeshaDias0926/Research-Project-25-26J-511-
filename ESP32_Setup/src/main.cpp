@@ -204,8 +204,10 @@ void readSensors() {
   if ((millis() - lastDebounceTime1) > debounceDelay) {
     if (reading1 != sensor1State) {
       sensor1State = reading1;
-      Serial.print("Sensor 1: ");
-      Serial.println(sensor1State == LOW ? "BLOCKED" : "CLEAR");
+      Serial.println("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      Serial.print("🔴 SENSOR 1: ");
+      Serial.println(sensor1State == LOW ? "BLOCKED ⚫" : "CLEAR ⚪");
+      Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     }
   }
   lastSensor1State = reading1;
@@ -219,8 +221,10 @@ void readSensors() {
   if ((millis() - lastDebounceTime2) > debounceDelay) {
     if (reading2 != sensor2State) {
       sensor2State = reading2;
-      Serial.print("Sensor 2: ");
-      Serial.println(sensor2State == LOW ? "BLOCKED" : "CLEAR");
+      Serial.println("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      Serial.print("🔵 SENSOR 2: ");
+      Serial.println(sensor2State == LOW ? "BLOCKED ⚫" : "CLEAR ⚪");
+      Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     }
   }
   lastSensor2State = reading2;
@@ -271,13 +275,15 @@ void processCountingLogic() {
         currentState = SENSOR1_TRIGGERED;
         sensor1WasTriggered = true;
         lastStateChange = millis();
-        Serial.println(">> State: SENSOR1_TRIGGERED (Entry started)");
+        Serial.println("\n   ➡️  STATE: SENSOR1_TRIGGERED");
+        Serial.println("   📍 Entry sequence started...");
       } else if (sensor2State == LOW) {
         // Sensor 2 triggered first (exiting)
         currentState = SENSOR2_TRIGGERED;
         sensor2WasTriggered = true;
         lastStateChange = millis();
-        Serial.println(">> State: SENSOR2_TRIGGERED (Exit started)");
+        Serial.println("\n   ⬅️  STATE: SENSOR2_TRIGGERED");
+        Serial.println("   📍 Exit sequence started...");
       }
       break;
 
@@ -287,7 +293,8 @@ void processCountingLogic() {
         sensor2WasTriggered = true;
         currentState = BOTH_TRIGGERED_IN;
         lastStateChange = millis();
-        Serial.println(">> State: BOTH_TRIGGERED_IN");
+        Serial.println("   ⏩ STATE: BOTH_TRIGGERED_IN");
+        Serial.println("   👤 Person passing through (entry)...");
       }
       break;
 
@@ -295,9 +302,12 @@ void processCountingLogic() {
       // Complete entry when both sensors clear
       if (sensor1State == HIGH && sensor2State == HIGH) {
         passengerCount++;
-        Serial.println("*** PERSON ENTERED ***");
-        Serial.print("Current occupancy: ");
-        Serial.println(passengerCount);
+        Serial.println("\n╔════════════════════════════════════╗");
+        Serial.println("║   ✅ PERSON ENTERED                ║");
+        Serial.print("║   👥 Current Occupancy: ");
+        Serial.print(passengerCount);
+        Serial.println("          ║");
+        Serial.println("╚════════════════════════════════════╝");
         
         updateDisplay();
         playEntrySound();
@@ -314,7 +324,8 @@ void processCountingLogic() {
         sensor1WasTriggered = true;
         currentState = BOTH_TRIGGERED_OUT;
         lastStateChange = millis();
-        Serial.println(">> State: BOTH_TRIGGERED_OUT");
+        Serial.println("   ⏪ STATE: BOTH_TRIGGERED_OUT");
+        Serial.println("   👤 Person passing through (exit)...");
       }
       break;
 
@@ -323,9 +334,12 @@ void processCountingLogic() {
       if (sensor1State == HIGH && sensor2State == HIGH) {
         passengerCount--;
         if (passengerCount < 0) passengerCount = 0;
-        Serial.println("*** PERSON EXITED ***");
-        Serial.print("Current occupancy: ");
-        Serial.println(passengerCount);
+        Serial.println("\n╔════════════════════════════════════╗");
+        Serial.println("║   ⬅️  PERSON EXITED                ║");
+        Serial.print("║   👥 Current Occupancy: ");
+        Serial.print(passengerCount);
+        Serial.println("          ║");
+        Serial.println("╚════════════════════════════════════╝");
         
         updateDisplay();
         playExitSound();
@@ -396,7 +410,7 @@ void sendDataToBackend(bool isFootboardViolation) {
 void updateDisplay() {
   // Display current passenger count (right-aligned, 4 digits)
   display.showNumberDec(passengerCount, false);
-  Serial.print("[DISPLAY] Showing count: ");
+  Serial.print("   📺 Display updated: ");
   Serial.println(passengerCount);
 }
 
@@ -412,7 +426,7 @@ void playEntrySound() {
   playBuzzer(100, 1000);  // First beep (1000 Hz)
   delay(50);
   playBuzzer(100, 1500);  // Second beep (1500 Hz)
-  Serial.println("[BUZZER] Entry sound played");
+  Serial.println("   🔊 Entry beep played\n");
 }
 
 void playExitSound() {
@@ -420,7 +434,7 @@ void playExitSound() {
   playBuzzer(100, 1500);  // First beep (1500 Hz)
   delay(50);
   playBuzzer(100, 1000);  // Second beep (1000 Hz)
-  Serial.println("[BUZZER] Exit sound played");
+  Serial.println("   🔊 Exit beep played\n");
 }
 
 void checkFootboardDetection() {
@@ -428,13 +442,13 @@ void checkFootboardDetection() {
   if (sensor1State == LOW && (currentState == IDLE || currentState == SENSOR1_TRIGGERED)) {
     if (sensor1BlockedStartTime == 0) {
       sensor1BlockedStartTime = millis();
-      Serial.println("[FOOTBOARD] Sensor 1 blocked, monitoring...");
+      Serial.println("\n   ⚠️  FOOTBOARD: Monitoring sensor 1...");
     }
     
     // Check if blocked for more than 2 seconds
     if (!sensor1BlockedFor2Sec && (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_TIME)) {
       sensor1BlockedFor2Sec = true;
-      Serial.println("[FOOTBOARD] Sensor 1 blocked for 2+ seconds!");
+      Serial.println("   ⚠️  FOOTBOARD: Blocked for 2+ seconds!");
     }
     
     // After 2 sec block + 1 sec wait (total 3 sec), check if sensor2 was triggered
@@ -444,8 +458,11 @@ void checkFootboardDetection() {
       if (!sensor2WasTriggered && sensor2State == HIGH) {
         // Footboard violation detected!
         footboardDetected = true;
-        Serial.println("\n*** FOOTBOARD VIOLATION DETECTED ***");
-        Serial.println("Sensor 1 blocked for 2+ sec, Sensor 2 not triggered within 1 sec");
+        Serial.println("\n╔════════════════════════════════════╗");
+        Serial.println("║  🚨 FOOTBOARD VIOLATION! 🚨        ║");
+        Serial.println("║  Person standing on footboard      ║");
+        Serial.println("║  Sensor 1: 2+ sec, Sensor 2: None  ║");
+        Serial.println("╚════════════════════════════════════╝");
         
         // Show warning on display
         showFootboardWarning();
@@ -468,7 +485,7 @@ void checkFootboardDetection() {
   } else {
     // Reset if sensor 1 is clear
     if (sensor1State == HIGH && sensor1BlockedStartTime > 0) {
-      Serial.println("[FOOTBOARD] Sensor 1 cleared, reset monitoring");
+      Serial.println("   ✅ FOOTBOARD: Monitoring reset\n");
       sensor1BlockedStartTime = 0;
       sensor1BlockedFor2Sec = false;
     }
@@ -501,26 +518,17 @@ void sendFootboardViolation() {
 }
 
 void showFootboardWarning() {
-  // Display "DNGR" (DANGER) pattern on 4-digit display
-  // TM1637 segments: A=0x77, D=0x5E, N=0x54, G=0x6D, R=0x50
-  // Simplified pattern for readability
-  uint8_t dngr[] = {
-    0x5E,  // D
-    0x54,  // n
-    0x6D,  // G
-    0x50   // r
-  };
-  
-  // Flash DNGR pattern 5 times
-  for (int i = 0; i < 5; i++) {
-    display.setSegments(dngr);
-    delay(300);
+  // Flash "FOOT" text on display (display shows numbers, so we show error code)
+  // Show "Err" pattern or flash the display
+  for (int i = 0; i < 3; i++) {
     display.clear();
+    delay(200);
+    display.showNumberDec(8888, true);  // Show all segments (error indicator)
     delay(200);
   }
   // Restore passenger count
   updateDisplay();
-  Serial.println("[DISPLAY] DNGR warning shown");
+  Serial.println("   ⚠️  Display warning flashed\n");
 }
 
 void playFootboardWarning() {
