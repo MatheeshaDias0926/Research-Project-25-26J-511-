@@ -544,28 +544,27 @@ sudo systemctl start bus-safety
 ### CLI Usage
 
 ```bash
-# Demo mode (synthetic data)
+# Demo mode (uses OSMnx lookahead by default)
 python main.py --demo
 
-# Demo with OSMnx (real road data)
-python main.py --demo --use-osm
+# Demo without OSMnx (legacy mode)
+python main.py --demo --no-osm
 
-# Custom 3-point GPS mode
+# Recommended: Single GPS coordinate with OSMnx lookahead
+python main.py \
+  --seated 10 \
+  --standing 50 \
+  --speed 45 \
+  --lat 7.2906 \
+  --lon 80.6337 \
+  --lookahead 150
+
+# Legacy 3-point GPS mode (for offline/lightweight deployments)
 python main.py \
   --seated 10 \
   --standing 50 \
   --speed 45 \
   --gps "6.9270,79.8610" "6.9268,79.8615" "6.9264,79.8618"
-
-# OSMnx lookahead mode
-python main.py \
-  --seated 10 \
-  --standing 50 \
-  --speed 45 \
-  --use-osm \
-  --lat 7.2906 \
-  --lon 80.6337 \
-  --lookahead 150
 
 # Standalone road reader
 python map_road_ahead.py \
@@ -589,18 +588,7 @@ const = physics_engine.BusConstants(
     # ... other params
 )
 
-# Method 1: With GPS queue
-gps_queue = [(6.9270, 79.8610), (6.9268, 79.8615), (6.9264, 79.8618)]
-result = physics_engine.check_safety(
-    n_seated=10,
-    n_standing=50,
-    speed_kmh=45,
-    gps_queue=gps_queue,
-    road_reader_module=road_reader,
-    const=const
-)
-
-# Method 2: With OSMnx lookahead
+# Recommended: OSMnx lookahead with single GPS coordinate
 road_data = road_reader.get_road_data(lat=7.2906, lon=80.6337, lookahead=150)
 radius = road_data.get("sharpest_radius_m", float("inf"))
 
@@ -609,6 +597,17 @@ result = physics_engine.check_safety_with_radius(
     n_standing=50,
     speed_kmh=45,
     radius=radius,
+    const=const
+)
+
+# Legacy: With GPS queue (estimates curve from past positions)
+gps_queue = [(6.9270, 79.8610), (6.9268, 79.8615), (6.9264, 79.8618)]
+result = physics_engine.check_safety(
+    n_seated=10,
+    n_standing=50,
+    speed_kmh=45,
+    gps_queue=gps_queue,
+    road_reader_module=road_reader,
     const=const
 )
 

@@ -32,21 +32,31 @@ pip install -r requirements.txt
 
 ## Quick Demo
 
-Run the bundled demo scenario (reproduces the example in the spec):
+Run the bundled demo scenario (uses OSMnx lookahead by default):
 
 ```bash
 python main.py --demo
 ```
 
-### OSMnx-based Demo (real road geometry)
+### Legacy 3-point GPS Demo (without OSMnx)
 
 ```bash
-python main.py --demo --use-osm
+python main.py --demo --no-osm
 ```
 
 ## Custom Input
 
-### Simple 3-point GPS mode
+### Single GPS coordinate mode (recommended - default)
+
+Supply passenger counts, speed, and current location:
+
+```bash
+python main.py --seated 10 --standing 60 --speed 50 --lat 6.9271 --lon 79.8612 --lookahead 150
+```
+
+This fetches actual road geometry from OpenStreetMap and computes the sharpest curve within the next 150 m.
+
+### Legacy 3-point GPS mode (for offline/lightweight deployments)
 
 Supply passenger counts, speed, and three GPS points (lat,lon):
 
@@ -54,13 +64,7 @@ Supply passenger counts, speed, and three GPS points (lat,lon):
 python main.py --seated 10 --standing 20 --speed 40 --gps "6.9270,79.8615" "6.9269,79.8619" "6.9266,79.8624"
 ```
 
-### OSMnx lookahead mode (recommended for production)
-
-```bash
-python main.py --seated 10 --standing 60 --speed 50 --use-osm --lat 6.9271 --lon 79.8612 --lookahead 150
-```
-
-This fetches actual road geometry from OpenStreetMap and computes the sharpest curve within the next 150 m.
+Note: This mode estimates the curve radius from past positions (where you've been), not the road ahead.
 
 ## Standalone Road Reader CLI
 

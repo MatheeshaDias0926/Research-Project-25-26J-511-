@@ -32,19 +32,19 @@
 ## Quick CLI Commands
 
 ```bash
-# Demo
+# Demo (uses OSMnx by default)
 python main.py --demo
 
-# Demo with real road data
-python main.py --demo --use-osm
+# Demo without OSMnx (legacy mode)
+python main.py --demo --no-osm
 
-# Custom check (GPS triplet)
+# Custom check with single GPS coordinate (recommended)
+python main.py --standing 60 --speed 45 \
+  --lat 7.2906 --lon 80.6337 --lookahead 150
+
+# Custom check with GPS triplet (legacy mode)
 python main.py --standing 60 --speed 45 \
   --gps "6.9270,79.8610" "6.9268,79.8615" "6.9264,79.8618"
-
-# Custom check (OSMnx lookahead)
-python main.py --standing 60 --speed 45 \
-  --use-osm --lat 7.2906 --lon 80.6337 --lookahead 150
 
 # Standalone road analysis
 python map_road_ahead.py --lat 7.2906 --lon 80.6337 --output road.json
