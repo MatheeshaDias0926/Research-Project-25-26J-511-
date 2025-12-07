@@ -17,13 +17,14 @@ This project implements a physics-based safety system ("Digital Twin") for buses
 | [Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md) | Complete theory, equations, architecture, and API reference |
 | [System Diagrams](docs/DIAGRAMS.md)                        | Visual diagrams of data flow, physics, hardware wiring      |
 | [Quick Reference](docs/QUICK_REFERENCE.md)                 | One-page cheat sheet with equations and commands            |
+| [Stopping Distance Guide](STOPPING_DISTANCE.md)            | Braking distance calculation with slope and friction        |
 
 ## Features
 
-- **`physics_engine.py`**: Mass, CoG, rollover threshold (SSF), and safety check logic with configurable warning thresholds.
+- **`physics_engine.py`**: Mass, CoG, rollover threshold (SSF), safety check logic, and **stopping distance calculator** considering slope, friction, and road curvature.
 - **`road_reader.py`**: Unified curvature interface supporting both OSMnx lookahead and legacy 3-point GPS calculation.
 - **`map_road_ahead.py`**: Full OSMnx pipeline — builds driving graph, projects road ahead, computes curvature via 3-point circumcircle on sampled points, fetches elevation, and calculates slope.
-- **`main.py`**: CLI with flexible input modes — single GPS coordinate (default) or 3-point GPS queue (legacy).
+- **`main.py`**: CLI with flexible input modes — single GPS coordinate (default) or 3-point GPS queue (legacy). Now includes automatic stopping distance analysis.
 - **`tests/test_physics.py`**: pytest tests for physics calculations and edge cases.
 
 ## Installation

@@ -147,6 +147,103 @@ def check_safety_with_radius(n_seated: int,
     }
 
 
+def calculate_stopping_distance(n_seated: int,
+                                n_standing: int,
+                                speed_kmh: float,
+                                radius: float = float("inf"),
+                                slope_deg: float = 0.0,
+                                const: BusConstants = BusConstants(),
+                                friction_coef: float = 0.7,
+                                brake_efficiency: float = 0.8,
+                                reaction_time: float = 1.5) -> Dict[str, Any]:
+    """
+    Calculate stopping distance on straight or curved road with slope consideration.
+    
+    Parameters:
+    - n_seated, n_standing: passenger counts
+    - speed_kmh: current speed
+    - radius: curve radius (inf for straight road)
+    - slope_deg: road slope in degrees (positive = uphill, negative = downhill)
+    - friction_coef: tire-road friction coefficient (0.7 = dry asphalt, 0.4 = wet)
+    - brake_efficiency: brake system efficiency (0.8 = 80% effective)
+    - reaction_time: driver reaction time in seconds
+    
+    Returns dict with:
+    - reaction_distance_m: distance traveled during reaction time
+    - braking_distance_m: distance to stop after braking starts
+    - total_stopping_distance_m: total distance needed
+    - max_safe_speed_kmh: maximum safe speed for the curve (if curved)
+    - is_safe_to_stop: whether vehicle can stop before curve ends
+    """
+    total_mass = compute_total_mass(n_seated, n_standing, const)
+    cog_height = compute_cog_height(n_seated, n_standing, const)
+    rollover_g = rollover_threshold_g(cog_height, const)
+    
+    speed_ms = speed_kmh * (1000.0 / 3600.0)
+    slope_rad = math.radians(slope_deg)
+    
+    # Reaction distance: distance traveled during reaction time
+    reaction_distance = speed_ms * reaction_time
+    
+    # Effective deceleration considering slope and friction
+    # a = μ * g * cos(θ) ± g * sin(θ)
+    # + for uphill (helps braking), - for downhill (hurts braking)
+    friction_component = friction_coef * const.G * math.cos(slope_rad) * brake_efficiency
+    slope_component = const.G * math.sin(slope_rad)
+    
+    # Net deceleration (positive = slowing down)
+    decel_ms2 = friction_component + slope_component
+    
+    # Ensure minimum deceleration (can't be negative or zero)
+    if decel_ms2 <= 0:
+        decel_ms2 = 0.1  # Minimal braking (extreme downhill case)
+    
+    # Braking distance: v² / (2 * a)
+    braking_distance = (speed_ms ** 2) / (2 * decel_ms2)
+    
+    # Total stopping distance
+    total_stopping = reaction_distance + braking_distance
+    
+    # For curved road: calculate max safe speed and stopping safety
+    is_curved = math.isfinite(radius) and radius > 0
+    max_safe_speed_kmh = None
+    is_safe_to_stop = True
+    curve_arc_length = None
+    
+    if is_curved:
+        # Maximum safe speed to avoid rollover: v = sqrt(μ * g * r)
+        # But limited by SSF: v = sqrt(SSF * g * r)
+        max_lateral_g = rollover_g * 0.5  # Use warning threshold (50%)
+        max_safe_speed_ms = math.sqrt(max_lateral_g * const.G * radius)
+        max_safe_speed_kmh = max_safe_speed_ms * 3.6
+        
+        # Estimate curve length (assume 90° curve for safety margin)
+        curve_arc_length = (math.pi / 2) * radius  # Quarter circle
+        
+        # Can we stop before exiting the curve?
+        is_safe_to_stop = total_stopping <= curve_arc_length
+    
+    result = {
+        "speed_kmh": speed_kmh,
+        "total_mass_kg": total_mass,
+        "slope_degrees": slope_deg,
+        "friction_coefficient": friction_coef,
+        "reaction_time_s": reaction_time,
+        "reaction_distance_m": reaction_distance,
+        "braking_distance_m": braking_distance,
+        "total_stopping_distance_m": total_stopping,
+        "deceleration_ms2": decel_ms2,
+        "deceleration_g": decel_ms2 / const.G,
+        "is_curved_road": is_curved,
+        "curve_radius_m": radius if is_curved else None,
+        "curve_arc_length_m": curve_arc_length,
+        "max_safe_speed_kmh": max_safe_speed_kmh,
+        "is_safe_to_stop_in_curve": is_safe_to_stop if is_curved else None,
+    }
+    
+    return result
+
+
 if __name__ == "__main__":
     # quick demo when invoked directly
     from examples import demo  # type: ignore
