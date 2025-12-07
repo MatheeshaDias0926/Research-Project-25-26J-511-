@@ -2,7 +2,13 @@
 
 ## Overview
 
-This project implements a physics-based safety system ("Digital Twin") for buses. It computes the bus's center of gravity (CoG) and the rollover threshold, reads curvature from GPS points, computes expected lateral acceleration for the current speed, and issues warnings if the bus is at risk of rollover.
+This project implements a physics-based safety system ("Digital Twin") for buses. It computes the bus's center of gravity (CoG) and the rollover threshold, analyzes the road curvature ahead using real map data (OSMnx), computes expected lateral acceleration for the current speed, and issues warnings if the bus is at risk of rollover.
+
+### Two Operating Modes
+
+1. **OSMnx Lookahead Mode (Default/Recommended)**: Uses a single GPS coordinate to fetch actual road geometry from OpenStreetMap and analyzes curves **ahead** on the road. This is more accurate and predictive.
+
+2. **Legacy 3-Point GPS Mode**: Estimates curve radius from three consecutive GPS readings (where the vehicle has been). Useful for offline deployments without internet access.
 
 ## 📚 Documentation
 
@@ -14,11 +20,11 @@ This project implements a physics-based safety system ("Digital Twin") for buses
 
 ## Features
 
-- `physics_engine.py`: mass, CoG, rollover threshold, and safety check logic.
-- `road_reader.py`: curvature radius calculation (3-point / circumcircle) using `geopy`, plus OSMnx-based lookahead.
-- `map_road_ahead.py`: **full OSMnx pipeline** — builds a driving graph, samples the road ahead, computes curvature via 3-point circumcircle, fetches elevation, and computes slope.
-- `main.py`: CLI to run a demo or supply live inputs (passenger counts, speed, GPS triplet or OSMnx lookahead).
-- `tests/test_physics.py`: pytest tests for basic physics validations.
+- **`physics_engine.py`**: Mass, CoG, rollover threshold (SSF), and safety check logic with configurable warning thresholds.
+- **`road_reader.py`**: Unified curvature interface supporting both OSMnx lookahead and legacy 3-point GPS calculation.
+- **`map_road_ahead.py`**: Full OSMnx pipeline — builds driving graph, projects road ahead, computes curvature via 3-point circumcircle on sampled points, fetches elevation, and calculates slope.
+- **`main.py`**: CLI with flexible input modes — single GPS coordinate (default) or 3-point GPS queue (legacy).
+- **`tests/test_physics.py`**: pytest tests for physics calculations and edge cases.
 
 ## Installation
 
@@ -76,21 +82,33 @@ python map_road_ahead.py --lat 6.9271 --lon 79.8612 --lookahead 120 --output roa
 
 ## Notes for Deployment
 
-- Camera-based passenger counting should feed `n_seated` / `n_standing` into the running script.
-- GPS receiver should supply recent points; keep a queue of last N locations and pass the last three to the physics check, **or** use OSMnx mode with live lat/lon.
-- For real-time deployment on Raspberry Pi/Jetson Nano, `osmnx` and `rasterio` require extra system libs—see notes below.
+- **Passenger Counting**: Camera-based passenger counting should feed `n_seated` / `n_standing` into the running script in real-time.
+- **GPS Input**:
+  - **Recommended**: Feed current GPS coordinates (lat, lon) for OSMnx lookahead mode.
+  - **Alternative**: Maintain a queue of recent GPS positions and use the last 3 points for legacy mode (offline deployments).
+- **Hardware Requirements**: For real-time deployment on Raspberry Pi/Jetson Nano, `osmnx` and `rasterio` require extra system libs—see installation notes below.
+- **Network**: OSMnx mode requires internet connectivity to fetch map data. Consider caching frequently-traveled routes.
 
-### Raspberry Pi / Jetson Nano notes
+### Raspberry Pi / Jetson Nano Installation
 
 ```bash
 # Install system deps for GDAL/rasterio (optional, needed for local DEM)
-sudo apt-get install libgdal-dev
+sudo apt-get update
+sudo apt-get install libgdal-dev python3-dev
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
 # Install python packages
 pip install -r requirements.txt
 ```
 
-If `osmnx` is too heavy, the simple 3-point GPS mode in `road_reader.py` works standalone with only `numpy` + `geopy`.
+**Lightweight Mode**: If `osmnx` is too heavy for your hardware or you need offline operation, use the legacy 3-point GPS mode which only requires `numpy` + `geopy`:
+
+```bash
+pip install numpy geopy
+```
 
 ## Project Structure
 
@@ -112,11 +130,13 @@ Physics model/
     └── demo.py                # Demo utilities
 ```
 
-## Next Steps / Ideas
+## Future Enhancements
 
-- Integrate a live camera inference module (TensorFlow/PyTorch) to supply passenger counts.
-- Add MQTT interface to publish alerts to driver display or fleet server.
-- Optionally cache OSM graphs for frequently traveled routes to reduce network calls.
+- **Passenger Detection**: Integrate live camera inference module (YOLO, TensorFlow, PyTorch) to automatically count seated/standing passengers.
+- **Real-time Alerts**: Add MQTT or WebSocket interface to publish alerts to driver display or fleet management server.
+- **Route Caching**: Cache OSM graphs for frequently traveled routes to reduce network calls and latency.
+- **Predictive Warnings**: Use vehicle speed trends and upcoming curve severity to provide earlier warnings.
+- **Historical Analysis**: Log trips and analyze rollover risk patterns for route optimization.
 
 ## References
 
@@ -132,3 +152,5 @@ MIT License — See LICENSE file for details.
 ---
 
 _Developed for Sri Lankan bus safety — December 2025_
+
+//unsafe cordinate (udugama junction) - 6.208944, 80.335067
