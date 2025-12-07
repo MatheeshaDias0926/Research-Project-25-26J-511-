@@ -317,3 +317,6 @@ This project is developed as part of academic research at [Your University].
 
 **For detailed setup and configuration, see the comprehensive documentation files listed above.**
 **For detailed setup and configuration, see the documentation in the `backend/` folder.**
+
+**_Mobile app installed mobile phone will mount in front of the driver for safety alerts and info display, so the system need to update and need to fetch real time data into the mobile app_**
+**_So the mobile app development is not included in this project scope_ and it will develop later**
