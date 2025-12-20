@@ -109,10 +109,14 @@ export const loginUser = async (req, res, next) => {
 
     // Check if user exists and password matches
     if (user && (await user.matchPassword(password))) {
+      // Populate assignedBus if it exists
+      await user.populate("assignedBus");
+
       res.json({
         _id: user._id,
         username: user.username,
         role: user.role,
+        assignedBus: user.assignedBus, // Return the populated bus object
         token: generateToken(user._id),
       });
     } else {
@@ -131,7 +135,9 @@ export const loginUser = async (req, res, next) => {
  */
 export const getUserProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id).select("-password");
+    const user = await User.findById(req.user._id)
+      .select("-password")
+      .populate("assignedBus"); // Populate assignedBus
 
     if (user) {
       res.json(user);

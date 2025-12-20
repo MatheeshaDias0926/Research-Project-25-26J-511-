@@ -73,7 +73,7 @@ router.get("/:busId/status", protect, getBusStatus);
  * @desc    Get violation history for a bus (Authority App)
  * @access  Private (Authority only)
  */
-router.get("/:busId/violations", protect, isAuthority, getBusViolations);
+router.get("/:busId/violations", protect, isConductorOrAuthority, getBusViolations);
 
 /**
  * @route   GET /api/bus/:busId/logs
