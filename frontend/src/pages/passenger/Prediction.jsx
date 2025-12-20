@@ -1,104 +1,238 @@
 import { useState, useEffect } from "react";
 import api from "../../api/axios";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/Card";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import { TrendingUp, Clock, Users, Map } from "lucide-react";
 
 const Prediction = () => {
-    const [routeId, setRouteId] = useState("ROUTE-138");
-    const [prediction, setPrediction] = useState(null);
-    const [loading, setLoading] = useState(false);
+  const [routeId, setRouteId] = useState("ROUTE-138");
+  const [prediction, setPrediction] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-    // Auto-fetch on mount for demo
-    useEffect(() => {
-        fetchPrediction();
-    }, []);
+  // Auto-fetch on mount for demo
+  useEffect(() => {
+    fetchPrediction();
+  }, []);
 
-    const fetchPrediction = async () => {
-        setLoading(true);
-        try {
-            const response = await api.get(`/bus/predict/${routeId}`);
-            setPrediction(response.data);
-        } catch (error) {
-            console.error("Prediction failed", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchPrediction = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get(`/bus/predict/${routeId}`);
+      setPrediction(response.data);
+    } catch (error) {
+      console.error("Prediction failed", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <div className="max-w-3xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-slate-800">Occupancy Prediction</h1>
-                <div className="flex gap-2">
-                    <select
-                        value={routeId}
-                        onChange={(e) => setRouteId(e.target.value)}
-                        className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                        <option value="ROUTE-138">Route 138 (Colombo-Homagama)</option>
-                        <option value="ROUTE-120">Route 120 (Colombo-Horana)</option>
-                        <option value="ROUTE-177">Route 177 (Kollupitiya-Kaduwela)</option>
-                    </select>
-                    <Button onClick={fetchPrediction} disabled={loading}>
-                        {loading ? "Refreshing..." : "Update"}
-                    </Button>
-                </div>
+  return (
+    <div
+      style={{
+        maxWidth: 896,
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: 24,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
+          Occupancy Prediction
+        </h1>
+        <div style={{ display: "flex", gap: 8 }}>
+          <select
+            value={routeId}
+            onChange={(e) => setRouteId(e.target.value)}
+            style={{
+              height: 40,
+              borderRadius: 8,
+              border: "1px solid #d1d5db",
+              background: "#fff",
+              padding: "0 12px",
+              fontSize: 14,
+              outline: "none",
+            }}
+          >
+            <option value="ROUTE-138">Route 138 (Colombo-Homagama)</option>
+            <option value="ROUTE-120">Route 120 (Colombo-Horana)</option>
+            <option value="ROUTE-177">Route 177 (Kollupitiya-Kaduwela)</option>
+          </select>
+          <Button onClick={fetchPrediction} disabled={loading}>
+            {loading ? "Refreshing..." : "Update"}
+          </Button>
+        </div>
+      </div>
+
+      {prediction && (
+        <Card style={{ overflow: "hidden" }}>
+          <div
+            style={{
+              background: "linear-gradient(to right, #2563eb, #1e40af)",
+              padding: 32,
+              color: "#fff",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <h2 style={{ fontSize: 24, fontWeight: 700 }}>
+                {routeId} Analysis
+              </h2>
+              <Badge
+                style={{
+                  background: "rgba(255,255,255,0.2)",
+                  color: "#fff",
+                  border: "none",
+                }}
+              >
+                ML Model v1.0
+              </Badge>
+            </div>
+            <p style={{ opacity: 0.9 }}>
+              Based on historical data and current time.
+            </p>
+          </div>
+
+          <CardContent style={{ padding: 32 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 32,
+              }}
+            >
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 16,
+                  background: "#f8fafc",
+                  borderRadius: 16,
+                }}
+              >
+                <Users
+                  style={{
+                    height: 32,
+                    width: 32,
+                    color: "#2563eb",
+                    margin: "0 auto 8px",
+                  }}
+                />
+                <p style={{ fontSize: 14, color: "#64748b", marginBottom: 4 }}>
+                  Predicted Occupancy
+                </p>
+                <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+                  {prediction.predictedOccupancy || 42}
+                </p>
+                <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                  Passengers
+                </p>
+              </div>
+
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 16,
+                  background: "#f8fafc",
+                  borderRadius: 16,
+                }}
+              >
+                <TrendingUp
+                  style={{
+                    height: 32,
+                    width: 32,
+                    color: "#22c55e",
+                    margin: "0 auto 8px",
+                  }}
+                />
+                <p style={{ fontSize: 14, color: "#64748b", marginBottom: 4 }}>
+                  Confidence Score
+                </p>
+                <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+                  {prediction.confidence
+                    ? (prediction.confidence * 100).toFixed(0)
+                    : 85}
+                  %
+                </p>
+                <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                  Accuracy Probability
+                </p>
+              </div>
+
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 16,
+                  background: "#f8fafc",
+                  borderRadius: 16,
+                }}
+              >
+                <Clock
+                  style={{
+                    height: 32,
+                    width: 32,
+                    color: "#f59e42",
+                    margin: "0 auto 8px",
+                  }}
+                />
+                <p style={{ fontSize: 14, color: "#64748b", marginBottom: 4 }}>
+                  Next Bus In
+                </p>
+                <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+                  12
+                </p>
+                <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                  Minutes (Est)
+                </p>
+              </div>
             </div>
 
-            {prediction && (
-                <Card className="overflow-hidden">
-                    <div className="bg-gradient-to-r from-primary-600 to-primary-800 p-8 text-white">
-                        <div className="flex items-center justify-between mb-2">
-                            <h2 className="text-2xl font-bold">{routeId} Analysis</h2>
-                            <Badge className="bg-white/20 hover:bg-white/30 text-white border-none">
-                                ML Model v1.0
-                            </Badge>
-                        </div>
-                        <p className="opacity-90">Based on historical data and current time.</p>
-                    </div>
-
-                    <CardContent className="p-8">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <div className="text-center p-4 bg-slate-50 rounded-xl">
-                                <Users className="h-8 w-8 text-primary-600 mx-auto mb-2" />
-                                <p className="text-sm text-slate-500 mb-1">Predicted Occupancy</p>
-                                <p className="text-3xl font-bold text-slate-900">{prediction.predictedOccupancy || 42}</p>
-                                <p className="text-xs text-slate-400 mt-1">Passengers</p>
-                            </div>
-
-                            <div className="text-center p-4 bg-slate-50 rounded-xl">
-                                <TrendingUp className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                                <p className="text-sm text-slate-500 mb-1">Confidence Score</p>
-                                <p className="text-3xl font-bold text-slate-900">
-                                    {prediction.confidence ? (prediction.confidence * 100).toFixed(0) : 85}%
-                                </p>
-                                <p className="text-xs text-slate-400 mt-1">Accuracy Probability</p>
-                            </div>
-
-                            <div className="text-center p-4 bg-slate-50 rounded-xl">
-                                <Clock className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-                                <p className="text-sm text-slate-500 mb-1">Next Bus In</p>
-                                <p className="text-3xl font-bold text-slate-900">12</p>
-                                <p className="text-xs text-slate-400 mt-1">Minutes (Est)</p>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-lg flex gap-3 text-blue-800">
-                            <Map className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                            <div>
-                                <p className="font-semibold">Route Recommendation</p>
-                                <p className="text-sm mt-1 text-blue-700">
-                                    Current traffic suggests moderate congestion. The predicted occupancy indicates seating might be available if you board within the next 15 minutes.
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-        </div>
-    );
+            <div
+              style={{
+                marginTop: 32,
+                padding: 16,
+                background: "#eff6ff",
+                border: "1px solid #dbeafe",
+                borderRadius: 12,
+                display: "flex",
+                gap: 12,
+                color: "#1e40af",
+              }}
+            >
+              <Map
+                style={{ height: 20, width: 20, flexShrink: 0, marginTop: 2 }}
+              />
+              <div>
+                <p style={{ fontWeight: 600 }}>Route Recommendation</p>
+                <p style={{ fontSize: 14, marginTop: 4, color: "#1d4ed8" }}>
+                  Current traffic suggests moderate congestion. The predicted
+                  occupancy indicates seating might be available if you board
+                  within the next 15 minutes.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 };
 
 export default Prediction;

@@ -1,30 +1,53 @@
-import { cn } from "../../lib/utils";
+const buttonVariantStyles = {
+  primary: {
+    background: "#2563eb",
+    color: "#fff",
+    boxShadow: "0 1px 2px 0 rgba(0,0,0,0.04)",
+    border: "none",
+  },
+  secondary: {
+    background: "#fff",
+    color: "#334155",
+    border: "1px solid #d1d5db",
+  },
+  danger: {
+    background: "#dc2626",
+    color: "#fff",
+    border: "none",
+  },
+  ghost: {
+    background: "transparent",
+    color: "#334155",
+    border: "none",
+  },
+};
 
-const Button = ({ className, variant = "primary", size = "md", ...props }) => {
-    const variants = {
-        primary: "bg-primary-600 text-white hover:bg-primary-700 shadow-sm",
-        secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50",
-        danger: "bg-red-600 text-white hover:bg-red-700",
-        ghost: "bg-transparent hover:bg-gray-100 text-gray-700",
-    };
+const buttonSizeStyles = {
+  sm: { padding: "6px 12px", fontSize: 14 },
+  md: { padding: "8px 16px", fontSize: 16 },
+  lg: { padding: "12px 24px", fontSize: 18 },
+};
 
-    const sizes = {
-        sm: "px-3 py-1.5 text-sm",
-        md: "px-4 py-2",
-        lg: "px-6 py-3 text-lg",
-    };
-
-    return (
-        <button
-            className={cn(
-                "inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
-                variants[variant],
-                sizes[size],
-                className
-            )}
-            {...props}
-        />
-    );
+const Button = ({ style, variant = "primary", size = "md", ...props }) => {
+  return (
+    <button
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 8,
+        fontWeight: 500,
+        transition: "background 0.2s, color 0.2s",
+        outline: "none",
+        opacity: props.disabled ? 0.5 : 1,
+        pointerEvents: props.disabled ? "none" : "auto",
+        ...buttonVariantStyles[variant],
+        ...buttonSizeStyles[size],
+        ...style,
+      }}
+      {...props}
+    />
+  );
 };
 
 export default Button;

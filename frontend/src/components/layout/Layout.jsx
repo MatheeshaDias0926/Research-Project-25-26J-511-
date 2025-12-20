@@ -3,22 +3,29 @@ import Sidebar from "./Sidebar";
 import { useAuth } from "../../context/AuthContext";
 
 const Layout = () => {
-    const { user } = useAuth();
+  const { user } = useAuth();
 
-    if (!user) {
-        return <Outlet />; // For login/register pages
-    }
+  if (!user) {
+    return <Outlet />; // For login/register pages
+  }
 
-    return (
-        <div className="flex h-screen overflow-hidden bg-slate-50">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto">
-                <div className="container mx-auto p-8 max-w-7xl">
-                    <Outlet />
-                </div>
-            </main>
+  return (
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        overflow: "hidden",
+        background: "#f8fafc",
+      }}
+    >
+      <Sidebar />
+      <main style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ margin: "0 auto", padding: 32, maxWidth: 1120 }}>
+          <Outlet />
         </div>
-    );
+      </main>
+    </div>
+  );
 };
 
 export default Layout;

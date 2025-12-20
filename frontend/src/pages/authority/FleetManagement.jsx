@@ -1,139 +1,291 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import api from "../../api/axios";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Badge from "../../components/ui/Badge";
 import { Bus, Plus, RefreshCw } from "lucide-react";
 
 const FleetManagement = () => {
-    const { register, handleSubmit, reset } = useForm();
-    const [buses, setBuses] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [isAdding, setIsAdding] = useState(false);
+  const { register, handleSubmit, reset } = useForm();
+  const [buses, setBuses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
 
-    useEffect(() => {
-        fetchBuses();
-    }, []);
+  useEffect(() => {
+    fetchBuses();
+  }, []);
 
-    const fetchBuses = async () => {
-        setLoading(true);
-        try {
-            const response = await api.get("/bus");
-            setBuses(response.data);
-        } catch (error) {
-            console.error("Failed to fetch buses", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchBuses = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get("/bus");
+      setBuses(response.data);
+    } catch (error) {
+      console.error("Failed to fetch buses", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const onSubmit = async (data) => {
-        try {
-            const payload = {
-                licensePlate: data.licensePlate,
-                routeId: data.routeId,
-                capacity: parseInt(data.capacity)
-            };
-            await api.post("/bus", payload);
-            reset();
-            setIsAdding(false);
-            fetchBuses(); // Refresh list
-        } catch (error) {
-            console.error("Failed to create bus", error);
-            alert("Failed to create bus: " + (error.response?.data?.message || error.message));
-        }
-    };
+  const onSubmit = async (data) => {
+    try {
+      const payload = {
+        licensePlate: data.licensePlate,
+        routeId: data.routeId,
+        capacity: parseInt(data.capacity),
+      };
+      await api.post("/bus", payload);
+      reset();
+      setIsAdding(false);
+      fetchBuses(); // Refresh list
+    } catch (error) {
+      console.error("Failed to create bus", error);
+      alert(
+        "Failed to create bus: " +
+          (error.response?.data?.message || error.message)
+      );
+    }
+  };
 
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-slate-800">Fleet Management</h1>
-                <Button onClick={() => setIsAdding(!isAdding)} className="gap-2">
-                    <Plus className="h-4 w-4" /> Add New Bus
-                </Button>
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
+          Fleet Management
+        </h1>
+        <Button
+          onClick={() => setIsAdding(!isAdding)}
+          style={{ display: "flex", alignItems: "center", gap: 8 }}
+        >
+          <Plus style={{ height: 16, width: 16 }} /> Add New Bus
+        </Button>
+      </div>
+
+      {isAdding && (
+        <Card
+          style={{
+            animation: "slideInTop 0.3s",
+            border: "1px solid #bae6fd",
+            background: "#f0f9ff",
+          }}
+        >
+          <CardHeader>
+            <CardTitle style={{ fontSize: 18 }}>Register New Vehicle</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 16,
+                alignItems: "flex-end",
+              }}
+            >
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 200,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                }}
+              >
+                <label
+                  style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                >
+                  License Plate
+                </label>
+                <Input
+                  {...register("licensePlate", { required: true })}
+                  placeholder="NP-XXXX"
+                />
+              </div>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 200,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                }}
+              >
+                <label
+                  style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                >
+                  Route ID
+                </label>
+                <Input
+                  {...register("routeId", { required: true })}
+                  placeholder="ROUTE-XXX"
+                />
+              </div>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 200,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                }}
+              >
+                <label
+                  style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                >
+                  Capacity
+                </label>
+                <Input
+                  type="number"
+                  {...register("capacity", { required: true })}
+                  placeholder="50"
+                />
+              </div>
+              <Button type="submit">Create Bus</Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <CardTitle>Active Fleet</CardTitle>
+          <button
+            onClick={fetchBuses}
+            style={{
+              color: "#94a3b8",
+              transition: "color 0.2s",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.color = "#0284c7")}
+            onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+          >
+            <RefreshCw style={{ height: 20, width: 20 }} />
+          </button>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "32px 0" }}>
+              Loading fleet data...
             </div>
-
-            {isAdding && (
-                <Card className="animate-in slide-in-from-top-4 border-primary-200 bg-primary-50">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Register New Vehicle</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col md:flex-row gap-4 items-end">
-                            <div className="w-full md:w-1/3 space-y-1">
-                                <label className="text-sm font-medium text-slate-700">License Plate</label>
-                                <Input {...register("licensePlate", { required: true })} placeholder="NP-XXXX" />
-                            </div>
-                            <div className="w-full md:w-1/3 space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Route ID</label>
-                                <Input {...register("routeId", { required: true })} placeholder="ROUTE-XXX" />
-                            </div>
-                            <div className="w-full md:w-1/3 space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Capacity</label>
-                                <Input type="number" {...register("capacity", { required: true })} placeholder="50" />
-                            </div>
-                            <Button type="submit">Create Bus</Button>
-                        </form>
-                    </CardContent>
-                </Card>
-            )}
-
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Active Fleet</CardTitle>
-                    <button onClick={fetchBuses} className="text-slate-400 hover:text-primary-600 transition-colors">
-                        <RefreshCw className="h-5 w-5" />
-                    </button>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <div className="text-center py-8">Loading fleet data...</div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-slate-500 uppercase bg-slate-50">
-                                    <tr>
-                                        <th className="px-4 py-3">License Plate</th>
-                                        <th className="px-4 py-3">Route</th>
-                                        <th className="px-4 py-3">Capacity</th>
-                                        <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3">System ID</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {buses.length === 0 && (
-                                        <tr>
-                                            <td colSpan="5" className="text-center py-8 text-slate-500">No buses in fleet.</td>
-                                        </tr>
-                                    )}
-                                    {buses.map((bus) => (
-                                        <tr key={bus._id} className="border-b border-slate-100 hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-900 flex items-center gap-2">
-                                                <Bus className="h-4 w-4 text-slate-400" />
-                                                {bus.licensePlate}
-                                            </td>
-                                            <td className="px-4 py-3">{bus.routeId}</td>
-                                            <td className="px-4 py-3">{bus.capacity}</td>
-                                            <td className="px-4 py-3">
-                                                <Badge variant={bus.currentStatus === 'active' ? 'success' : 'secondary'}>
-                                                    {bus.currentStatus}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-4 py-3 font-mono text-xs text-slate-500">
-                                                {bus._id}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", fontSize: 14, textAlign: "left" }}>
+                <thead
+                  style={{
+                    fontSize: 12,
+                    color: "#64748b",
+                    textTransform: "uppercase",
+                    background: "#f8fafc",
+                  }}
+                >
+                  <tr>
+                    <th style={{ padding: "12px" }}>License Plate</th>
+                    <th style={{ padding: "12px" }}>Route</th>
+                    <th style={{ padding: "12px" }}>Capacity</th>
+                    <th style={{ padding: "12px" }}>Status</th>
+                    <th style={{ padding: "12px" }}>System ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {buses.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        style={{
+                          textAlign: "center",
+                          padding: "32px 0",
+                          color: "#64748b",
+                        }}
+                      >
+                        No buses in fleet.
+                      </td>
+                    </tr>
+                  )}
+                  {buses.map((bus) => (
+                    <tr
+                      key={bus._id}
+                      style={{
+                        borderBottom: "1px solid #f1f5f9",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseOver={(e) =>
+                        (e.currentTarget.style.background = "#f8fafc")
+                      }
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.background = "transparent")
+                      }
+                    >
+                      <td
+                        style={{
+                          padding: "12px",
+                          fontWeight: 500,
+                          color: "#0f172a",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Bus
+                          style={{ height: 16, width: 16, color: "#94a3b8" }}
+                        />
+                        {bus.licensePlate}
+                      </td>
+                      <td style={{ padding: "12px" }}>{bus.routeId}</td>
+                      <td style={{ padding: "12px" }}>{bus.capacity}</td>
+                      <td style={{ padding: "12px" }}>
+                        <Badge
+                          variant={
+                            bus.currentStatus === "active"
+                              ? "success"
+                              : "secondary"
+                          }
+                        >
+                          {bus.currentStatus}
+                        </Badge>
+                      </td>
+                      <td
+                        style={{
+                          padding: "12px",
+                          fontFamily: "monospace",
+                          fontSize: 12,
+                          color: "#64748b",
+                        }}
+                      >
+                        {bus._id}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 export default FleetManagement;

@@ -1,75 +1,154 @@
 import { useAuth } from "../../context/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/Card";
 import Badge from "../../components/ui/Badge";
 import { User, Shield, Briefcase, UserCircle } from "lucide-react";
 
 const Profile = () => {
-    const { user } = useAuth();
+  const { user } = useAuth();
 
-    const getRoleIcon = (role) => {
-        switch (role) {
-            case "authority":
-                return <Shield className="h-5 w-5" />;
-            case "conductor":
-                return <Briefcase className="h-5 w-5" />;
-            default:
-                return <User className="h-5 w-5" />;
-        }
-    };
+  const getRoleIcon = (role) => {
+    const iconStyle = { height: 20, width: 20 };
+    switch (role) {
+      case "authority":
+        return <Shield style={iconStyle} />;
+      case "conductor":
+        return <Briefcase style={iconStyle} />;
+      default:
+        return <User style={iconStyle} />;
+    }
+  };
 
-    const getRoleBadgeVariant = (role) => {
-        switch (role) {
-            case "authority":
-                return "danger";
-            case "conductor":
-                return "warning";
-            default:
-                return "default";
-        }
-    };
+  const getRoleBadgeVariant = (role) => {
+    switch (role) {
+      case "authority":
+        return "danger";
+      case "conductor":
+        return "warning";
+      default:
+        return "default";
+    }
+  };
 
-    return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-slate-800">My Profile</h1>
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
+        My Profile
+      </h1>
 
-            <Card className="max-w-2xl">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <UserCircle className="h-6 w-6 text-primary-600" />
-                        User Information
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
-                        <div>
-                            <p className="text-sm font-medium text-slate-500">Username</p>
-                            <p className="text-lg font-semibold text-slate-900">{user.username}</p>
-                        </div>
-                    </div>
+      <Card style={{ maxWidth: 672 }}>
+        <CardHeader>
+          <CardTitle style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <UserCircle style={{ height: 24, width: 24, color: "#2563eb" }} />
+            User Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: 16,
+              background: "#f8fafc",
+              borderRadius: 8,
+              border: "1px solid #f1f5f9",
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+                Username
+              </p>
+              <p style={{ fontSize: 18, fontWeight: 600, color: "#0f172a" }}>
+                {user.username}
+              </p>
+            </div>
+          </div>
 
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
-                        <div>
-                            <p className="text-sm font-medium text-slate-500">Role</p>
-                            <div className="flex items-center gap-2 mt-1">
-                                {getRoleIcon(user.role)}
-                                <span className="font-semibold capitalize text-slate-900">{user.role}</span>
-                            </div>
-                        </div>
-                        <Badge variant={getRoleBadgeVariant(user.role)} className="uppercase text-xs tracking-wider">
-                            {user.role} Account
-                        </Badge>
-                    </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: 16,
+              background: "#f8fafc",
+              borderRadius: 8,
+              border: "1px solid #f1f5f9",
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+                Role
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 4,
+                }}
+              >
+                {getRoleIcon(user.role)}
+                <span
+                  style={{
+                    fontWeight: 600,
+                    textTransform: "capitalize",
+                    color: "#0f172a",
+                  }}
+                >
+                  {user.role}
+                </span>
+              </div>
+            </div>
+            <Badge
+              variant={getRoleBadgeVariant(user.role)}
+              style={{
+                textTransform: "uppercase",
+                fontSize: 12,
+                letterSpacing: 1,
+              }}
+            >
+              {user.role} Account
+            </Badge>
+          </div>
 
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
-                        <div>
-                            <p className="text-sm font-medium text-slate-500">Account ID</p>
-                            <p className="text-sm font-mono text-slate-600 mt-1">{user.id || user._id}</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    );
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: 16,
+              background: "#f8fafc",
+              borderRadius: 8,
+              border: "1px solid #f1f5f9",
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+                Account ID
+              </p>
+              <p
+                style={{
+                  fontSize: 14,
+                  fontFamily: "monospace",
+                  color: "#475569",
+                  marginTop: 4,
+                }}
+              >
+                {user.id || user._id}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 export default Profile;

@@ -1,4 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Layout from "./components/layout/Layout";
 import PrivateRoutes from "./components/layout/PrivateRoutes";
@@ -24,8 +29,16 @@ import ConductorDashboard from "./pages/conductor/ConductorDashboard";
 import MaintenanceReport from "./pages/conductor/MaintenanceReport";
 
 // Placeholders for now
-const NotFound = () => <div className="p-8 text-center text-xl">404 - Page Not Found</div>;
-const DashboardPlaceholder = ({ title }) => <div className="text-2xl font-bold">{title} Dashboard (Coming Soon)</div>;
+const NotFound = () => (
+  <div style={{ padding: 32, textAlign: "center", fontSize: 20 }}>
+    404 - Page Not Found
+  </div>
+);
+const DashboardPlaceholder = ({ title }) => (
+  <div style={{ fontSize: 24, fontWeight: 700 }}>
+    {title} Dashboard (Coming Soon)
+  </div>
+);
 
 function App() {
   return (
@@ -51,14 +64,23 @@ function App() {
 
             <Route element={<PrivateRoutes roles={["conductor"]} />}>
               <Route path="/conductor" element={<ConductorDashboard />} />
-              <Route path="/conductor/maintenance" element={<MaintenanceReport />} />
+              <Route
+                path="/conductor/maintenance"
+                element={<MaintenanceReport />}
+              />
             </Route>
 
             <Route element={<PrivateRoutes roles={["authority"]} />}>
               <Route path="/authority" element={<AuthorityDashboard />} />
               <Route path="/authority/fleet" element={<FleetManagement />} />
-              <Route path="/authority/violations" element={<ViolationsFeed />} />
-              <Route path="/authority/maintenance" element={<DashboardPlaceholder title="Authority Maintenance" />} />
+              <Route
+                path="/authority/violations"
+                element={<ViolationsFeed />}
+              />
+              <Route
+                path="/authority/maintenance"
+                element={<DashboardPlaceholder title="Authority Maintenance" />}
+              />
               <Route path="/authority/iot" element={<IoTSimulator />} />
             </Route>
 
