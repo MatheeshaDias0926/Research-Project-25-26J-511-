@@ -6,7 +6,9 @@ import {
   getBusViolations,
   getBusDataLogs,
   getPrediction,
+  getPrediction,
   createBus,
+  getAvailableBuses,
 } from "../controllers/bus.controller.js";
 import { getPhysicsModel } from "../controllers/physics.controller.js";
 import {
@@ -31,6 +33,13 @@ router.get("/", protect, getAllBuses);
  * @access  Private (Authority only)
  */
 router.post("/", protect, isAuthority, createBus);
+
+/**
+ * @route   GET /api/bus/available
+ * @desc    Get all available buses (not assigned)
+ * @access  Private (Authority only)
+ */
+router.get("/available", protect, isAuthority, getAvailableBuses);
 
 /**
  * @route   GET /api/bus/predict/:routeId

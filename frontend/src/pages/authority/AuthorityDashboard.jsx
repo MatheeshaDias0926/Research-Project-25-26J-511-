@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/Card";
-import { Bus, AlertTriangle, CheckCircle, Wrench } from "lucide-react";
+import { Bus, AlertTriangle, CheckCircle, Wrench, UserPlus } from "lucide-react";
 
 const AuthorityDashboard = () => {
   const [stats, setStats] = useState({
@@ -173,6 +173,45 @@ const AuthorityDashboard = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        <h2 style={{ fontSize: 24, fontWeight: 700, color: "#1e293b", marginBottom: 20 }}>
+          Quick Actions
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
+          <a href="/authority/conductors" style={{ textDecoration: "none" }}>
+            <Card style={{ cursor: "pointer", transition: "transform 0.2s" }} className="hover:scale-105">
+              <CardContent
+                style={{
+                  padding: 24,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                    Manage Conductors
+                  </p>
+                  <p style={{ fontSize: 13, color: "#64748b" }}>
+                    Register & Assign Buses
+                  </p>
+                </div>
+                <div
+                  style={{
+                    padding: 12,
+                    background: "#f1f5f9",
+                    borderRadius: 9999,
+                    color: "#475569",
+                  }}
+                >
+                  <UserPlus style={{ height: 24, width: 24 }} />
+                </div>
+              </CardContent>
+            </Card>
+          </a>
+        </div>
       </div>
 
       {/* Could add a chart or recent activity list here later */}

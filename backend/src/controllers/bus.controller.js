@@ -231,3 +231,34 @@ export const createBus = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Get all available buses (not assigned to any conductor)
+ * @route   GET /api/bus/available
+ * @access  Private (Authority only)
+ */
+export const getAvailableBuses = async (req, res, next) => {
+  try {
+    // 1. Find all users who are conductors and have an assigned bus
+    const conductors = await import("../models/User.model.js").then(
+      (m) => m.default
+    );
+    const assignedUsers = await conductors
+      .find({
+        role: "conductor",
+        assignedBus: { $ne: null },
+      })
+      .select("assignedBus");
+
+    const assignedBusIds = assignedUsers.map((user) => user.assignedBus);
+
+    // 2. Find all buses that are NOT in the assigned list
+    const availableBuses = await Bus.find({
+      _id: { $nin: assignedBusIds },
+    });
+
+    res.json(availableBuses);
+  } catch (error) {
+    next(error);
+  }
+};

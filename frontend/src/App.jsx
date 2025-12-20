@@ -7,6 +7,7 @@ import {
 import { AuthProvider } from "./context/AuthContext";
 import Layout from "./components/layout/Layout";
 import PrivateRoutes from "./components/layout/PrivateRoutes";
+import RoleRedirect from "./components/layout/RoleRedirect";
 
 // Auth Pages
 import Login from "./pages/auth/Login";
@@ -23,6 +24,7 @@ import AuthorityDashboard from "./pages/authority/AuthorityDashboard";
 import ViolationsFeed from "./pages/authority/ViolationsFeed";
 import IoTSimulator from "./pages/authority/IoTSimulator";
 import FleetManagement from "./pages/authority/FleetManagement";
+import ConductorManagement from "./pages/authority/ConductorManagement";
 
 // Conductor Pages
 import ConductorDashboard from "./pages/conductor/ConductorDashboard";
@@ -74,6 +76,10 @@ function App() {
               <Route path="/authority" element={<AuthorityDashboard />} />
               <Route path="/authority/fleet" element={<FleetManagement />} />
               <Route
+                path="/authority/conductors"
+                element={<ConductorManagement />}
+              />
+              <Route
                 path="/authority/violations"
                 element={<ViolationsFeed />}
               />
@@ -85,7 +91,7 @@ function App() {
             </Route>
 
             {/* Default redirect for root */}
-            <Route path="/" element={<PrivateRoutes roles={[]} />} />
+            <Route path="/" element={<RoleRedirect />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

@@ -49,7 +49,7 @@ const FleetManagement = () => {
       console.error("Failed to create bus", error);
       alert(
         "Failed to create bus: " +
-          (error.response?.data?.message || error.message)
+        (error.response?.data?.message || error.message)
       );
     }
   };
@@ -258,12 +258,18 @@ const FleetManagement = () => {
                       <td style={{ padding: "12px" }}>
                         <Badge
                           variant={
-                            bus.currentStatus === "active"
+
+                            (typeof bus.currentStatus === "string" &&
+                              bus.currentStatus === "active") ||
+                              (typeof bus.currentStatus === "object" &&
+                                bus.currentStatus)
                               ? "success"
                               : "secondary"
                           }
                         >
-                          {bus.currentStatus}
+                          {typeof bus.currentStatus === "object"
+                            ? "Active"
+                            : bus.currentStatus || "Inactive"}
                         </Badge>
                       </td>
                       <td

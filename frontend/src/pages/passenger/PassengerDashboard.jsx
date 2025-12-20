@@ -102,10 +102,16 @@ const PassengerDashboard = () => {
                 </div>
                 <Badge
                   variant={
-                    bus.currentStatus === "active" ? "success" : "secondary"
+                    (typeof bus.currentStatus === "string" &&
+                      bus.currentStatus === "active") ||
+                      (typeof bus.currentStatus === "object" && bus.currentStatus)
+                      ? "success"
+                      : "secondary"
                   }
                 >
-                  {bus.currentStatus}
+                  {typeof bus.currentStatus === "object"
+                    ? "Active"
+                    : bus.currentStatus || "Inactive"}
                 </Badge>
               </div>
 

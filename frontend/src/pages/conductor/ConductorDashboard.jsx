@@ -127,16 +127,20 @@ const ConductorDashboard = () => {
                 }}
               >
                 <p style={{ fontSize: 14, color: "#94a3b8" }}>Status</p>
-                <p
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 700,
-                    textTransform: "capitalize",
-                    color: "#4ade80",
-                  }}
+                <Badge
+                  variant={
+                    (typeof myBus.currentStatus === "string" &&
+                      myBus.currentStatus === "active") ||
+                      (typeof myBus.currentStatus === "object" &&
+                        myBus.currentStatus)
+                      ? "success"
+                      : "secondary"
+                  }
                 >
-                  {myBus.currentStatus}
-                </p>
+                  {typeof myBus.currentStatus === "object"
+                    ? "Active"
+                    : myBus.currentStatus || "Inactive"}
+                </Badge>
               </div>
               <div
                 style={{

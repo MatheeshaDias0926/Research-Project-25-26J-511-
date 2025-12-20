@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
+import Bus from "../models/Bus.model.js";
 
 /**
  * Generate JWT Token
@@ -41,12 +42,36 @@ export const registerUser = async (req, res, next) => {
       );
     }
 
-    // Create user
-    const user = await User.create({
+    // Create user object payload
+    const userPayload = {
       username,
       password,
       role: role || "passenger",
-    });
+    };
+
+    // Handle Bus Assignment (only for conductors)
+    if (role === "conductor" && req.body.busId) {
+      const { busId } = req.body;
+
+      // 1. Check if bus exists
+      const bus = await Bus.findById(busId);
+      if (!bus) {
+        res.status(404);
+        throw new Error("Bus not found");
+      }
+
+      // 2. Check if bus is already assigned
+      const isAssigned = await User.findOne({ assignedBus: busId });
+      if (isAssigned) {
+        res.status(400);
+        throw new Error("Bus is already assigned to another conductor");
+      }
+
+      userPayload.assignedBus = busId;
+    }
+
+    // Create user
+    const user = await User.create(userPayload);
 
     if (user) {
       res.status(201).json({

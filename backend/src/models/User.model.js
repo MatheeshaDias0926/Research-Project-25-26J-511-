@@ -11,6 +11,11 @@ const userSchema = new mongoose.Schema(
       enum: ["passenger", "conductor", "authority"],
       default: "passenger",
     },
+    assignedBus: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Bus",
+      default: null,
+    },
   },
   { timestamps: true }
 );
