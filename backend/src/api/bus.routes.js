@@ -8,6 +8,7 @@ import {
   getPrediction,
   createBus,
 } from "../controllers/bus.controller.js";
+import { getPhysicsModel } from "../controllers/physics.controller.js";
 import {
   protect,
   isPassenger,
@@ -37,6 +38,13 @@ router.post("/", protect, isAuthority, createBus);
  * @access  Private (Passenger)
  */
 router.get("/predict/:routeId", protect, isPassenger, getPrediction);
+
+/**
+ * @route   POST /api/bus/physics
+ * @desc    Get physics model result (rollover, stopping distance, etc.)
+ * @access  Private (All authenticated users)
+ */
+router.post("/physics", protect, getPhysicsModel);
 
 /**
  * @route   GET /api/bus/plate/:licensePlate
