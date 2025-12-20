@@ -3,6 +3,8 @@ import {
   registerUser,
   loginUser,
   getUserProfile,
+  getSystemStats,
+  getConductors,
 } from "../controllers/auth.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
 
@@ -27,6 +29,19 @@ router.post("/login", loginUser);
  * @desc    Get current user profile
  * @access  Private
  */
+// Import middleware for checking authority role
+import { isAuthority } from "../middleware/auth.middleware.js";
+
 router.get("/profile", protect, getUserProfile);
+
+/**
+ * @route   GET /api/auth/stats
+ * @desc    Get system statistics
+ * @access  Private (Authority)
+ */
+router.get("/stats", protect, isAuthority, getSystemStats);
+
+// Route to get all conductors
+router.get("/conductors", protect, isAuthority, getConductors);
 
 export default router;

@@ -86,6 +86,7 @@ export const getBusViolations = async (req, res, next) => {
     }
 
     const violations = await ViolationLog.find({ busId })
+      .populate("busId", "licensePlate routeId")
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .skip(parseInt(offset));

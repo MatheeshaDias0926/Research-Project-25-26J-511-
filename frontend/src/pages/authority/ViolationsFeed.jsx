@@ -4,6 +4,128 @@ import { Card, CardContent } from "../../components/ui/Card";
 import Badge from "../../components/ui/Badge";
 import { AlertTriangle, Clock, MapPin } from "lucide-react";
 
+// Sub-component to handle individual violation display and geocoding
+const ViolationCard = ({ violation, getViolationBadge }) => {
+  const [address, setAddress] = useState("Loading location...");
+
+  useEffect(() => {
+    const fetchAddress = async () => {
+      if (!violation.gps || !violation.gps.lat || !violation.gps.lon) {
+        setAddress("Location N/A");
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${violation.gps.lat}&lon=${violation.gps.lon}`
+        );
+        const data = await res.json();
+        setAddress(data.display_name || "Unknown Location");
+      } catch (error) {
+        console.error("Failed to fetch address", error);
+        setAddress("Unknown Location");
+      }
+    };
+
+    fetchAddress();
+  }, [violation.gps]);
+
+  return (
+    <Card style={{ borderLeft: "4px solid #ef4444" }}>
+      <CardContent
+        style={{
+          padding: 16,
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          justifyContent: "space-between",
+          ...(window.innerWidth >= 768
+            ? { flexDirection: "row", alignItems: "center" }
+            : {}),
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+          <div
+            style={{
+              padding: 8,
+              background: "#fee2e2",
+              borderRadius: 9999,
+              color: "#dc2626",
+              marginTop: 4,
+            }}
+          >
+            <AlertTriangle style={{ height: 20, width: 20 }} />
+          </div>
+          <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 4,
+              }}
+            >
+              <h3 style={{ fontWeight: 700, fontSize: 18, color: "#0f172a" }}>
+                {violation.busId?.licensePlate || "Unknown Bus"}
+              </h3>
+              {getViolationBadge(violation.violationType)}
+            </div>
+            <p style={{ color: "#475569", fontWeight: 500 }}>
+              Violation type: {violation.violationType}
+            </p>
+            {violation.speed && (
+              <p style={{ fontSize: 14, color: "#64748b", marginTop: 4 }}>
+                Speed: {violation.speed} km/h
+              </p>
+            )}
+            <p
+              style={{
+                fontSize: 13,
+                color: "#64748b",
+                marginTop: 4,
+                fontStyle: "italic",
+              }}
+            >
+              <MapPin style={{ height: 12, width: 12, marginRight: 4, display: "inline" }} />
+              {address}
+            </p>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: 4,
+            fontSize: 14,
+            color: "#64748b",
+            minWidth: 150,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <Clock style={{ height: 16, width: 16 }} />
+            {new Date(violation.createdAt).toLocaleTimeString()}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${violation.gps?.lat},${violation.gps?.lon}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#2563eb", textDecoration: "none", fontSize: 12 }}
+            >
+              View on Google Maps
+            </a>
+          </div>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>
+            {new Date(violation.createdAt).toLocaleDateString()}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const ViolationsFeed = () => {
   const [buses, setBuses] = useState([]);
   const [selectedBusId, setSelectedBusId] = useState("");
@@ -128,105 +250,11 @@ const ViolationsFeed = () => {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {violations.map((violation) => (
-            <Card
+            <ViolationCard
               key={violation._id}
-              style={{ borderLeft: "4px solid #ef4444" }}
-            >
-              <CardContent
-                style={{
-                  padding: 16,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 16,
-                  justifyContent: "space-between",
-                  ...(window.innerWidth >= 768
-                    ? { flexDirection: "row", alignItems: "center" }
-                    : {}),
-                }}
-              >
-                <div
-                  style={{ display: "flex", alignItems: "flex-start", gap: 16 }}
-                >
-                  <div
-                    style={{
-                      padding: 8,
-                      background: "#fee2e2",
-                      borderRadius: 9999,
-                      color: "#dc2626",
-                      marginTop: 4,
-                    }}
-                  >
-                    <AlertTriangle style={{ height: 20, width: 20 }} />
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        marginBottom: 4,
-                      }}
-                    >
-                      <h3
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 18,
-                          color: "#0f172a",
-                        }}
-                      >
-                        {violation.licensePlate || "Unknown Bus"}
-                      </h3>
-                      {getViolationBadge(violation.type)}
-                    </div>
-                    <p style={{ color: "#475569", fontWeight: 500 }}>
-                      {violation.description ||
-                        `Violation type: ${violation.type}`}
-                    </p>
-                    {violation.speed && (
-                      <p
-                        style={{
-                          fontSize: 14,
-                          color: "#64748b",
-                          marginTop: 4,
-                        }}
-                      >
-                        Speed: {violation.speed} km/h
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-end",
-                    gap: 4,
-                    fontSize: 14,
-                    color: "#64748b",
-                    minWidth: 150,
-                  }}
-                >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 4 }}
-                  >
-                    <Clock style={{ height: 16, width: 16 }} />
-                    {new Date(violation.timestamp).toLocaleTimeString()}
-                  </div>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 4 }}
-                  >
-                    <MapPin style={{ height: 16, width: 16 }} />
-                    {violation.location
-                      ? `${violation.location.lat}, ${violation.location.lon}`
-                      : "Colombo, LK"}
-                  </div>
-                  <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                    {new Date(violation.timestamp).toLocaleDateString()}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+              violation={violation}
+              getViolationBadge={getViolationBadge}
+            />
           ))}
         </div>
       )}

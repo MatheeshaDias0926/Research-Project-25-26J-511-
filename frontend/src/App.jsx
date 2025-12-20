@@ -26,6 +26,9 @@ import IoTSimulator from "./pages/authority/IoTSimulator";
 import FleetManagement from "./pages/authority/FleetManagement";
 import ConductorManagement from "./pages/authority/ConductorManagement";
 
+import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
+import AuthorityPhysicsCheck from "./pages/authority/AuthorityPhysicsCheck";
+
 // Conductor Pages
 import ConductorDashboard from "./pages/conductor/ConductorDashboard";
 import MaintenanceReport from "./pages/conductor/MaintenanceReport";
@@ -85,9 +88,13 @@ function App() {
               />
               <Route
                 path="/authority/maintenance"
-                element={<DashboardPlaceholder title="Authority Maintenance" />}
+                element={<MaintenanceDashboard />}
               />
               <Route path="/authority/iot" element={<IoTSimulator />} />
+              <Route
+                path="/authority/safety"
+                element={<AuthorityPhysicsCheck />}
+              />
             </Route>
 
             {/* Default redirect for root */}

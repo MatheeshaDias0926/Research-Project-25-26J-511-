@@ -76,6 +76,12 @@ const Sidebar = () => {
       roles: ["authority"],
     },
     {
+      name: "Conductors",
+      href: "/authority/conductors",
+      icon: User,
+      roles: ["authority"],
+    },
+    {
       name: "Maintenance Logs",
       href: "/authority/maintenance",
       icon: Wrench,
@@ -85,6 +91,12 @@ const Sidebar = () => {
       name: "IoT Simulator",
       href: "/authority/iot",
       icon: Activity,
+      roles: ["authority"],
+    },
+    {
+      name: "Safety Check",
+      href: "/authority/safety",
+      icon: ShieldAlert,
       roles: ["authority"],
     },
   ];

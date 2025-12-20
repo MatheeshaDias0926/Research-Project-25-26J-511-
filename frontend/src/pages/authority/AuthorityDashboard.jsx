@@ -11,6 +11,7 @@ import { Bus, AlertTriangle, CheckCircle, Wrench, UserPlus } from "lucide-react"
 const AuthorityDashboard = () => {
   const [stats, setStats] = useState({
     activeBuses: 0,
+    conductors: 0,
     totalViolations: 0,
     pendingMaintenance: 0,
     systemStatus: "Healthy",
@@ -23,11 +24,13 @@ const AuthorityDashboard = () => {
     const fetchData = async () => {
       try {
         const busesRes = await api.get("/bus");
+        const statsRes = await api.get("/auth/stats");
         // const maintenanceRes = await api.get("/maintenance"); // if implemented
         setStats({
           activeBuses: busesRes.data.length,
-          totalViolations: 12, // Mock for now or fetch logs
-          pendingMaintenance: 5,
+          conductors: statsRes.data.conductors,
+          totalViolations: statsRes.data.totalViolations,
+          pendingMaintenance: statsRes.data.pendingMaintenance,
           systemStatus: "Healthy",
         });
       } catch (error) {
@@ -80,6 +83,36 @@ const AuthorityDashboard = () => {
               }}
             >
               <Bus style={{ height: 24, width: 24 }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent
+            style={{
+              padding: 24,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+                Total Conductors
+              </p>
+              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+                {stats.conductors}
+              </p>
+            </div>
+            <div
+              style={{
+                padding: 12,
+                background: "#f0f9ff",
+                borderRadius: 9999,
+                color: "#0284c7",
+              }}
+            >
+              <UserPlus style={{ height: 24, width: 24 }} />
             </div>
           </CardContent>
         </Card>
@@ -211,11 +244,42 @@ const AuthorityDashboard = () => {
               </CardContent>
             </Card>
           </a>
+          <a href="/authority/safety" style={{ textDecoration: "none" }}>
+            <Card style={{ cursor: "pointer", transition: "transform 0.2s" }} className="hover:scale-105">
+              <CardContent
+                style={{
+                  padding: 24,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                    Safety Check
+                  </p>
+                  <p style={{ fontSize: 13, color: "#64748b" }}>
+                    Run Physics Simulation
+                  </p>
+                </div>
+                <div
+                  style={{
+                    padding: 12,
+                    background: "#f1f5f9",
+                    borderRadius: 9999,
+                    color: "#475569",
+                  }}
+                >
+                  <AlertTriangle style={{ height: 24, width: 24 }} />
+                </div>
+              </CardContent>
+            </Card>
+          </a>
         </div>
       </div>
 
       {/* Could add a chart or recent activity list here later */}
-    </div>
+    </div >
   );
 };
 

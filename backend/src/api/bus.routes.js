@@ -6,7 +6,6 @@ import {
   getBusViolations,
   getBusDataLogs,
   getPrediction,
-  getPrediction,
   createBus,
   getAvailableBuses,
 } from "../controllers/bus.controller.js";

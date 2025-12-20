@@ -17,13 +17,27 @@ const ConductorManagement = () => {
         busId: "",
     });
     const [availableBuses, setAvailableBuses] = useState([]);
+    const [conductors, setConductors] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingConductors, setLoadingConductors] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
 
     useEffect(() => {
         fetchAvailableBuses();
+        fetchConductors();
     }, []);
+
+    const fetchConductors = async () => {
+        try {
+            const res = await api.get("/auth/conductors");
+            setConductors(res.data);
+        } catch (error) {
+            console.error("Failed to fetch conductors", error);
+        } finally {
+            setLoadingConductors(false);
+        }
+    };
 
     const fetchAvailableBuses = async () => {
         try {
@@ -65,6 +79,7 @@ const ConductorManagement = () => {
             // Reset form and refresh list (the assigned bus is no longer available)
             setFormData({ username: "", password: "", busId: "" });
             fetchAvailableBuses();
+            fetchConductors();
 
         } catch (error) {
             console.error("Registration failed", error);
@@ -223,6 +238,62 @@ const ConductorManagement = () => {
                     </form>
                 </CardContent>
             </Card>
+
+            <div style={{ marginTop: 40 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 700, color: "#1e293b", marginBottom: 20 }}>
+                    Registered Conductors
+                </h2>
+                {loadingConductors ? (
+                    <div style={{ textAlign: "center", padding: 20 }}>Loading conductors...</div>
+                ) : conductors.length === 0 ? (
+                    <Card><CardContent style={{ padding: 20, textAlign: "center" }}>No conductors found.</CardContent></Card>
+                ) : (
+                    <div style={{ display: "grid", gap: 16 }}>
+                        {conductors.map((conductor) => (
+                            <Card key={conductor._id}>
+                                <CardContent
+                                    style={{
+                                        padding: 20,
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                    }}
+                                >
+                                    <div>
+                                        <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                                            {conductor.username}
+                                        </p>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                                            <Bus size={14} style={{ color: "#64748b" }} />
+                                            <p style={{ fontSize: 14, color: "#64748b" }}>
+                                                {conductor.assignedBus ? (
+                                                    <span>
+                                                        Assigned to: <span style={{ fontWeight: 500, color: "#0f172a" }}>{conductor.assignedBus.licensePlate}</span> (Route {conductor.assignedBus.routeId})
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ color: "#ef4444" }}>No bus assigned</span>
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div
+                                        style={{
+                                            padding: "4px 12px",
+                                            borderRadius: 9999,
+                                            backgroundColor: "#f0fdf4",
+                                            color: "#166534",
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                        }}
+                                    >
+                                        Active
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

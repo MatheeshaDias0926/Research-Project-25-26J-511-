@@ -143,3 +143,61 @@ export const getUserProfile = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Get system stats (Authority only)
+ * @route   GET /api/auth/stats
+ * @access  Private (Authority)
+ */
+export const getSystemStats = async (req, res, next) => {
+  try {
+    const conductorCount = await User.countDocuments({ role: "conductor" });
+    const authorityCount = await User.countDocuments({ role: "authority" });
+    const passengerCount = await User.countDocuments({ role: "passenger" });
+    const totalUsers = await User.countDocuments();
+
+    // Violation Logs in last 24 hours
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+    const ViolationLog = (await import("../models/ViolationLog.model.js"))
+      .default;
+    const recentViolations = await ViolationLog.countDocuments({
+      createdAt: { $gte: oneDayAgo },
+    });
+
+    // Pending Maintenance Logs (status != 'resolved')
+    const MaintenanceLog = (await import("../models/MaintenanceLog.model.js"))
+      .default;
+    const pendingMaintenance = await MaintenanceLog.countDocuments({
+      status: { $ne: "resolved" },
+    });
+
+    res.json({
+      conductors: conductorCount,
+      authorities: authorityCount,
+      passengers: passengerCount,
+      totalUsers,
+      totalViolations: recentViolations,
+      pendingMaintenance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get all conductors
+ * @route   GET /api/auth/conductors
+ * @access  Private (Authority)
+ */
+export const getConductors = async (req, res, next) => {
+  try {
+    const conductors = await User.find({ role: "conductor" })
+      .select("-password")
+      .populate("assignedBus", "licensePlate routeId");
+    res.json(conductors);
+  } catch (error) {
+    next(error);
+  }
+};
