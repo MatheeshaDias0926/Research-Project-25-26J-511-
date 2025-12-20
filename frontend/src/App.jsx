@@ -28,6 +28,7 @@ import ConductorManagement from "./pages/authority/ConductorManagement";
 
 import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
 import AuthorityPhysicsCheck from "./pages/authority/AuthorityPhysicsCheck";
+import SafetyTheories from "./pages/authority/SafetyTheories";
 
 // Conductor Pages
 import ConductorDashboard from "./pages/conductor/ConductorDashboard";
@@ -64,7 +65,7 @@ function App() {
             <Route element={<PrivateRoutes roles={["passenger"]} />}>
               <Route path="/passenger" element={<PassengerDashboard />} />
               <Route path="/passenger/prediction" element={<Prediction />} />
-              <Route path="/passenger/physics" element={<PhysicsCheck />} />
+
             </Route>
 
             <Route element={<PrivateRoutes roles={["conductor"]} />}>
@@ -94,6 +95,10 @@ function App() {
               <Route
                 path="/authority/safety"
                 element={<AuthorityPhysicsCheck />}
+              />
+              <Route
+                path="/authority/theories"
+                element={<SafetyTheories />}
               />
             </Route>
 

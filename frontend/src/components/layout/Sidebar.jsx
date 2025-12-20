@@ -11,6 +11,7 @@ import {
   LogOut,
   Map,
   ShieldAlert,
+  BookOpen, // Added
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -35,12 +36,7 @@ const Sidebar = () => {
       icon: Activity,
       roles: ["passenger"],
     },
-    {
-      name: "Physics Check",
-      href: "/passenger/physics",
-      icon: ShieldAlert,
-      roles: ["passenger"],
-    },
+
 
     // Conductor Links
     {
@@ -98,6 +94,12 @@ const Sidebar = () => {
       href: "/authority/safety",
       icon: ShieldAlert,
       roles: ["authority"],
+    },
+    {
+        name: "Safety Logic",
+        href: "/authority/theories",
+        icon: BookOpen,
+        roles: ["authority"],
     },
   ];
 
