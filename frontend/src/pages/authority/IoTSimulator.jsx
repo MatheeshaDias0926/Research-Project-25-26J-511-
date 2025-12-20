@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import api from "../../api/axios";
 import {
@@ -9,217 +9,265 @@ import {
 } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
-import { RadioTower, Send } from "lucide-react";
+import { RadioTower, MapPin, Search } from "lucide-react";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import L from "leaflet";
+import axios from "axios";
+
+// Fix Leaflet marker icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+});
+
+// Component to handle map clicks and updates
+const LocationMarker = ({ position, setPosition }) => {
+    const map = useMap();
+
+    useMapEvents({
+        click(e) {
+            setPosition(e.latlng);
+        },
+    });
+
+    useEffect(() => {
+        if (position) {
+            map.flyTo(position, map.getZoom());
+        }
+    }, [position, map]);
+
+    return position === null ? null : <Marker position={position}></Marker>;
+};
 
 const IoTSimulator = () => {
-  const { register, handleSubmit, reset } = useForm();
-  const [loading, setLoading] = useState(false);
-  const [logs, setLogs] = useState([]);
+    const { register, handleSubmit, setValue, watch, reset } = useForm({
+        defaultValues: {
+            licensePlate: "NP-1234",
+            speed: 45,
+            occupancy: 30,
+            footboard: "false",
+            lat: 6.9271,
+            lon: 79.8612
+        }
+    });
+    const [loading, setLoading] = useState(false);
+    const [logs, setLogs] = useState([]);
 
-  const onSubmit = async (data) => {
-    setLoading(true);
-    try {
-      // Construct payload to match backend expectation
-      // Backend expects: { licensePlate, currentOccupancy, gps: { lat, lon }, footboardStatus, speed }
-      const payload = {
-        licensePlate: data.licensePlate,
-        currentOccupancy: parseInt(data.occupancy),
-        gps: {
-          lat: 6.9271, // Static for now
-          lon: 79.8612,
-        },
-        footboardStatus: data.footboard === "true", // Convert string "true" to boolean
-        speed: parseInt(data.speed),
-      };
+    // Map & Search State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searching, setSearching] = useState(false);
+    const [position, setPosition] = useState({ lat: 6.9271, lng: 79.8612 });
 
-      await api.post("/iot/mock-data", payload);
+    // Watch lat/lon inputs
+    const latValue = watch("lat");
+    const lonValue = watch("lon");
+    
+    // Sync map when inputs change manually
+    useEffect(() => {
+        const lat = parseFloat(latValue);
+        const lng = parseFloat(lonValue);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            setPosition({ lat, lng });
+        }
+    }, [latValue, lonValue]);
 
-      // Add to local logs
-      const newLog = {
-        timestamp: new Date().toLocaleTimeString(),
-        ...payload,
-        status: "Sent",
-      };
-      setLogs([newLog, ...logs]);
+    // Handle map clicks
+    const handleMapClick = (newLatlng) => {
+        setPosition(newLatlng);
+        setValue("lat", newLatlng.lat.toFixed(6));
+        setValue("lon", newLatlng.lng.toFixed(6));
+    };
 
-      // reset(); // Keep values for easy repetitive testing? Maybe better not to reset completely.
-    } catch (error) {
-      console.error("Failed to send mock data", error);
-      alert(
-        "Failed to send data: " +
-          (error.response?.data?.message || error.message)
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Handle Location Search
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        if (!searchQuery.trim()) return;
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <RadioTower style={{ height: 32, width: 32, color: "#2563eb" }} />
-        <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
-          IoT Simulator
-        </h1>
-      </div>
+        setSearching(true);
+        try {
+            const response = await axios.get(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+            );
+            if (response.data && response.data.length > 0) {
+                const { lat, lon } = response.data[0];
+                const newLat = parseFloat(lat);
+                const newLon = parseFloat(lon);
+                
+                const newPos = { lat: newLat, lng: newLon };
+                setPosition(newPos);
+                setValue("lat", newLat.toFixed(6));
+                setValue("lon", newLon.toFixed(6));
+            } else {
+                alert("Location not found");
+            }
+        } catch (error) {
+            console.error("Search failed", error);
+        } finally {
+            setSearching(false);
+        }
+    };
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 32 }}>
-        <div>
-          <Card style={{ position: "sticky", top: 24 }}>
-            <CardHeader>
-              <CardTitle>Send Telemetry</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form
-                onSubmit={handleSubmit(onSubmit)}
-                style={{ display: "flex", flexDirection: "column", gap: 16 }}
-              >
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 4 }}
-                >
-                  <label
-                    style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
-                  >
-                    License Plate
-                  </label>
-                  <Input
-                    {...register("licensePlate", { required: true })}
-                    placeholder="NP-1234"
-                    defaultValue="NP-1234"
-                  />
+    const onSubmit = async (data) => {
+        setLoading(true);
+        try {
+            const payload = {
+                licensePlate: data.licensePlate,
+                currentOccupancy: parseInt(data.occupancy),
+                gps: {
+                    lat: parseFloat(data.lat),
+                    lon: parseFloat(data.lon),
+                },
+                footboardStatus: data.footboard === "true",
+                speed: parseInt(data.speed),
+            };
+
+            await api.post("/iot/mock-data", payload);
+
+            const newLog = {
+                timestamp: new Date().toLocaleTimeString(),
+                ...payload,
+                status: "Sent",
+            };
+            setLogs([newLog, ...logs]);
+
+        } catch (error) {
+            console.error("Failed to send mock data", error);
+            alert("Failed to send data: " + (error.response?.data?.message || error.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1400, margin: "0 auto" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <RadioTower style={{ height: 32, width: 32, color: "#2563eb" }} />
+                <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
+                    IoT Simulator
+                </h1>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "350px 1fr", gap: 24 }}>
+                {/* Left Column: Controls */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Telemetry Controls</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>License Plate</label>
+                                    <Input {...register("licensePlate", { required: true })} />
+                                </div>
+
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                        <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Speed (km/h)</label>
+                                        <Input type="number" {...register("speed", { required: true })} />
+                                    </div>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                        <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Occupancy</label>
+                                        <Input type="number" {...register("occupancy", { required: true })} />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Footboard Status</label>
+                                    <select
+                                        {...register("footboard")}
+                                        style={{
+                                            display: "flex", height: 40, width: "100%", borderRadius: 8,
+                                            border: "1px solid #d1d5db", background: "#fff", padding: "0 12px", outline: "none"
+                                        }}
+                                    >
+                                        <option value="false">Clear (Safe)</option>
+                                        <option value="true">Obstructed (Risk)</option>
+                                    </select>
+                                </div>
+
+                                <div style={{ paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
+                                    <p style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 8 }}>GPS Coordinates</p>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                                        <div>
+                                            <label style={{ fontSize: 12, color: "#94a3b8" }}>Lat</label>
+                                            <Input step="any" type="number" {...register("lat", { required: true })} />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: 12, color: "#94a3b8" }}>Lon</label>
+                                            <Input step="any" type="number" {...register("lon", { required: true })} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Button type="submit" style={{ width: "100%", }} disabled={loading}>
+                                    {loading ? "Sending..." : "Send Data Packet"}
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+
+                    <Card style={{ flex: 1, minHeight: 300 }}>
+                        <CardHeader>
+                             <CardTitle style={{ fontSize: 16 }}>Transmission Log</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto" }}>
+                                {logs.length === 0 && <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", fontStyle: "italic", padding: 20 }}>No packets sent yet.</p>}
+                                {logs.map((log, idx) => (
+                                    <div key={idx} style={{ padding: 10, background: "#f8fafc", borderRadius: 6, border: "1px solid #f1f5f9", fontSize: 12 }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                                            <span style={{ fontWeight: 700, color: "#334155" }}>{log.licensePlate}</span>
+                                            <span style={{ color: "#94a3b8" }}>{log.timestamp}</span>
+                                        </div>
+                                        <div style={{ display: "flex", gap: 12, color: "#64748b" }}>
+                                            <span>{log.speed} km/h</span>
+                                            <span>Lat: {log.gps.lat.toFixed(4)}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                             </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 4 }}
-                >
-                  <label
-                    style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
-                  >
-                    Speed (km/h)
-                  </label>
-                  <Input
-                    type="number"
-                    {...register("speed", { required: true })}
-                    defaultValue="45"
-                  />
-                </div>
-
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 4 }}
-                >
-                  <label
-                    style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
-                  >
-                    Occupancy
-                  </label>
-                  <Input
-                    type="number"
-                    {...register("occupancy", { required: true })}
-                    defaultValue="30"
-                  />
-                </div>
-
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 4 }}
-                >
-                  <label
-                    style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
-                  >
-                    Footboard Status
-                  </label>
-                  <select
-                    {...register("footboard")}
-                    style={{
-                      display: "flex",
-                      height: 40,
-                      width: "100%",
-                      borderRadius: 8,
-                      border: "1px solid #d1d5db",
-                      background: "#fff",
-                      padding: "8px 12px",
-                      fontSize: 14,
-                      outline: "none",
-                    }}
-                  >
-                    <option value="false">Clear (False)</option>
-                    <option value="true">Obstructed (True)</option>
-                  </select>
-                </div>
-
-                <Button
-                  type="submit"
-                  style={{ width: "100%" }}
-                  disabled={loading}
-                >
-                  {loading ? "Sending..." : "Send Data Packet"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div>
-          <Card style={{ minHeight: 500, height: "100%" }}>
-            <CardHeader>
-              <CardTitle>Transmission Log</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {logs.length === 0 && (
-                  <p
-                    style={{
-                      color: "#64748b",
-                      textAlign: "center",
-                      padding: "32px 0",
-                    }}
-                  >
-                    No data sent yet.
-                  </p>
-                )}
-                {logs.map((log, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: 12,
-                      background: "#f8fafc",
-                      borderRadius: 8,
-                      border: "1px solid #f1f5f9",
-                      fontFamily: "monospace",
-                      fontSize: 14,
-                    }}
-                  >
-                    <div>
-                      <span style={{ color: "#94a3b8", marginRight: 12 }}>
-                        [{log.timestamp}]
-                      </span>
-                      <span style={{ fontWeight: 700, color: "#334155" }}>
-                        {log.licensePlate}
-                      </span>
+                {/* Right Column: Map */}
+                <Card style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 120px)", overflow: "hidden" }}>
+                    <CardHeader style={{ padding: "12px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                              <CardTitle style={{ fontSize: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                                   <MapPin size={16} /> Select Location
+                              </CardTitle>
+                              <form onSubmit={handleSearch} style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, maxWidth: 400 }}>
+                                  <Input 
+                                      placeholder="Search location..." 
+                                      value={searchQuery}
+                                      onChange={(e) => setSearchQuery(e.target.value)}
+                                      style={{ height: 32, fontSize: 13 }}
+                                  />
+                                  <Button type="submit" disabled={searching} style={{ height: 32, padding: "0 12px" }}>
+                                      {searching ? "..." : <Search size={14} />}
+                                  </Button>
+                              </form>
+                         </div>
+                    </CardHeader>
+                    <div style={{ flex: 1 }}>
+                         <MapContainer center={[6.9271, 79.8612]} zoom={14} style={{ height: "100%", width: "100%" }}>
+                            <TileLayer
+                                url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+                                maxZoom={20}
+                                subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+                                attribution='&copy; Google Maps'
+                            />
+                            <LocationMarker position={position} setPosition={handleMapClick} />
+                         </MapContainer>
                     </div>
-                    <div style={{ display: "flex", gap: 16, color: "#475569" }}>
-                      <span>{log.speed} km/h</span>
-                      <span>{log.currentOccupancy} pax</span>
-                      <span
-                        style={{
-                          color: log.footboardStatus ? "#ef4444" : "#22c55e",
-                          fontWeight: 700,
-                        }}
-                      >
-                        FB: {log.footboardStatus ? "YES" : "NO"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </Card>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default IoTSimulator;

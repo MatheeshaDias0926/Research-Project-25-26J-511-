@@ -20,6 +20,11 @@ const buttonVariantStyles = {
     color: "#334155",
     border: "none",
   },
+  outline: {
+    background: "#fff",
+    color: "#0f172a",
+    border: "1px solid #e2e8f0",
+  },
 };
 
 const buttonSizeStyles = {
