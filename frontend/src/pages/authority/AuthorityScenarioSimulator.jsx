@@ -13,6 +13,7 @@ import { Play, Square, MapPin, Navigation, AlertTriangle, ShieldCheck, Zap, Sear
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 // Fix for Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -105,7 +106,7 @@ const MapController = ({ center }) => {
 
 const AuthorityScenarioSimulator = () => {
     // Form for Simulation Parameters
-    const { register, watch } = useForm({
+    const { register, watch, setValue, getValues } = useForm({
         defaultValues: {
             licensePlate: "DEMO-ML-01",
             speed: 60,
@@ -133,6 +134,11 @@ const AuthorityScenarioSimulator = () => {
     const [currentRisk, setCurrentRisk] = useState(null); // { risk_score, stopping_distance } (from ML)
     const [futureRisk, setFutureRisk] = useState(null);   // Lookahead prediction
     
+    // New Features State
+    const [riskHistory, setRiskHistory] = useState([]);
+    const [incidentLog, setIncidentLog] = useState([]);
+    const [weatherLoading, setWeatherLoading] = useState(false);
+    
     // Refs
     const simulationRef = useRef(null);
     const stepRef = useRef(0);
@@ -156,6 +162,20 @@ const AuthorityScenarioSimulator = () => {
                 stepRef.current = 0;
                 setCurrentRisk(null);
                 setFutureRisk(null);
+                setRiskHistory([]);
+                setIncidentLog([]);
+
+                // Auto-fetch Weather
+                setWeatherLoading(true);
+                try {
+                    const weatherRes = await api.get(`/bus/weather?lat=${startPos.lat}&lon=${startPos.lng}`);
+                    setValue("weather", weatherRes.data.isWet ? "wet" : "dry");
+                    console.log("Auto-fetched weather:", weatherRes.data);
+                } catch (wErr) {
+                    console.error("Weather fetch failed", wErr);
+                } finally {
+                    setWeatherLoading(false);
+                }
             } else {
                 alert("No route found.");
             }
@@ -256,7 +276,31 @@ const AuthorityScenarioSimulator = () => {
 
             // Call ML Endpoint
             api.post("/bus/predict-safety", mlParams).then(res => {
-                setCurrentRisk(res.data);
+                const newData = res.data;
+                setCurrentRisk(newData);
+
+                // --- 4. DATA LOGGING (Risk & Incidents) ---
+                // Update Risk History
+                setRiskHistory(prev => [...prev, {
+                    time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" }),
+                    risk: newData.risk_score,
+                    speed: parseInt(getValues("speed")) // Use getValues for instant access
+                }].slice(-30));
+
+                // Log Incident if High Risk
+                if (newData.risk_score > 0.7) {
+                    setIncidentLog(prev => {
+                        const lastLog = prev[0];
+                        const now = new Date().toLocaleTimeString();
+                        if (lastLog && lastLog.time === now) return prev;
+                        
+                        return [{
+                            time: now,
+                            message: `Critical Risk Detected (Score: ${newData.risk_score.toFixed(2)})`,
+                            details: `Speed: ${getValues("speed")} km/h, Radius: ${Math.round(radius)}m`
+                        }, ...prev].slice(0, 10);
+                    });
+                }
             });
 
             // --- 3. PREDICTIVE LOOKAHEAD (Dynamic Forecast) ---
@@ -451,6 +495,45 @@ const AuthorityScenarioSimulator = () => {
                                              )}
                                          </div>
                                      )}
+                                 </div>
+                             )}
+
+                             {/* RISK CHART USAGE */}
+                             {riskHistory.length > 0 && (
+                                <div style={{ marginTop: 20 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", mb: 8 }}>RISK TREND (Live)</div>
+                                    <div style={{ height: 100, width: "100%" }}>
+                                        <ResponsiveContainer>
+                                            <AreaChart data={riskHistory}>
+                                                <defs>
+                                                    <linearGradient id="colorRisk" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#dc2626" stopOpacity={0.8}/>
+                                                        <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <XAxis dataKey="time" hide />
+                                                <YAxis domain={[0, 1]} hide />
+                                                <Tooltip contentStyle={{ fontSize: 12 }} />
+                                                <Area type="monotone" dataKey="risk" stroke="#dc2626" fillOpacity={1} fill="url(#colorRisk)" />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                             )}
+
+                             {/* INCIDENT LOG */}
+                             {incidentLog.length > 0 && (
+                                 <div style={{ marginTop: 20, maxHeight: 150, overflowY: "auto", borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+                                     <div style={{ fontSize: 12, fontWeight: 700, color: "#dc2626", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                                         <AlertTriangle size={12} />
+                                         INCIDENT LOG
+                                     </div>
+                                     {incidentLog.map((log, i) => (
+                                         <div key={i} style={{ fontSize: 11, padding: "6px", background: "#fef2f2", marginBottom: 4, borderRadius: 4, borderLeft: "3px solid #dc2626" }}>
+                                             <div style={{ fontWeight: 600 }}>{log.time} - {log.message}</div>
+                                             <div style={{ color: "#7f1d1d" }}>{log.details}</div>
+                                         </div>
+                                     ))}
                                  </div>
                              )}
                         </CardContent>

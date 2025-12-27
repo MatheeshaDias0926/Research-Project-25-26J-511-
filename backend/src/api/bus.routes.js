@@ -9,6 +9,7 @@ import {
   createBus,
   getAvailableBuses,
   predictBusSafety,
+  getRouteWeather,
 } from "../controllers/bus.controller.js";
 import { getPhysicsModel } from "../controllers/physics.controller.js";
 import {
@@ -61,6 +62,13 @@ router.post("/predict-safety", protect, predictBusSafety);
  * @access  Private (All authenticated users)
  */
 router.post("/physics", protect, getPhysicsModel);
+
+/**
+ * @route   GET /api/bus/weather
+ * @desc    Get real-time weather for location
+ * @access  Private
+ */
+router.get("/weather", protect, getRouteWeather);
 
 /**
  * @route   GET /api/bus/plate/:licensePlate

@@ -2,6 +2,7 @@ import Bus from "../models/Bus.model.js";
 import BusDataLog from "../models/BusDataLog.model.js";
 import ViolationLog from "../models/ViolationLog.model.js";
 import { getOccupancyPrediction, getSafetyPrediction } from "../services/ml.service.js";
+import { getRoadWeather } from "../services/weather.service.js";
 
 /**
  * @desc    Get current bus status
@@ -221,6 +222,25 @@ export const predictBusSafety = async (req, res, next) => {
     });
 
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get real-time weather for a route location
+ * @route   GET /api/bus/weather
+ * @access  Private
+ */
+export const getRouteWeather = async (req, res, next) => {
+  try {
+    const { lat, lon } = req.query;
+    if (!lat || !lon) {
+      res.status(400);
+      throw new Error("Latitude and Longitude are required");
+    }
+    const weather = await getRoadWeather(lat, lon);
+    res.json(weather);
   } catch (error) {
     next(error);
   }
