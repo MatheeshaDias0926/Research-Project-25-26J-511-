@@ -302,18 +302,36 @@ const AuthorityScenarioSimulator = () => {
             
             setBusPosition(currentPos);
 
-            // --- DECOUPLED TELEMETRY (Every 2s) ---
-            if (time - lastTelemetryTime.current > 2000) {
+            // --- DECOUPLED TELEMETRY (Every 0.5s for faster response) ---
+            if (time - lastTelemetryTime.current > 500) {
                 lastTelemetryTime.current = time;
                 sendTelemetry(currentPos);
                 
-                // ML Calculation (Reuse existing logic or call standard function)
+                // ML Calculation (Current)
                 const radius = calculateRadius(
                     routeCoords[Math.max(0, segmentIndex-1)], 
                     routeCoords[segmentIndex], 
                     routeCoords[Math.min(routeCoords.length-1, segmentIndex+1)]
                 );
                 
+                // ML Calculation (Future - 4s ahead)
+                const futureDist = distCovered + (speedMs * 4);
+                let futureSegmentIndex = segmentIndex;
+                if (futureDist < totalDistanceRef.current) {
+                    for(let i=segmentIndex; i<pathCumulativeDistances.current.length-1; i++){
+                        if (futureDist >= pathCumulativeDistances.current[i] && futureDist < pathCumulativeDistances.current[i+1]) {
+                            futureSegmentIndex = i;
+                            break;
+                        }
+                    }
+                }
+                
+                const futureRadius = calculateRadius(
+                    routeCoords[Math.max(0, futureSegmentIndex-1)], 
+                    routeCoords[futureSegmentIndex], 
+                    routeCoords[Math.min(routeCoords.length-1, futureSegmentIndex+1)]
+                );
+
                 const mlParams = {
                     n_seated: parseInt(getValues("seated")),
                     n_standing: parseInt(getValues("standing")),
@@ -323,28 +341,41 @@ const AuthorityScenarioSimulator = () => {
                     gradient_deg: 0 
                 };
 
-                // Call ML
-                api.post("/bus/predict-safety", mlParams).then(res => {
-                    const newData = res.data;
+                const futureMlParams = { ...mlParams, radius_m: futureRadius };
+
+                // Call ML (Parallel)
+                Promise.all([
+                    api.post("/bus/predict-safety", mlParams),
+                    api.post("/bus/predict-safety", futureMlParams)
+                ]).then(([resCurrent, resFuture]) => {
+                    const newData = resCurrent.data;
+                    const futureData = resFuture.data;
+                    
                     setCurrentRisk(newData);
+                    setFutureRisk(futureData);
+                    
+                    // Send Telemetry (Now includes Future Risk)
+                    sendTelemetry(currentPos, newData.risk_score, futureData.risk_score);
 
                     // Update History
                     setRiskHistory(prev => [...prev, {
                         time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" }),
                         risk: newData.risk_score,
+                        futureRisk: futureData.risk_score,
                         speed: parseInt(getValues("speed")) 
                     }].slice(-30));
 
-                    // Log Incident
-                    if (newData.risk_score > 0.7) {
+                    // Log Incident (Check BOTH current and future)
+                    const maxRisk = Math.max(newData.risk_score, futureData.risk_score);
+                    if (maxRisk > 0.7) {
                         setIncidentLog(prev => {
                             const lastLog = prev[0];
                             const now = new Date().toLocaleTimeString();
                             if (lastLog && lastLog.time === now) return prev;
                             return [{
                                 time: now,
-                                message: `Critical Risk Detected (Score: ${newData.risk_score.toFixed(2)})`,
-                                details: `Speed: ${getValues("speed")} km/h, Radius: ${Math.round(radius)}m`
+                                message: `Critical Risk Detected (Score: ${maxRisk.toFixed(2)})`,
+                                details: `Speed: ${getValues("speed")} km/h` + (futureData.risk_score > newData.risk_score ? " [LOOKAHEAD]" : "")
                             }, ...prev].slice(0, 10);
                         });
                     }
@@ -366,13 +397,14 @@ const AuthorityScenarioSimulator = () => {
     const currentRiskRef = useRef(null);
     useEffect(() => { currentRiskRef.current = currentRisk; }, [currentRisk]);
 
-    const sendTelemetry = (pos) => {
+    const sendTelemetry = (pos, currentRiskScore, futureRiskScore) => {
         const payload = {
             licensePlate: selectedBus, // Use selected bus
             speed: parseInt(getValues("speed")),
             currentOccupancy: parseInt(watch("seated")) + parseInt(watch("standing")),
             footboardStatus: watch("footboard") === "true",
-            riskScore: currentRiskRef.current ? currentRiskRef.current.risk_score : 0,
+            riskScore: currentRiskScore || 0,
+            futureRiskScore: futureRiskScore || 0, // NEW FIELD
             gps: { lat: pos.lat, lon: pos.lng }
         };
         api.post("/iot/mock-data", payload).catch(err => console.error(err));
@@ -521,20 +553,34 @@ const AuthorityScenarioSimulator = () => {
                              {isSimulating && currentRisk && (
                                  <div style={{ marginTop: 24, animation: "fadeIn 0.5s" }}>
                                      {/* MAIN RISK CARD */}
-                                     <div style={{ 
-                                         padding: 16, 
-                                         borderRadius: 12, 
-                                         background: getRiskLevel(currentRisk.risk_score).color, 
-                                         color: "#fff",
-                                         marginBottom: 16,
-                                         textAlign: "center",
-                                         boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
-                                     }}>
-                                         <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 4 }}>INSTANTANEOUS RISK</div>
-                                         <div style={{ fontSize: 24, fontWeight: 800 }}>
-                                             {getRiskLevel(currentRisk.risk_score).label} ({currentRisk.risk_score.toFixed(2)})
-                                         </div>
-                                     </div>
+                                     {(() => {
+                                         const effectiveRiskScore = Math.max(currentRisk.risk_score, futureRisk?.risk_score || 0);
+                                         const riskInfo = getRiskLevel(effectiveRiskScore);
+                                         
+                                         return (
+                                             <div style={{ 
+                                                 padding: 16, 
+                                                 borderRadius: 12, 
+                                                 background: riskInfo.color, 
+                                                 color: "#fff",
+                                                 marginBottom: 16,
+                                                 textAlign: "center",
+                                                 boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                                             }}>
+                                                 <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 4 }}>
+                                                     {effectiveRiskScore > currentRisk.risk_score ? "PREDICTED DRIVER ALERT" : "DRIVER ALERT LEVEL"}
+                                                 </div>
+                                                 <div style={{ fontSize: 24, fontWeight: 800 }}>
+                                                     {riskInfo.label} ({effectiveRiskScore.toFixed(2)})
+                                                 </div>
+                                                 {effectiveRiskScore > currentRisk.risk_score && (
+                                                     <div style={{ fontSize: 11, background: "rgba(0,0,0,0.2)", display: "inline-block", padding: "2px 8px", borderRadius: 10, marginTop: 4 }}>
+                                                         ⚠️ Warning sent ahead of curve
+                                                     </div>
+                                                 )}
+                                             </div>
+                                         );
+                                     })()}
 
                                      {/* Stop Distance */}
                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", border: "1px solid #e2e8f0", borderRadius: 8, marginBottom: 16 }}>

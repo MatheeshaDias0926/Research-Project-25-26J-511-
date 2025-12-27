@@ -47,7 +47,7 @@ export default function ConductorDashboard() {
         // Polling every 2s for Real-time Simulator Sync
         const interval = setInterval(() => {
             if (busId) fetchData(busId);
-        }, 2000);
+        }, 500); // 0.5s polling for ultra-fast warnings
         
         return () => clearInterval(interval);
     }, [busId]);

@@ -47,7 +47,8 @@ export const ingestMockData = async (req, res, next) => {
       gps,
       footboardStatus: footboardStatus || false,
       speed: speed || 0,
-      riskScore: riskScore || 0,
+      // Store the HIGHEST risk (Current vs Future) to trigger early warning
+      riskScore: Math.max(parseFloat(riskScore || 0), parseFloat(req.body.futureRiskScore || 0)),
     });
     await newLog.save();
 
