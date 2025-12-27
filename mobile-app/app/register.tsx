@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useAuth } from "../src/context/AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Input } from "../src/components/ui/Input";
@@ -10,27 +10,33 @@ import { Link, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
-    const { login } = useAuth();
+    const { register } = useAuth();
     const router = useRouter();
 
-    const handleLogin = async () => {
-        if (!username || !password) {
-            setError("Please enter both username and password");
+    const handleRegister = async () => {
+        if (!username || !password || !confirmPassword) {
+            setError("Please fill in all fields");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setError("Passwords do not match");
             return;
         }
 
         setIsLoading(true);
         setError("");
         try {
-            await login(username, password);
-            // Navigation handled by AuthContext
+            await register(username, password); // Defaults to passenger
+            // AuthContext will handle login and redirect
         } catch (err: any) {
-            setError(err.response?.data?.message || "Invalid credentials");
+            setError(err.response?.data?.message || "Registration failed");
         } finally {
             setIsLoading(false);
         }
@@ -48,10 +54,10 @@ export default function LoginScreen() {
                         <Card style={styles.card}>
                             <View style={styles.header}>
                                 <View style={styles.iconContainer}>
-                                    <Ionicons name="bus" size={32} color={Colors.iconColor} />
+                                    <Ionicons name="person-add" size={32} color={Colors.iconColor} />
                                 </View>
-                                <Text style={styles.title}>Welcome Back</Text>
-                                <Text style={styles.subtitle}>Sign in to your account</Text>
+                                <Text style={styles.title}>Create Account</Text>
+                                <Text style={styles.subtitle}>Sign up as a Passenger</Text>
                             </View>
 
                             <View style={styles.form}>
@@ -63,7 +69,7 @@ export default function LoginScreen() {
 
                                 <Input
                                     label="Username"
-                                    placeholder="Enter your username"
+                                    placeholder="Choose a username"
                                     value={username}
                                     onChangeText={setUsername}
                                     autoCapitalize="none"
@@ -77,18 +83,26 @@ export default function LoginScreen() {
                                     secureTextEntry
                                 />
 
+                                <Input
+                                    label="Confirm Password"
+                                    placeholder="••••••••"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry
+                                />
+
                                 <Button 
-                                    onPress={handleLogin} 
+                                    onPress={handleRegister} 
                                     isLoading={isLoading} 
                                     style={styles.button}
                                 >
-                                    Sign In
+                                    Sign Up
                                 </Button>
 
                                 <View style={styles.footer}>
-                                    <Text style={styles.footerText}>Don't have an account? </Text>
-                                    <Link href="/register" asChild>
-                                        <Text style={styles.link}>Register as Passenger</Text>
+                                    <Text style={styles.footerText}>Already have an account? </Text>
+                                    <Link href="/login" asChild>
+                                        <Text style={styles.link}>Sign In</Text>
                                     </Link>
                                 </View>
                             </View>
