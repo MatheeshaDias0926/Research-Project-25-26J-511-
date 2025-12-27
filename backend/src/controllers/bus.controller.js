@@ -1,7 +1,7 @@
 import Bus from "../models/Bus.model.js";
 import BusDataLog from "../models/BusDataLog.model.js";
 import ViolationLog from "../models/ViolationLog.model.js";
-import { getOccupancyPrediction } from "../services/ml.service.js";
+import { getOccupancyPrediction, getSafetyPrediction } from "../services/ml.service.js";
 
 /**
  * @desc    Get current bus status
@@ -195,6 +195,32 @@ export const getPrediction = async (req, res, next) => {
     );
 
     res.json(prediction);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get ML-based Safety Prediction (Rollover & Stopping)
+ * @route   POST /api/bus/predict-safety
+ * @access  Private (All authenticated users)
+ */
+export const predictBusSafety = async (req, res, next) => {
+  // ML-based safety prediction
+  try {
+    const { n_seated, n_standing, speed_kmh, radius_m, is_wet, gradient_deg } = req.body;
+
+    // Call ML Service
+    const result = await getSafetyPrediction({
+      n_seated,
+      n_standing,
+      speed_kmh,
+      radius_m,
+      is_wet,
+      gradient_deg,
+    });
+
+    res.json(result);
   } catch (error) {
     next(error);
   }

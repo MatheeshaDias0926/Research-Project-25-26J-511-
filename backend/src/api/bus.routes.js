@@ -8,6 +8,7 @@ import {
   getPrediction,
   createBus,
   getAvailableBuses,
+  predictBusSafety,
 } from "../controllers/bus.controller.js";
 import { getPhysicsModel } from "../controllers/physics.controller.js";
 import {
@@ -46,6 +47,13 @@ router.get("/available", protect, isAuthority, getAvailableBuses);
  * @access  Private (Passenger)
  */
 router.get("/predict/:routeId", protect, isPassenger, getPrediction);
+
+/**
+ * @route   POST /api/bus/predict-safety
+ * @desc    Get ML-based safety prediction (Rollover/Stopping)
+ * @access  Private (All authenticated users)
+ */
+router.post("/predict-safety", protect, predictBusSafety);
 
 /**
  * @route   POST /api/bus/physics
