@@ -235,6 +235,44 @@ def predict_safety():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/retrain', methods=['POST'])
+def retrain_model():
+    """
+    Trigger model retraining using train_safety_model.py
+    """
+    import subprocess
+    
+    try:
+        print("🔄 Starting model retraining...")
+        # Run the training script as a subprocess
+        result = subprocess.run(['python3', 'train_safety_model.py'], capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print("✅ Retraining successful!")
+            print(result.stdout)
+            
+            # Hot-reload the model
+            global safety_model
+            if os.path.exists(SAFETY_MODEL_PATH):
+                safety_model = joblib.load(SAFETY_MODEL_PATH)
+                print("✅ New model loaded into memory.")
+                
+            return jsonify({
+                'message': 'Model retrained and reloaded successfully',
+                'logs': result.stdout
+            }), 200
+        else:
+            print("❌ Retraining failed!")
+            print(result.stderr)
+            return jsonify({
+                'error': 'Retraining script failed',
+                'details': result.stderr
+            }), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/model-info', methods=['GET'])
 def model_info():
     """Get information about the loaded model."""

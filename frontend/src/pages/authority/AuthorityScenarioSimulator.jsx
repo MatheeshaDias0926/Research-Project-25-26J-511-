@@ -139,17 +139,34 @@ const AuthorityScenarioSimulator = () => {
     const [incidentLog, setIncidentLog] = useState([]);
     const [weatherLoading, setWeatherLoading] = useState(false);
     
-    // Refs
-    const simulationRef = useRef(null);
+    // Polishing State
+    const [buses, setBuses] = useState([]);
+    const [selectedBus, setSelectedBus] = useState("");
+    const animationFrameRef = useRef(null);
+    const lastTelemetryTime = useRef(0);
+    const startTimeRef = useRef(0);
+    const totalDistanceRef = useRef(0);
+    const pathCumulativeDistances = useRef([]);
     const stepRef = useRef(0);
 
-    // Fetch Route from OSRM
+    // Helper: Haversine Distance
+    const getDistance = (p1, p2) => {
+        const R = 6371e3; // metres
+        const φ1 = p1.lat * Math.PI/180; 
+        const φ2 = p2.lat * Math.PI/180;
+        const Δφ = (p2.lat-p1.lat) * Math.PI/180;
+        const Δλ = (p2.lng-p1.lng) * Math.PI/180;
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    };
+
+    // Calculate Route
     const calculateRoute = async () => {
         if (!startPos || !endPos) {
             alert("Please select both Start and End points on the map.");
             return;
         }
-
         try {
             const url = `https://router.project-osrm.org/route/v1/driving/${startPos.lng},${startPos.lat};${endPos.lng},${endPos.lat}?overview=full&geometries=geojson`;
             const response = await axios.get(url);
@@ -157,22 +174,33 @@ const AuthorityScenarioSimulator = () => {
             if (response.data.routes && response.data.routes.length > 0) {
                 const geoJsonCoords = response.data.routes[0].geometry.coordinates;
                 const path = geoJsonCoords.map(coord => ({ lat: coord[1], lng: coord[0] }));
+                
+                // Pre-calculate distances for interpolation
+                let totalDist = 0;
+                const cumDist = [0];
+                for(let i=1; i<path.length; i++){
+                    const d = getDistance(path[i-1], path[i]);
+                    totalDist += d;
+                    cumDist.push(totalDist);
+                }
+                
                 setRouteCoords(path);
+                pathCumulativeDistances.current = cumDist;
+                totalDistanceRef.current = totalDist;
+                
                 setBusPosition(path[0]);
-                stepRef.current = 0;
                 setCurrentRisk(null);
                 setFutureRisk(null);
                 setRiskHistory([]);
                 setIncidentLog([]);
 
-                // Auto-fetch Weather
+               // Auto-fetch Weather
                 setWeatherLoading(true);
                 try {
                     const weatherRes = await api.get(`/bus/weather?lat=${startPos.lat}&lon=${startPos.lng}`);
                     setValue("weather", weatherRes.data.isWet ? "wet" : "dry");
-                    console.log("Auto-fetched weather:", weatherRes.data);
                 } catch (wErr) {
-                    console.error("Weather fetch failed", wErr);
+                     console.error("Weather fetch failed");
                 } finally {
                     setWeatherLoading(false);
                 }
@@ -185,30 +213,36 @@ const AuthorityScenarioSimulator = () => {
         }
     };
 
-    // --- INIT: ensure bus exists ---
+    // --- INIT: Fetch Real Buses ---
     useEffect(() => {
-        const checkAndCreateBus = async () => {
-            const plate = "DEMO-ML-01";
+        const fetchBuses = async () => {
             try {
-                await api.get(`/bus/plate/${plate}`);
-            } catch (error) {
-                if (error.response && error.response.status === 404) {
-                    console.log("Demo bus not found. Creating...");
-                    try {
-                        await api.post("/bus", {
-                            licensePlate: plate,
-                            routeId: "DEMO_ROUTE",
-                            capacity: 60
-                        });
-                        console.log("Demo bus created!");
-                    } catch (createError) {
-                        console.error("Failed to create demo bus", createError);
-                    }
+                const res = await api.get("/bus");
+                setBuses(res.data);
+                if(res.data.length > 0) {
+                    setSelectedBus(res.data[0].licensePlate);
+                    setValue("licensePlate", res.data[0].licensePlate);
                 }
+            } catch (err) {
+                console.error("Failed to fetch buses");
             }
         };
-        checkAndCreateBus();
-    }, []);
+        fetchBuses();
+    }, [setValue]);
+
+    const handleRetrain = async () => {
+        if (!confirm("Are you sure you want to retrain the model with the latest dataset?")) return;
+        
+        try {
+            // Call Python Service directly (via proxy)
+            const response = await axios.post("http://localhost:5001/retrain");
+            alert("Success: " + response.data.message);
+            console.log(response.data.logs);
+        } catch (error) {
+            console.error("Retraining failed", error);
+            alert("Retraining failed: " + (error.response?.data?.error || error.message));
+        }
+    };
 
     // --- SEARCH LOCATION ---
     const handleSearch = async (e) => {
@@ -233,103 +267,117 @@ const AuthorityScenarioSimulator = () => {
         }
     };
 
-    // --- SIMULATION LOOP ---
+    // --- SMOOTH ANIMATION LOOP ---
     const startSimulation = () => {
-        if (routeCoords.length === 0) {
-            alert("Please calculate a route first.");
-            return;
-        }
-        setIsSimulating(true);
-        stepRef.current = 0;
-        
-        simulationRef.current = setInterval(async () => {
-            const currentStep = stepRef.current;
-            const nextStep = currentStep + 1;
+        if (routeCoords.length === 0) return alert("Please calculate a route first.");
+        if (isSimulating) return;
 
-            if (nextStep >= routeCoords.length) {
+        setIsSimulating(true);
+        startTimeRef.current = performance.now();
+        lastTelemetryTime.current = 0;
+        
+        const animate = (time) => {
+            const speedKmh = parseInt(getValues("speed"));
+            const speedMs = speedKmh * (1000/3600);
+            
+            // Calculate distance covered based on time elapsed
+            const elapsedSec = (time - startTimeRef.current) / 1000;
+            const distCovered = elapsedSec * speedMs; // Assume constant speed for simplicity
+
+            if (distCovered >= totalDistanceRef.current) {
                 stopSimulation();
                 return;
             }
 
-            const currentPos = routeCoords[nextStep];
-            setBusPosition(currentPos);
-            stepRef.current = nextStep;
-
-            // --- 1. TELEMETRY (Backend Update) ---
-            sendTelemetry(currentPos);
-
-            // --- 2. ML MODEL PREDICTION (Current) ---
-            // Calculate instantaneous radius using prev, current, next points
-            const pCurrent = routeCoords[nextStep];
-            const pPrev = routeCoords[nextStep - 1] || pCurrent;
-            const pNext = routeCoords[nextStep + 1] || pCurrent;
-            const radius = calculateRadius(pPrev, pCurrent, pNext);
-
-            const mlParams = {
-                n_seated: parseInt(watch("seated")),
-                n_standing: parseInt(watch("standing")),
-                speed_kmh: parseInt(watch("speed")),
-                radius_m: radius,
-                is_wet: watch("weather") === "wet" ? 1 : 0,
-                gradient_deg: 0 // Mock gradient
-            };
-
-            // Call ML Endpoint
-            api.post("/bus/predict-safety", mlParams).then(res => {
-                const newData = res.data;
-                setCurrentRisk(newData);
-
-                // --- 4. DATA LOGGING (Risk & Incidents) ---
-                // Update Risk History
-                setRiskHistory(prev => [...prev, {
-                    time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" }),
-                    risk: newData.risk_score,
-                    speed: parseInt(getValues("speed")) // Use getValues for instant access
-                }].slice(-30));
-
-                // Log Incident if High Risk
-                if (newData.risk_score > 0.7) {
-                    setIncidentLog(prev => {
-                        const lastLog = prev[0];
-                        const now = new Date().toLocaleTimeString();
-                        if (lastLog && lastLog.time === now) return prev;
-                        
-                        return [{
-                            time: now,
-                            message: `Critical Risk Detected (Score: ${newData.risk_score.toFixed(2)})`,
-                            details: `Speed: ${getValues("speed")} km/h, Radius: ${Math.round(radius)}m`
-                        }, ...prev].slice(0, 10);
-                    });
+            // Find segment
+            let segmentIndex = 0;
+            for(let i=0; i<pathCumulativeDistances.current.length-1; i++){
+                if(distCovered >= pathCumulativeDistances.current[i] && distCovered < pathCumulativeDistances.current[i+1]){
+                    segmentIndex = i;
+                    break;
                 }
-            });
+            }
 
-            // --- 3. PREDICTIVE LOOKAHEAD (Dynamic Forecast) ---
-            // Look 5 steps ahead (~5 seconds)
-            const lookaheadStep = Math.min(nextStep + 5, routeCoords.length - 2);
-            if (lookaheadStep > nextStep) {
-                const lp1 = routeCoords[lookaheadStep - 1];
-                const lp2 = routeCoords[lookaheadStep];
-                const lp3 = routeCoords[lookaheadStep + 1];
-                const futureRadius = calculateRadius(lp1, lp2, lp3);
+            // Interpolate position
+            const segmentStartDist = pathCumulativeDistances.current[segmentIndex];
+            const segmentEndDist = pathCumulativeDistances.current[segmentIndex+1];
+            const segmentLen = segmentEndDist - segmentStartDist;
+            const fraction = (distCovered - segmentStartDist) / (segmentLen || 1); // Avoid div/0
+
+            const p1 = routeCoords[segmentIndex];
+            const p2 = routeCoords[segmentIndex+1];
+            
+            const currentPos = {
+                lat: p1.lat + (p2.lat - p1.lat) * fraction,
+                lng: p1.lng + (p2.lng - p1.lng) * fraction
+            };
+            
+            setBusPosition(currentPos);
+
+            // --- DECOUPLED TELEMETRY (Every 2s) ---
+            if (time - lastTelemetryTime.current > 2000) {
+                lastTelemetryTime.current = time;
+                sendTelemetry(currentPos);
                 
-                // Predict for future point
-                api.post("/bus/predict-safety", { ...mlParams, radius_m: futureRadius }).then(res => {
-                    setFutureRisk(res.data);
+                // ML Calculation (Reuse existing logic or call standard function)
+                const radius = calculateRadius(
+                    routeCoords[Math.max(0, segmentIndex-1)], 
+                    routeCoords[segmentIndex], 
+                    routeCoords[Math.min(routeCoords.length-1, segmentIndex+1)]
+                );
+                
+                const mlParams = {
+                    n_seated: parseInt(getValues("seated")),
+                    n_standing: parseInt(getValues("standing")),
+                    speed_kmh: parseInt(getValues("speed")),
+                    radius_m: radius,
+                    is_wet: getValues("weather") === "wet" ? 1 : 0,
+                    gradient_deg: 0 
+                };
+
+                // Call ML
+                api.post("/bus/predict-safety", mlParams).then(res => {
+                    const newData = res.data;
+                    setCurrentRisk(newData);
+
+                    // Update History
+                    setRiskHistory(prev => [...prev, {
+                        time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" }),
+                        risk: newData.risk_score,
+                        speed: parseInt(getValues("speed")) 
+                    }].slice(-30));
+
+                    // Log Incident
+                    if (newData.risk_score > 0.7) {
+                        setIncidentLog(prev => {
+                            const lastLog = prev[0];
+                            const now = new Date().toLocaleTimeString();
+                            if (lastLog && lastLog.time === now) return prev;
+                            return [{
+                                time: now,
+                                message: `Critical Risk Detected (Score: ${newData.risk_score.toFixed(2)})`,
+                                details: `Speed: ${getValues("speed")} km/h, Radius: ${Math.round(radius)}m`
+                            }, ...prev].slice(0, 10);
+                        });
+                    }
                 });
             }
 
-        }, 1000); // 1-second interval
+            animationFrameRef.current = requestAnimationFrame(animate);
+        };
+        
+        animationFrameRef.current = requestAnimationFrame(animate);
     };
 
     const stopSimulation = () => {
         setIsSimulating(false);
-        if (simulationRef.current) clearInterval(simulationRef.current);
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
 
     const sendTelemetry = (pos) => {
         const payload = {
-            licensePlate: watch("licensePlate"),
-            speed: parseInt(watch("speed")),
+            licensePlate: selectedBus, // Use selected bus
+            speed: parseInt(getValues("speed")),
             currentOccupancy: parseInt(watch("seated")) + parseInt(watch("standing")),
             footboardStatus: watch("footboard") === "true",
             gps: { lat: pos.lat, lon: pos.lng }
@@ -369,6 +417,14 @@ const AuthorityScenarioSimulator = () => {
                     <div style={{ padding: "8px 16px", background: "#e0e7ff", borderRadius: 8, fontSize: 13, color: "#3730a3" }}>
                          Latency: <strong>~20ms</strong>
                     </div>
+                    <Button 
+                        size="sm"
+                        variant="outline" 
+                        onClick={handleRetrain}
+                        style={{ height: 35, background: "#f8fafc", borderColor: "#cbd5e1", color: "#475569" }}
+                    >
+                        🔄 Retrain
+                    </Button>
                 </div>
             </div>
 
@@ -401,6 +457,35 @@ const AuthorityScenarioSimulator = () => {
                                         <option value="dry">Dry Asphalt (Safe)</option>
                                         <option value="wet">Wet / Raining (Risk)</option>
                                     </select>
+                                </div>
+                             </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* 1.5 Bus Selection (Added) */}
+                    <Card>
+                        <CardHeader><CardTitle>Bus Selection</CardTitle></CardHeader>
+                        <CardContent>
+                             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                <div>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Select Real Bus</label>
+                                    <select 
+                                        value={selectedBus}
+                                        onChange={(e) => {
+                                            setSelectedBus(e.target.value);
+                                            setValue("licensePlate", e.target.value);
+                                        }}
+                                        style={{ width: "100%", height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid #e2e8f0" }}
+                                    >
+                                        {buses.map(bus => (
+                                            <option key={bus._id} value={bus.licensePlate}>
+                                                {bus.licensePlate} (R: {bus.routeId})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p style={{fontSize: 11, color: "#94a3b8", marginTop: 4}}>
+                                        Safety data will be sent to this bus ID in the backend.
+                                    </p>
                                 </div>
                              </div>
                         </CardContent>
