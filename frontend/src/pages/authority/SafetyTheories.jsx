@@ -387,15 +387,37 @@ const SafetyTheories = () => {
                                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>m</td>
                                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Height of seated passenger CoG</td>
                                     </tr>
-                                     <tr>
+                                    <tr>
                                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Standing CoG</td>
                                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>h_stand</td>
                                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>2.2</td>
                                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>m</td>
                                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Height of standing passenger CoG</td>
                                     </tr>
+                                    <tr style={{ background: "#fff7ed" }}>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Friction (Dry)</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>μ_dry</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: "600", color: "#c2410c" }}>0.65</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>-</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Standard Asphalt (Worn)</td>
+                                    </tr>
+                                    <tr style={{ background: "#eff6ff" }}>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Friction (Wet)</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>μ_wet</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: "600", color: "#2563eb" }}>0.35</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>-</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Monsoon Condition (Dynamic)</td>
+                                    </tr>
                                 </tbody>
                             </table>
+                            
+                            <div style={{ marginTop: "16px", padding: "12px", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1", fontSize: "13px", color: "#475569", display: "flex", alignItems: "center", gap: "10px" }}>
+                                <CloudRain size={16} className="text-blue-500" />
+                                <span>
+                                    <strong>Real-time Weather Integration:</strong> The system automatically queries the <em>Open-Meteo API</em> using the bus's live GPS coordinates (Lat/Lon). 
+                                    If rain is detected, the model instantly switches μ (Friction) from 0.65 to 0.35.
+                                </span>
+                            </div>
                         </div>
 
                         <div style={{ marginTop: "32px" }}>
@@ -427,84 +449,167 @@ const SafetyTheories = () => {
                     <CardHeader>
                         <CardTitle style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                             <Brain className="text-purple-600" size={28} />
-                            Hybrid Architecture: Physics + AI
+                            Deep Neural Architecture & Inference Logic
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p style={{ color: "#475569", marginBottom: "24px", lineHeight: "1.6" }}>
-                           To achieve both <strong>scientific accuracy</strong> and <strong>real-time scalability</strong>, we use a "Teacher-Student" hybrid architecture. 
-                           The Physics Engine acts as the "Teacher" (Ground Truth), while the ML Model acts as the "Student" (Fast Approx).
+                        <p style={{ color: "#475569", marginBottom: "32px", lineHeight: "1.6" }}>
+                           The system relies on a <strong>Multi-Output Random Forest Regressor</strong> (100 Estimators). Unlike simple if-then logic, this model understands 
+                           non-linear physical interactions. For example, it knows that <em>speeding on a wet road</em> is exponentially more dangerous than speeding on a dry road.
                         </p>
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "32px" }}>
-                            {/* Teacher Card */}
-                            <div style={{ border: "1px solid #e2e8f0", borderRadius: "12px", overflow: "hidden" }}>
-                                <div style={{ background: "#f8fafc", padding: "16px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: "12px" }}>
-                                    <div style={{ background: "#dbeafe", padding: "8px", borderRadius: "8px" }}>
-                                        <Calculator className="text-blue-600" size={20} />
-                                    </div>
-                                    <div>
-                                        <div style={{ fontWeight: "600", color: "#1e293b" }}>The Teacher (Physics Engine)</div>
-                                        <div style={{ fontSize: "12px", color: "#64748b" }}>Used in: Authority Simulations</div>
-                                    </div>
-                                </div>
-                                <div style={{ padding: "24px" }}>
-                                    <ul style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "14px" }}>
-                                        <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <ShieldCheck size={16} className="text-green-600" />
-                                            <span><strong>100% Truth</strong>: Uses First Principles</span>
-                                        </li>
-                                        <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <Activity size={16} className="text-amber-600" />
-                                            <span><strong>Slow</strong>: Complex Math & Map Lookups</span>
-                                        </li>
-                                        <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <Server size={16} className="text-red-500" />
-                                            <span><strong>Heavy</strong>: Cannot scale to 1000+ buses</span>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
+                             <div style={{ background: "#f8fafc", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                <h3 style={{ fontWeight: "600", color: "#334155", marginBottom: "16px" }}>1. Dynamic Input Vector (X)</h3>
+                                <ul style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "14px", color: "#475569" }}>
+                                    <li style={{ paddingBottom: "8px", borderBottom: "1px solid #e2e8f0" }}>
+                                        <strong>Occupancy Data:</strong> Seated vs. Standing count (affects CoG).
+                                    </li>
+                                    <li style={{ paddingBottom: "8px", borderBottom: "1px solid #e2e8f0" }}>
+                                        <strong>Telemetry:</strong> Live Speed (GPS) & Gradient.
+                                    </li>
+                                    <li style={{ paddingBottom: "8px", borderBottom: "1px solid #e2e8f0", color: "#2563eb" }}>
+                                        <strong>Environmental (API):</strong> 
+                                        Bus Lat/Lon → <em>Open-Meteo API</em> → Rain Status → <strong>Friction (μ)</strong> 
+                                        <br/>
+                                        <small style={{ color: "#64748b" }}>(Auto-switches 0.65 ➝ 0.35)</small>
+                                    </li>
+                                     <li>
+                                        <strong>Geometry:</strong> Curve Radius (Menger Curvature from GPS traces).
+                                    </li>
+                                </ul>
+                             </div>
 
-                            {/* Student Card */}
-                            <div style={{ border: "2px solid #a855f7", borderRadius: "12px", overflow: "hidden", background: "#faf5ff" }}>
-                                <div style={{ background: "#f3e8ff", padding: "16px", borderBottom: "1px solid #e9d5ff", display: "flex", alignItems: "center", gap: "12px" }}>
-                                    <div style={{ background: "#fff", padding: "8px", borderRadius: "8px" }}>
-                                        <Zap className="text-purple-600" size={20} />
+                             <div style={{ background: "#f0fdf4", padding: "24px", borderRadius: "12px", border: "1px solid #dcfce7" }}>
+                                <h3 style={{ fontWeight: "600", color: "#166534", marginBottom: "16px" }}>2. Model Output Targets (Y)</h3>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                    <div>
+                                        <div style={{ fontWeight: "700", color: "#166534", fontSize: "15px" }}>Target A: Rollover Risk Score</div>
+                                        <div style={{ fontSize: "13px", color: "#15803d", marginTop: "4px" }}>
+                                            Predicts <code>LatAccel / SSF</code>. 
+                                            <br/>
+                                            A score {'>'} 0.7 triggers instant "CRITICAL" alert to driver app.
+                                        </div>
                                     </div>
                                     <div>
-                                        <div style={{ fontWeight: "600", color: "#6b21a8" }}>The Student (ML Model)</div>
-                                        <div style={{ fontSize: "12px", color: "#7e22ce" }}>Used in: Live IoT Processing</div>
+                                        <div style={{ fontWeight: "700", color: "#166534", fontSize: "15px" }}>Target B: Stopping Distance</div>
+                                        <div style={{ fontSize: "13px", color: "#15803d", marginTop: "4px" }}>
+                                            Predicts total meters to stop.
+                                            <br/>
+                                            Adjusts dynamically based on weather-induced friction loss.
+                                        </div>
                                     </div>
                                 </div>
-                                <div style={{ padding: "24px" }}>
-                                    <ul style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "14px" }}>
-                                        <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <ShieldCheck size={16} className="text-green-600" />
-                                            <span><strong>{'>'}95% Accuracy</strong>: Learns from Teacher</span>
-                                        </li>
-                                        <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <Zap size={16} className="text-purple-600" />
-                                            <span><strong>Instant</strong>: ~2ms Response Time</span>
-                                        </li>
-                                        <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <Server size={16} className="text-green-600" />
-                                            <span><strong>Scalable</strong>: Handles unlimited buses</span>
-                                        </li>
-                                    </ul>
+                             </div>
+                        </div>
+
+                        {/* Inference Flowchart */}
+                        <div style={{ marginBottom: "32px", padding: "24px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px" }}>
+                            <h3 style={{ fontWeight: "600", marginBottom: "20px", color: "#1e293b", textAlign: "center" }}>End-to-End Inference Pipeline (~20ms)</h3>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
+                                {/* Step 1 */}
+                                <div style={{ width: "22%", textAlign: "center" }}>
+                                    <div style={{ width: "40px", height: "40px", background: "#3b82f6", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "700" }}>1</div>
+                                    <div style={{ fontWeight: "600", fontSize: "14px" }}>ESP32 / GPS</div>
+                                    <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>Sends `Loc` + `Speed`</div>
+                                </div>
+                                <div style={{ flex: 1, height: "2px", background: "#e2e8f0", margin: "0 10px" }}></div>
+                                
+                                {/* Step 2 */}
+                                <div style={{ width: "22%", textAlign: "center" }}>
+                                    <div style={{ width: "40px", height: "40px", background: "#f59e0b", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "700" }}>2</div>
+                                    <div style={{ fontWeight: "600", fontSize: "14px" }}>Backend Enrichment</div>
+                                    <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>Fetches `Weather` via API</div>
+                                </div>
+                                <div style={{ flex: 1, height: "2px", background: "#e2e8f0", margin: "0 10px" }}></div>
+
+                                {/* Step 3 */}
+                                <div style={{ width: "22%", textAlign: "center" }}>
+                                    <div style={{ width: "40px", height: "40px", background: "#8b5cf6", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "700" }}>3</div>
+                                    <div style={{ fontWeight: "600", fontSize: "14px" }}>ML Microservice</div>
+                                    <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>Runs Random Forest</div>
+                                </div>
+                                <div style={{ flex: 1, height: "2px", background: "#e2e8f0", margin: "0 10px" }}></div>
+
+                                {/* Step 4 */}
+                                <div style={{ width: "22%", textAlign: "center" }}>
+                                    <div style={{ width: "40px", height: "40px", background: "#10b981", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "700" }}>4</div>
+                                    <div style={{ fontWeight: "600", fontSize: "14px" }}>Driver Alert</div>
+                                    <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>Push Notification</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div style={{ background: "#f1f5f9", padding: "24px", borderRadius: "12px" }}>
-                            <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
-                                <Server size={20} />
-                                Why specific "Student" model?
+                        <div style={{ background: "#f3f4f6", padding: "24px", borderRadius: "12px", border: "1px solid #d1d5db" }}>
+                            <h3 style={{ fontWeight: "600", marginBottom: "8px", color: "#374151" }}>
+                                🧠 Why "Random Forest" (Ensemble Learning)?
                             </h3>
-                            <p style={{ fontSize: "14px", color: "#475569", marginBottom: "16px" }}>
-                                When 100 buses send data every second, a Physics Engine would need to make <strong>100 expensive API calls</strong> to the Map Server for road curvature. 
-                                The ML Model skips this by "intuiting" the risk based on learned patterns of Speed + GPS + Weather, reducing server load by <strong>99%</strong>.
+                            <p style={{ fontSize: "14px", color: "#4b5563" }}>
+                                A single decision tree might overfit (e.g., assuming "all curves are dangerous"). A Random Forest averages the decision of <strong>100 independent trees</strong>. 
+                                Some trees focus on speed, others on weather, others on occupancy. The final consensus is robust, stable, and less prone to false alarms.
                             </p>
+                        </div>
+
+                        {/* Teacher-Student Model Section */}
+                        <div style={{ marginTop: "32px", borderTop: "1px solid #e2e8f0", paddingTop: "32px" }}>
+                             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+                                <div style={{ background: "#eff6ff", padding: "10px", borderRadius: "12px" }}>
+                                    <Server size={24} className="text-blue-600" />
+                                </div>
+                                <h3 style={{ fontSize: "20px", fontWeight: "700", color: "#1e293b" }}>
+                                    Hybrid Intelligence: "Teacher-Student" Architecture
+                                </h3>
+                             </div>
+                             
+                             <p style={{ color: "#64748b", marginBottom: "24px", lineHeight: "1.6" }}>
+                                To achieve <strong>&lt; 20ms latency</strong> on low-power edge devices (like ESP32/Raspberry Pi) while maintaining scientific accuracy, we employ a 
+                                <em> knowledge distillation</em> approach.
+                             </p>
+
+                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                                {/* Teacher Block */}
+                                <div style={{ border: "1px solid #cbd5e1", borderRadius: "12px", overflow: "hidden" }}>
+                                    <div style={{ background: "#f1f5f9", padding: "16px", borderBottom: "1px solid #cbd5e1", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                        <span style={{ fontWeight: "700", color: "#334155" }}>The "Teacher" (Physics)</span>
+                                        <span style={{ fontSize: "11px", background: "#334155", color: "#fff", padding: "2px 8px", borderRadius: "99px" }}>OFFLINE</span>
+                                    </div>
+                                    <div style={{ padding: "20px" }}>
+                                        <p style={{ fontSize: "14px", color: "#475569", marginBottom: "12px" }}>
+                                            <strong>Role:</strong> The Source of Truth.
+                                        </p>
+                                        <p style={{ fontSize: "14px", color: "#475569", marginBottom: "16px" }}>
+                                            Uses complex differential equations ($F=ma$) to calculate exact stability limits. It generates 100,000+ synthetic scenarios to create a "textbook" (Training Dataset).
+                                        </p>
+                                        <div style={{ fontSize: "12px", color: "#64748b", fontStyle: "italic" }}>
+                                            "Slow but Extremely Accurate"
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Link Icon */}
+                                <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%) translateY(100px)", zIndex: 10, background: "#fff", padding: "8px", borderRadius: "50%", border: "1px solid #e2e8f0" }}>
+                                    <ArrowRight size={20} className="text-blue-500" />
+                                </div>
+
+                                {/* Student Block */}
+                                <div style={{ border: "1px solid #bfdbfe", borderRadius: "12px", overflow: "hidden", background: "#eff6ff" }}>
+                                    <div style={{ background: "#dbeafe", padding: "16px", borderBottom: "1px solid #bfdbfe", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                        <span style={{ fontWeight: "700", color: "#1e40af" }}>The "Student" (ML Model)</span>
+                                        <span style={{ fontSize: "11px", background: "#2563eb", color: "#fff", padding: "2px 8px", borderRadius: "99px" }}>REAL-TIME</span>
+                                    </div>
+                                    <div style={{ padding: "20px" }}>
+                                         <p style={{ fontSize: "14px", color: "#1e3a8a", marginBottom: "12px" }}>
+                                            <strong>Role:</strong> The Fast Approximation.
+                                        </p>
+                                        <p style={{ fontSize: "14px", color: "#1e3a8a", marginBottom: "16px" }}>
+                                            Trained on the Teacher's dataset. It learns to <em>mimic</em> the physics laws without solving the math equations every time. It essentially "memorizes" the physics textbook.
+                                        </p>
+                                        <div style={{ fontSize: "12px", color: "#3b82f6", fontStyle: "italic" }}>
+                                            "99% Accuracy at 100x Speed"
+                                        </div>
+                                    </div>
+                                </div>
+                             </div>
                         </div>
                     </CardContent>
                 </Card>

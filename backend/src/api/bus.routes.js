@@ -10,6 +10,9 @@ import {
   getAvailableBuses,
   predictBusSafety,
   getRouteWeather,
+  getViolationAnalytics,
+  getViolationTrends,
+  getFleetOccupancy,
 } from "../controllers/bus.controller.js";
 import { getPhysicsModel } from "../controllers/physics.controller.js";
 import {
@@ -41,6 +44,27 @@ router.post("/", protect, isAuthority, createBus);
  * @access  Private (Authority only)
  */
 router.get("/available", protect, isAuthority, getAvailableBuses);
+
+/**
+ * @route   GET /api/bus/analytics/violations
+ * @desc    Get aggregated violation analytics (Top offenders)
+ * @access  Private (Authority only)
+ */
+router.get("/analytics/violations", protect, isAuthority, getViolationAnalytics);
+
+/**
+ * @route   GET /api/bus/analytics/trends
+ * @desc    Get violation trends (last 7 days)
+ * @access  Private (Authority only)
+ */
+router.get("/analytics/trends", protect, isAuthority, getViolationTrends);
+
+/**
+ * @route   GET /api/bus/analytics/occupancy
+ * @desc    Get fleet occupancy distribution
+ * @access  Private (Authority only)
+ */
+router.get("/analytics/occupancy", protect, isAuthority, getFleetOccupancy);
 
 /**
  * @route   GET /api/bus/predict/:routeId
