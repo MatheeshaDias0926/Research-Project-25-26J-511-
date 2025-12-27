@@ -21,6 +21,7 @@ export const getPhysicsModelResult = async ({
   speed,
   lat,
   lon,
+  friction = 0.65, // Default to dry if not provided
 }) => {
   return new Promise((resolve, reject) => {
     const scriptPath = path.resolve(
@@ -43,6 +44,8 @@ export const getPhysicsModelResult = async ({
       String(lat),
       "--lon",
       String(lon),
+      "--friction",
+      String(friction),
     ];
 
     const py = spawn(venvPython, args);
