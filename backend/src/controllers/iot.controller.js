@@ -16,7 +16,7 @@ import { checkAndLogViolation } from "../services/violation.service.js";
  * }
  */
 export const ingestMockData = async (req, res, next) => {
-  const { licensePlate, currentOccupancy, gps, footboardStatus, speed } =
+  const { licensePlate, currentOccupancy, gps, footboardStatus, speed, riskScore } =
     req.body;
 
   try {
@@ -47,6 +47,7 @@ export const ingestMockData = async (req, res, next) => {
       gps,
       footboardStatus: footboardStatus || false,
       speed: speed || 0,
+      riskScore: riskScore || 0,
     });
     await newLog.save();
 

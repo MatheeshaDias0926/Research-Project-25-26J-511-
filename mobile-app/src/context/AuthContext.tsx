@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "../utils/storage";
 import { useRouter, useSegments } from "expo-router";
 import { authApi } from "../api/auth";
 import client from "../api/client";
@@ -39,8 +39,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const loadToken = async () => {
-      const token = await SecureStore.getItemAsync("userToken");
-      const userStr = await SecureStore.getItemAsync("userData");
+      const token = await storage.getItem("userToken");
+      const userStr = await storage.getItem("userData");
 
       if (token && userStr) {
         const user = JSON.parse(userStr);
@@ -86,8 +86,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Backend returns { token, ...userData }
       const { token, ...userData } = data;
 
-      await SecureStore.setItemAsync("userToken", token);
-      await SecureStore.setItemAsync("userData", JSON.stringify(userData));
+      await storage.setItem("userToken", token);
+      await storage.setItem("userData", JSON.stringify(userData));
 
       client.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
@@ -115,8 +115,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync("userToken");
-    await SecureStore.deleteItemAsync("userData");
+    await storage.deleteItem("userToken");
+    await storage.deleteItem("userData");
     delete client.defaults.headers.common["Authorization"];
 
     setAuthState({

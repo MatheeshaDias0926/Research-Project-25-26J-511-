@@ -7,8 +7,9 @@ import { Card } from "../../src/components/ui/Card";
 import { Button } from "../../src/components/ui/Button";
 import { Colors } from "../../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "../../src/utils/storage";
 import * as Haptics from "expo-haptics";
+import * as Speech from "expo-speech";
 
 export default function ConductorDashboard() {
     const [busId, setBusId] = useState<string | null>(null);
@@ -20,6 +21,10 @@ export default function ConductorDashboard() {
     const [refreshing, setRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(new Date());
     
+    // Live Simulator Data
+    const [riskScore, setRiskScore] = useState(0);
+    const isCriticalRef = useRef(false);
+    
     // Track the latest violation ID to detect new ones
     const latestViolationIdRef = useRef<string | null>(null);
     const isFirstLoad = useRef(true);
@@ -28,7 +33,7 @@ export default function ConductorDashboard() {
 
     useEffect(() => {
         const checkBusSelection = async () => {
-            const id = await SecureStore.getItemAsync("currentBusId");
+            const id = await storage.getItem("currentBusId");
             
             if (!id) {
                 router.replace("/(conductor)/bus-selection");
@@ -39,10 +44,10 @@ export default function ConductorDashboard() {
         };
         checkBusSelection();
         
-        // Auto refresh every 10s for faster alerts
+        // Polling every 2s for Real-time Simulator Sync
         const interval = setInterval(() => {
             if (busId) fetchData(busId);
-        }, 10000);
+        }, 2000);
         
         return () => clearInterval(interval);
     }, [busId]);
@@ -57,7 +62,30 @@ export default function ConductorDashboard() {
             };
             setMyBus(busData);
 
-            // 2. Reverse Geocode
+            if (busData.currentStatus) {
+                // Check Risk Score (From Simulator)
+                const currentRisk = busData.currentStatus.riskScore || 0;
+                setRiskScore(currentRisk);
+
+                // Audio Alert Logic
+                if (currentRisk > 0.7) {
+                    if (!isCriticalRef.current) {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                        Speech.speak("Critical Warning! Rollover Risk High! Slow Down!", { rate: 1.1, pitch: 1.2 });
+                        isCriticalRef.current = true;
+                    }
+                } else if (currentRisk > 0.5) {
+                   if (!isCriticalRef.current) {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                        Speech.speak("Warning. Approaching unsafe speed.", { rate: 1.1 });
+                        isCriticalRef.current = true; // Debounce
+                   }
+                } else {
+                    isCriticalRef.current = false; // Reset when safe
+                }
+            }
+            
+            // 2. Reverse Geocode (continued)
             if (busData.currentStatus?.gps) {
                 const { lat, lon } = busData.currentStatus.gps;
                 try {
@@ -176,6 +204,30 @@ export default function ConductorDashboard() {
                      </Button>
                 </View>
             </View>
+
+            {/* REAL-TIME SIMULATION ALERT OVERLAY */}
+            {riskScore > 0.4 && (
+                 <Card style={{ 
+                     backgroundColor: riskScore > 0.7 ? '#ef4444' : '#f97316', 
+                     marginBottom: 16,
+                     borderWidth: 0
+                 }}>
+                      <View style={{ alignItems: 'center', padding: 12 }}>
+                           <Ionicons name="warning" size={48} color="white" />
+                           <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 24, marginVertical: 8 }}>
+                               {riskScore > 0.7 ? "CRITICAL RISK" : "WARNING"}
+                           </Text>
+                           <Text style={{ color: 'white', fontSize: 16, textAlign: 'center', opacity: 0.9 }}>
+                               Stability: {Math.max(0, 100 - (riskScore * 100)).toFixed(0)}%
+                           </Text>
+                           <View style={{ marginTop: 8, backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 }}>
+                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
+                                    SLOW DOWN IMMEDIATELY
+                                </Text>
+                           </View>
+                      </View>
+                 </Card>
+            )}
 
             {/* Main Bus Card (Dark Theme like Frontend) */}
             <Card style={styles.mainCard}>

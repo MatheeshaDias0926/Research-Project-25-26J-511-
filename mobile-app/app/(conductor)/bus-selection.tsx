@@ -6,7 +6,7 @@ import { Card } from "../../src/components/ui/Card";
 import { Input } from "../../src/components/ui/Input";
 import { Colors } from "../../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "../../src/utils/storage";
 
 export default function BusSelectionScreen() {
     const [buses, setBuses] = useState<any[]>([]);
@@ -28,25 +28,25 @@ export default function BusSelectionScreen() {
     const handleSelectBus = async (bus: any) => {
         // Persist selection locally for this session
         if (bus.id || bus._id) {
-            await SecureStore.setItemAsync("currentBusId", String(bus.id || bus._id));
+            await storage.setItem("currentBusId", String(bus.id || bus._id));
         }
-        if (bus.busNumber) {
-            await SecureStore.setItemAsync("currentBusNumber", String(bus.busNumber));
+        if (bus.licensePlate) {
+            await storage.setItem("currentBusPlate", String(bus.licensePlate));
         }
         
         router.replace("/(conductor)/dashboard");
     };
 
     const filteredBuses = buses.filter(b => 
-        (b.busNumber?.toLowerCase() || "").includes(search.toLowerCase()) ||
-        (b.routeNumber?.toLowerCase() || "").includes(search.toLowerCase())
+        (b.licensePlate?.toLowerCase() || "").includes(search.toLowerCase()) ||
+        (b.routeId?.toLowerCase() || "").includes(search.toLowerCase())
     );
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Input 
-                    placeholder="Search bus number or route..." 
+                    placeholder="Search license plate or route..." 
                     value={search} 
                     onChangeText={setSearch} 
                     style={{ marginBottom: 0 }}
@@ -64,8 +64,8 @@ export default function BusSelectionScreen() {
                                 <Ionicons name="bus" size={24} color={Colors.iconColor} />
                             </View>
                             <View style={styles.info}>
-                                <Text style={styles.busNumber}>{item.busNumber}</Text>
-                                <Text style={styles.route}>{item.routeNumber} - {item.route}</Text>
+                                <Text style={styles.busNumber}>{item.licensePlate}</Text>
+                                <Text style={styles.route}>Route: {item.routeId}</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
                         </Card>

@@ -6,7 +6,7 @@ import { Card } from "../../src/components/ui/Card";
 import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Colors } from "../../constants/Colors";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "../../src/utils/storage";
 
 export default function MaintenanceReportScreen() {
     const router = useRouter();
@@ -16,7 +16,7 @@ export default function MaintenanceReportScreen() {
     const [error, setError] = useState("");
 
     const handleSubmit = async () => {
-        const busId = await SecureStore.getItemAsync("currentBusId");
+        const busId = await storage.getItem("currentBusId");
         
         if (!subject || !description) {
             setError("Subject and description are required");
@@ -32,7 +32,7 @@ export default function MaintenanceReportScreen() {
         try {
             await maintenanceApi.create({
                 busId,
-                subject,
+                issue: subject,
                 description,
                 timestamp: new Date().toISOString(),
                 status: "Pending"

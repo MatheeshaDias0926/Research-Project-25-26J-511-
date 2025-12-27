@@ -230,19 +230,7 @@ const AuthorityScenarioSimulator = () => {
         fetchBuses();
     }, [setValue]);
 
-    const handleRetrain = async () => {
-        if (!confirm("Are you sure you want to retrain the model with the latest dataset?")) return;
-        
-        try {
-            // Call Python Service directly (via proxy)
-            const response = await axios.post("http://localhost:5001/retrain");
-            alert("Success: " + response.data.message);
-            console.log(response.data.logs);
-        } catch (error) {
-            console.error("Retraining failed", error);
-            alert("Retraining failed: " + (error.response?.data?.error || error.message));
-        }
-    };
+
 
     // --- SEARCH LOCATION ---
     const handleSearch = async (e) => {
@@ -374,12 +362,17 @@ const AuthorityScenarioSimulator = () => {
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
 
+    // Ref for Risk State (to access inside animation loop)
+    const currentRiskRef = useRef(null);
+    useEffect(() => { currentRiskRef.current = currentRisk; }, [currentRisk]);
+
     const sendTelemetry = (pos) => {
         const payload = {
             licensePlate: selectedBus, // Use selected bus
             speed: parseInt(getValues("speed")),
             currentOccupancy: parseInt(watch("seated")) + parseInt(watch("standing")),
             footboardStatus: watch("footboard") === "true",
+            riskScore: currentRiskRef.current ? currentRiskRef.current.risk_score : 0,
             gps: { lat: pos.lat, lon: pos.lng }
         };
         api.post("/iot/mock-data", payload).catch(err => console.error(err));
@@ -417,14 +410,6 @@ const AuthorityScenarioSimulator = () => {
                     <div style={{ padding: "8px 16px", background: "#e0e7ff", borderRadius: 8, fontSize: 13, color: "#3730a3" }}>
                          Latency: <strong>~20ms</strong>
                     </div>
-                    <Button 
-                        size="sm"
-                        variant="outline" 
-                        onClick={handleRetrain}
-                        style={{ height: 35, background: "#f8fafc", borderColor: "#cbd5e1", color: "#475569" }}
-                    >
-                        🔄 Retrain
-                    </Button>
                 </div>
             </div>
 
