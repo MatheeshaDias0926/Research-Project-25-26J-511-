@@ -302,31 +302,48 @@ const AuthorityScenarioSimulator = () => {
             
             setBusPosition(currentPos);
 
-            // --- DECOUPLED TELEMETRY (Every 2s) ---
-            if (time - lastTelemetryTime.current > 2000) {
+            // --- DECOUPLED TELEMETRY (Checking every 500ms for responsiveness) ---
+            if (time - lastTelemetryTime.current > 500) {
                 lastTelemetryTime.current = time;
                 sendTelemetry(currentPos);
                 
-                // ML Calculation (Reuse existing logic or call standard function)
-                const radius = calculateRadius(
+                // 1. Current Risk Calculation
+                const currentRadius = calculateRadius(
                     routeCoords[Math.max(0, segmentIndex-1)], 
                     routeCoords[segmentIndex], 
                     routeCoords[Math.min(routeCoords.length-1, segmentIndex+1)]
                 );
                 
+                // 2. Lookahead Risk (Check 5-10 points ahead ≈ 50-100m depending on road data)
+                const lookaheadIndex = Math.min(routeCoords.length-1, segmentIndex + 8);
+                const futureRadius = calculateRadius(
+                    routeCoords[Math.max(0, lookaheadIndex-1)], 
+                    routeCoords[lookaheadIndex], 
+                    routeCoords[Math.min(routeCoords.length-1, lookaheadIndex+1)]
+                );
+
                 const mlParams = {
                     n_seated: parseInt(getValues("seated")),
                     n_standing: parseInt(getValues("standing")),
                     speed_kmh: parseInt(getValues("speed")),
-                    radius_m: radius,
+                    radius_m: currentRadius,
                     is_wet: getValues("weather") === "wet" ? 1 : 0,
                     gradient_deg: 0 
                 };
+                
+                // For Lookahead
+                const mlParamsFuture = { ...mlParams, radius_m: futureRadius };
 
-                // Call ML
-                api.post("/bus/predict-safety", mlParams).then(res => {
-                    const newData = res.data;
+                // Call ML (Promise.all for parallel check)
+                Promise.all([
+                    api.post("/bus/predict-safety", mlParams),
+                    api.post("/bus/predict-safety", mlParamsFuture)
+                ]).then(([resCurrent, resFuture]) => {
+                    const newData = resCurrent.data;
+                    const futureData = resFuture.data;
+                    
                     setCurrentRisk(newData);
+                    setFutureRisk(futureData);
 
                     // Update History
                     setRiskHistory(prev => [...prev, {
@@ -335,16 +352,23 @@ const AuthorityScenarioSimulator = () => {
                         speed: parseInt(getValues("speed")) 
                     }].slice(-30));
 
-                    // Log Incident
-                    if (newData.risk_score > 0.7) {
+                    // Log Incident (Trigger if Current OR Future risk is high for early warning)
+                    const relevantRisk = Math.max(newData.risk_score, futureData.risk_score);
+                    
+                    if (relevantRisk > 0.7) {
                         setIncidentLog(prev => {
                             const lastLog = prev[0];
                             const now = new Date().toLocaleTimeString();
                             if (lastLog && lastLog.time === now) return prev;
+                            
+                            const isPrediction = futureData.risk_score > newData.risk_score;
+                            
                             return [{
                                 time: now,
-                                message: `Critical Risk Detected (Score: ${newData.risk_score.toFixed(2)})`,
-                                details: `Speed: ${getValues("speed")} km/h, Radius: ${Math.round(radius)}m`
+                                message: isPrediction ? `⚠️ PREDICTED DANGER AHEAD` : `CRITICAL RISK DETECTED`,
+                                details: isPrediction 
+                                    ? `Approaching sharp bend (Risk: ${futureData.risk_score.toFixed(2)})`
+                                    : `Current Risk: ${newData.risk_score.toFixed(2)}`
                             }, ...prev].slice(0, 10);
                         });
                     }
