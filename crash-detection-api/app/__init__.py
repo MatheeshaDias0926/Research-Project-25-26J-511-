@@ -1,0 +1,1 @@
+# FastAPI Crash Detection Application
