@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm start)",
+      "Bash(mkdir:*)",
+      "Bash(copy \"d:\\\\SLIIT\\\\RP\\\\Research-Project-25-26J-511-\\\\crash_detection_model\\\\crash_detection_model.h5\" \"d:\\\\SLIIT\\\\RP\\\\Research-Project-25-26J-511-\\\\crash-detection-api\\\\crash_detection_model.h5\")",
+      "Bash(pip install:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(python run.py:*)",
+      "Bash(curl:*)",
+      "Bash(python inspect_model.py:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(python:*)"
+    ]
+  }
+}
