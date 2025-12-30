@@ -1,4 +1,5 @@
 const Crash = require('../models/Crash');
+const Bus = require('../models/Bus');
 const alertService = require('../services/alertService');
 const severityClassifier = require('../services/severityClassifier');
 const notificationService = require('../services/notificationService');
@@ -116,11 +117,13 @@ const getSystemStats = async (req, res) => {
       updated_at: { $gte: today }
     });
 
+    const totalBuses = await Bus.countDocuments();
+
     res.json({
       activeCrashes,
       pendingResponses,
       resolvedToday,
-      totalBuses: 0 // TODO: Get from Bus collection
+      totalBuses
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

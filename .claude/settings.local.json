@@ -19,7 +19,12 @@
       "Bash(taskkill:*)",
       "Bash(powershell -Command \"Stop-Process -Id 7228 -Force\")",
       "Bash(node -e:*)",
-      "Bash(powershell -Command \"Stop-Process -Id 30708 -Force\")"
+      "Bash(powershell -Command \"Stop-Process -Id 30708 -Force\")",
+      "Bash(powershell -Command \"Stop-Process -Id 18840 -Force\")",
+      "Bash(node server.js:*)",
+      "Bash(timeout:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(ipconfig /flushdns)"
     ]
   }
 }
