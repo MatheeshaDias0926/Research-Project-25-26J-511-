@@ -1,0 +1,430 @@
+/* Emergency-First UI Styling for Crash Management System */
+
+/* Import in component CSS files or App.css */
+
+/* Color Palette */
+:root {
+  --color-critical: #dc2626;
+  --color-high: #ea580c;
+  --color-medium: #f59e0b;
+  --color-low: #3b82f6;
+  --color-active: #dc2626;
+  --color-in-progress: #ea580c;
+  --color-resolved: #16a34a;
+  --color-false-positive: #6b7280;
+  --color-bg: #f9fafb;
+  --color-card: #ffffff;
+  --color-text: #111827;
+  --color-text-light: #6b7280;
+}
+
+/* Common Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Navbar */
+.navbar {
+  background-color: var(--color-text);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.navbar-brand h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.emergency-badge {
+  background-color: var(--color-critical);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-role {
+  background-color: var(--color-high);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.user-name {
+  font-weight: 500;
+}
+
+.btn-logout {
+  background-color: #4b5563;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-logout:hover {
+  background-color: #374151;
+}
+
+/* Dashboard Layout */
+.dashboard-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-body {
+  display: flex;
+  flex: 1;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: var(--color-card);
+  border-right: 1px solid #e5e7eb;
+  padding: 1rem 0;
+}
+
+.sidebar-menu {
+  list-style: none;
+}
+
+.sidebar-menu a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  color: var(--color-text);
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.sidebar-menu a:hover {
+  background-color: var(--color-bg);
+}
+
+.sidebar-menu a.active {
+  background-color: var(--color-high);
+  color: white;
+  font-weight: 600;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+/* Emergency Indicator */
+.emergency-indicator {
+  margin-bottom: 2rem;
+}
+
+.pulsing-red-bar {
+  height: 4px;
+  background-color: var(--color-critical);
+  animation: pulseBar 1.5s infinite;
+}
+
+@keyframes pulseBar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.emergency-text {
+  background-color: var(--color-critical);
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-badge.severity { }
+.status-badge.status { }
+
+/* Overview Cards */
+.overview-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background-color: var(--color-card);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-left: 4px solid;
+}
+
+.stat-card.red { border-left-color: var(--color-critical); }
+.stat-card.orange { border-left-color: var(--color-high); }
+.stat-card.green { border-left-color: var(--color-resolved); }
+.stat-card.blue { border-left-color: var(--color-low); }
+
+.stat-card h3 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.stat-card p {
+  color: var(--color-text-light);
+  font-size: 0.875rem;
+}
+
+/* Tables */
+.crash-table {
+  width: 100%;
+  background-color: var(--color-card);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.crash-table thead {
+  background-color: #f3f4f6;
+}
+
+.crash-table th,
+.crash-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.crash-table th {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-text-light);
+}
+
+.crash-table tr {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.crash-table tr:hover {
+  background-color: var(--color-bg);
+}
+
+.row-emergency {
+  background-color: #fee2e2 !important;
+}
+
+/* Login Page */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-card {
+  background-color: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+  min-width: 400px;
+}
+
+.login-card h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.login-card h2 {
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+  text-align: center;
+  color: var(--color-text-light);
+}
+
+.error-banner {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.login-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.login-card input {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.login-card input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+}
+
+.btn-login {
+  background-color: #667eea;
+  color: white;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-login:hover {
+  background-color: #5568d3;
+}
+
+.btn-login:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Alert Cards */
+.alerts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.alert-card {
+  background-color: var(--color-card);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-left: 4px solid;
+}
+
+.alert-card.critical { border-left-color: var(--color-critical); }
+.alert-card.high { border-left-color: var(--color-high); }
+.alert-card.medium { border-left-color: var(--color-medium); }
+.alert-card.low { border-left-color: var(--color-low); }
+
+.alert-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.alert-card h3 {
+  font-size: 1.25rem;
+  margin: 0.5rem 0;
+}
+
+.alert-card .location {
+  color: var(--color-text-light);
+  margin: 0.5rem 0;
+}
+
+.btn-respond {
+  width: 100%;
+  background-color: var(--color-critical);
+  color: white;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background-color 0.2s;
+}
+
+.btn-respond:hover {
+  background-color: #b91c1c;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.spinner {
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+
+  .overview-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .login-card {
+    min-width: auto;
+    margin: 1rem;
+  }
+}

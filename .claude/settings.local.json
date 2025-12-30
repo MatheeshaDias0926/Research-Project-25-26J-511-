@@ -10,7 +10,16 @@
       "Bash(curl:*)",
       "Bash(python inspect_model.py:*)",
       "Bash(python -m json.tool:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run seed:*)",
+      "Bash(node drop-old-indexes.js:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 7228 -Force\")",
+      "Bash(node -e:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 30708 -Force\")"
     ]
   }
 }

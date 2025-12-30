@@ -5,6 +5,8 @@ import {
   Navigate,
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { EmergencyProvider } from "./context/EmergencyContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import Layout from "./components/layout/Layout";
 import PrivateRoutes from "./components/layout/PrivateRoutes";
 import RoleRedirect from "./components/layout/RoleRedirect";
@@ -34,6 +36,25 @@ import SafetyTheories from "./pages/authority/SafetyTheories";
 import ConductorDashboard from "./pages/conductor/ConductorDashboard";
 import MaintenanceReport from "./pages/conductor/MaintenanceReport";
 
+// Crash Management Pages
+import LoginPage from "./pages/LoginPage";
+import DashboardLayout from "./layouts/DashboardLayout";
+import AdminDashboard from "./pages/AdminDashboard";
+import PoliceDashboard from "./pages/PoliceDashboard";
+import HospitalDashboard from "./pages/HospitalDashboard";
+import MinistryDashboard from "./pages/MinistryDashboard";
+import BusOwnerDashboard from "./pages/BusOwnerDashboard";
+
+// Admin Management Pages
+import BusOwnersPage from "./pages/admin/BusOwnersPage";
+import DriversPage from "./pages/admin/DriversPage";
+import ConductorsPage from "./pages/admin/ConductorsPage";
+import PoliceStationsPage from "./pages/admin/PoliceStationsPage";
+import HospitalsPage from "./pages/admin/HospitalsPage";
+import CrashesPage from "./pages/admin/CrashesPage";
+import BusesPage from "./pages/admin/BusesPage";
+import SettingsPage from "./pages/admin/SettingsPage";
+
 // Placeholders for now
 const NotFound = () => (
   <div style={{ padding: 32, textAlign: "center", fontSize: 20 }}>
@@ -50,10 +71,13 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+        <EmergencyProvider>
+          <NotificationProvider>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/crash-login" element={<LoginPage />} />
+              <Route path="/register" element={<Register />} />
 
           {/* Protected Routes */}
           <Route element={<Layout />}>
@@ -106,8 +130,35 @@ function App() {
             <Route path="/" element={<RoleRedirect />} />
           </Route>
 
+          {/* Crash Management System Routes */}
+          <Route path="/admin" element={<DashboardLayout />}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="crashes" element={<CrashesPage />} />
+            <Route path="buses" element={<BusesPage />} />
+            <Route path="bus-owners" element={<BusOwnersPage />} />
+            <Route path="drivers" element={<DriversPage />} />
+            <Route path="conductors" element={<ConductorsPage />} />
+            <Route path="police-stations" element={<PoliceStationsPage />} />
+            <Route path="hospitals" element={<HospitalsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+          <Route path="/police" element={<DashboardLayout />}>
+            <Route path="dashboard" element={<PoliceDashboard />} />
+          </Route>
+          <Route path="/hospital" element={<DashboardLayout />}>
+            <Route path="dashboard" element={<HospitalDashboard />} />
+          </Route>
+          <Route path="/ministry" element={<DashboardLayout />}>
+            <Route path="dashboard" element={<MinistryDashboard />} />
+          </Route>
+          <Route path="/busowner" element={<DashboardLayout />}>
+            <Route path="dashboard" element={<BusOwnerDashboard />} />
+          </Route>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
+          </NotificationProvider>
+        </EmergencyProvider>
       </AuthProvider>
     </Router>
   );
