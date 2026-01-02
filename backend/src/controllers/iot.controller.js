@@ -56,7 +56,6 @@ export const ingestMockData = async (req, res, next) => {
     bus.currentStatus = newLog._id;
     await bus.save();
 
-    // 4. **Service Layer:** Check for violations
     // This abstracts the violation logic from the controller
     await checkAndLogViolation(bus._id, newLog);
 
