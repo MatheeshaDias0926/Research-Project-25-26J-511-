@@ -15,8 +15,7 @@ app.use(express.json());
 const upload = multer({ dest: 'uploads/' });
 
 // 1. DATABASE CONFIG (MongoDB Atlas)
-// Replace <password> and YOUR_CLUSTER address
-const dbURI = 'mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.mongodb.net/driverDMS?retryWrites=true&w=majority';
+const dbURI = 'mongodb+srv://sadantharu:12345@cluster0.x9drcae.mongodb.net/?appName=Cluster0';
 mongoose.connect(dbURI)
     .then(() => console.log("Connected to MongoDB Atlas Successfully ✅"))
     .catch(err => console.error("MongoDB Atlas Error ❌:", err));
