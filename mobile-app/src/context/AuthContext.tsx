@@ -117,6 +117,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     await storage.deleteItem("userToken");
     await storage.deleteItem("userData");
+    await storage.deleteItem("currentBusId");
+    await storage.deleteItem("currentBusNumber");
     delete client.defaults.headers.common["Authorization"];
 
     setAuthState({
