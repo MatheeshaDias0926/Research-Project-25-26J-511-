@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
-import { BookOpen, Calculator, Activity, AlertTriangle, ArrowRight, ShieldCheck, CloudRain, Sun, Zap, Brain, Server, ClipboardCheck, Target } from "lucide-react";
+import { BookOpen, Calculator, Activity, AlertTriangle, ArrowRight, ShieldCheck, CloudRain, Sun, Zap, Brain, Server, ClipboardCheck, Target, School } from "lucide-react";
 
 const SafetyTheories = () => {
   const [activeTab, setActiveTab] = useState("rollover");
@@ -12,6 +12,7 @@ const SafetyTheories = () => {
     { id: "constants", label: "Constants & Thresholds", icon: BookOpen },
     { id: "ai_integration", label: "Real-time AI Integration", icon: Zap },
     { id: "verification", label: "Model Verification", icon: ClipboardCheck },
+    { id: "training_details", label: "Model Training Details", icon: School },
   ];
 
   return (
@@ -728,6 +729,132 @@ const SafetyTheories = () => {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+        )}
+        {activeTab === "training_details" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                             <School className="text-indigo-600" size={28} />
+                             Model Training & Data Strategy
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p style={{ color: "#475569", marginBottom: "32px", lineHeight: "1.6" }}>
+                           Detailed technical breakdown of how the ML model consumes data, learns from the physics engine, and our strategy for ensuring immediate reliability.
+                        </p>
+
+                        {/* 1. Teacher-Student Process */}
+                         <div style={{ marginBottom: "32px" }}>
+                             <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1e293b", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                 <span style={{ background: "#e0e7ff", color: "#3730a3", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>1</span>
+                                 Teacher-Student Learning Process
+                             </h3>
+                             <div style={{ background: "#f8fafc", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                 <p style={{ marginBottom: "16px", color: "#475569" }}>
+                                    When you run a simulation on the <strong>Safety & Physics Analysis</strong> page, the following process occurs:
+                                 </p>
+                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+                                     {/* Stage 1 */}
+                                     <div style={{ background: "#fff", padding: "16px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+                                         <div style={{ fontWeight: "700", color: "#334155", marginBottom: "8px" }}>A. The "Teacher" Calculates</div>
+                                         <p style={{ fontSize: "13px", color: "#64748b" }}>
+                                             The system uses the <strong>Physics Engine</strong> to solve real equations (e.g., Lateral Force = v²/r) and get the <em style={{color: "#166534"}}>exact result</em>.
+                                         </p>
+                                         <div style={{ marginTop: "8px", fontSize: "12px", color: "#1e293b", fontWeight: "600", background: "#f1f5f9", padding: "4px 8px", borderRadius: "4px" }}>
+                                             Result: "Critical Risk, SSF: 0.65"
+                                         </div>
+                                     </div>
+                                     {/* Stage 2 */}
+                                     <div style={{ background: "#fff", padding: "16px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+                                         <div style={{ fontWeight: "700", color: "#334155", marginBottom: "8px" }}>B. Data is Captured</div>
+                                         <p style={{ fontSize: "13px", color: "#64748b" }}>
+                                             The backend automatically saves the input scenarios and the calculated result into the <strong>MongoDB Database</strong>.
+                                         </p>
+                                         <div style={{ marginTop: "8px", fontSize: "12px", color: "#1e293b", fontWeight: "600", background: "#f1f5f9", padding: "4px 8px", borderRadius: "4px" }}>
+                                             Label: Speed 50 + Curve 30m = Critical
+                                         </div>
+                                     </div>
+                                      {/* Stage 3 */}
+                                     <div style={{ background: "#fff", padding: "16px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+                                         <div style={{ fontWeight: "700", color: "#334155", marginBottom: "8px" }}>C. The "Student" Learns</div>
+                                         <p style={{ fontSize: "13px", color: "#64748b" }}>
+                                             The <strong>ML Model</strong> studies these examples. Instead of solving math, it learns the pattern: <em>"High Speed + Sharp Curve = Danger"</em>.
+                                         </p>
+                                          <div style={{ marginTop: "8px", fontSize: "12px", color: "#2563eb", fontWeight: "600", background: "#eff6ff", padding: "4px 8px", borderRadius: "4px" }}>
+                                             Benefit: Instant Prediction ({'<'}20ms)
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+
+                         {/* 2. Random Forest Mechanics */}
+                         <div style={{ marginBottom: "32px" }}>
+                             <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1e293b", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                 <span style={{ background: "#dcfce7", color: "#14532d", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>2</span>
+                                 How the Random Forest "Consumes" Data
+                             </h3>
+                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                                 <div style={{ background: "#f0f9ff", padding: "24px", borderRadius: "12px", border: "1px solid #bae6fd" }}>
+                                     <h4 style={{ fontWeight: "600", color: "#0369a1", marginBottom: "12px" }}>Step 1: Splitting Features & Targets</h4>
+                                     <ul style={{ listStyle: "none", padding: 0, fontSize: "14px", color: "#334155" }}>
+                                         <li style={{ marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                             <span style={{ fontWeight: "700" }}>Features (Inputs):</span> Speed, Curve Radius, Standing count, Rain.
+                                         </li>
+                                         <li style={{display: "flex", alignItems: "center", gap: "8px" }}>
+                                             <span style={{ fontWeight: "700" }}>Targets (Outputs):</span> Rollover Risk Score, Stopping Distance.
+                                         </li>
+                                     </ul>
+                                 </div>
+                                  <div style={{ background: "#f0fdf4", padding: "24px", borderRadius: "12px", border: "1px solid #bbf7d0" }}>
+                                     <h4 style={{ fontWeight: "600", color: "#15803d", marginBottom: "12px" }}>Step 2: Building 100 Decision Trees</h4>
+                                     <p style={{ fontSize: "14px", color: "#334155", fontStyle: "italic" }}>
+                                        "Tree #1: Is speed {'>'} 60? If yes, is road Wet? -> Critical."
+                                        <br/>
+                                        "Tree #2: Is standing {'>'} 40? If yes, is curve {'<'} 30m? -> Critical."
+                                     </p>
+                                     <div style={{ marginTop: "12px", fontSize: "12px", color: "#166534", fontWeight: "700" }}>
+                                         Final Result = Average of all 100 Trees (Ensemble)
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+
+                         {/* 3. Data Strategy (Cold Start) */}
+                         <div>
+                             <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1e293b", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                 <span style={{ background: "#fff7ed", color: "#c2410c", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>3</span>
+                                 Data Strategy: The "Cold Start" Problem
+                             </h3>
+                             <div style={{ background: "#fff", border: "1px solid #f97316", borderRadius: "12px", overflow: "hidden" }}>
+                                 <div style={{ background: "#fff7ed", padding: "16px 24px", borderBottom: "1px solid #ffedd5" }}>
+                                     <span style={{ fontWeight: "700", color: "#9a3412" }}>Why Synthetic Data?</span>
+                                 </div>
+                                 <div style={{ padding: "24px", fontSize: "14px", color: "#475569", lineHeight: "1.6" }}>
+                                     <p style={{ marginBottom: "16px" }}>
+                                         Currently, the model's training script (<code>train_safety_model.py</code>) generates <strong>5,000 synthetic examples</strong> on the fly using the physics formulas. 
+                                         It deliberately ignores the MongoDB user data for now.
+                                     </p>
+                                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                                         <div>
+                                             <div style={{ fontWeight: "600", color: "#1e293b", marginBottom: "4px" }}>🚫 The Problem</div>
+                                             If we waited for users to manually run 5,000 simulations, the model would be "dumb" and untrained for weeks.
+                                         </div>
+                                         <div>
+                                             <div style={{ fontWeight: "600", color: "#1e293b", marginBottom: "4px" }}>✅ The Solution</div>
+                                             Generating synthetic data ensures the model is <strong>expertly calibrated</strong> to physics laws from Day 1.
+                                         </div>
+                                     </div>
+                                     <div style={{ marginTop: "24px", padding: "16px", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+                                         <strong style={{ color: "#334155" }}>Future Plan:</strong> The data stored in MongoDB isn't wasted. It will be used for <strong>Validation</strong> (checking if users find edge cases) and future <strong>Fine-tuning</strong> (adding human-verified scenarios to the synthetic mix).
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+                    </CardContent>
+                 </Card>
             </div>
         )}
       </div>
