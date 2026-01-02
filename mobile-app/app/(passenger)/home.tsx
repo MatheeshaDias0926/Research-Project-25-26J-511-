@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Platform, Linking } from "react-native";
 import { useRouter, useNavigation } from "expo-router";
 import { busApi } from "../../src/api/bus";
 import { Card } from "../../src/components/ui/Card";
@@ -69,8 +69,18 @@ export default function PassengerHome() {
                     <Text style={styles.pageTitle}>Live Bus Tracker</Text>
                     <Text style={styles.pageSubtitle}>Real-time updates</Text>
                 </View>
-                <View style={styles.countBadge}>
-                    <Text style={styles.countText}>{buses.length} Active</Text>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                     <TouchableOpacity 
+                        style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                        onPress={() => Linking.openURL('tel:119')}
+                     >
+                        <Ionicons name="call" size={16} color="#dc2626" />
+                        <Text style={{ color: '#dc2626', fontWeight: 'bold' }}>SOS</Text>
+                     </TouchableOpacity>
+                     
+                    <View style={styles.countBadge}>
+                        <Text style={styles.countText}>{buses.length} Active</Text>
+                    </View>
                 </View>
             </View>
 
@@ -164,6 +174,45 @@ export default function PassengerHome() {
                                     )}
                                 </View>
                             </View>
+
+                            {/* Dynamic Load Balancing Recommendation */}
+                            {occupancyLevel.label === "High" && (() => {
+                                // STRICT LOGIC: Find another bus on the SAME route (checking valid routeId only)
+                                const currentRouteId = bus.routeId ? String(bus.routeId).trim() : null;
+                                
+                                if (!currentRouteId) return null; // Logic safety
+
+                                const betterBus = buses.find(b => {
+                                    const bRoute = b.routeId ? String(b.routeId).trim() : null;
+                                    
+                                    // 1. Must be exact same route
+                                    if (bRoute !== currentRouteId) return false;
+                                    
+                                    // 2. Must be a different bus
+                                    if (b._id === bus._id) return false;
+                                    
+                                    // 3. Must be significantly less crowded (< 50%)
+                                    const occupancy = b.currentStatus?.currentOccupancy || 0;
+                                    const cap = b.capacity || 55;
+                                    return occupancy < (cap * 0.5); 
+                                });
+                                
+                                if (betterBus) {
+                                    return (
+                                        <View style={{ marginHorizontal: 16, marginBottom: 16, backgroundColor: Colors.iconBackground, padding: 12, borderRadius: 8, flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                                            <Ionicons name="information-circle" size={24} color={Colors.primary} />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontWeight: 'bold', color: Colors.primary }}>Avoid Crowds!</Text>
+                                                <Text style={{ fontSize: 12, color: Colors.text }}>
+                                                    Bus {betterBus.licensePlate || betterBus.busNumber} is on this route ({currentRouteId}) and has seats available.
+                                                </Text>
+                                            </View>
+                                            <Ionicons name="arrow-forward-circle" size={24} color={Colors.primary} />
+                                        </View>
+                                    );
+                                }
+                                return null;
+                            })()}
 
                             {/* Footer Actions */}
                             <View style={styles.footer}>

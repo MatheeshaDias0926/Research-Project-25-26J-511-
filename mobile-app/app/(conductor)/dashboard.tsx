@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Platform, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Platform, Alert, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import axios from "axios";
 import { busApi } from "../../src/api/bus";
@@ -11,15 +11,23 @@ import { storage } from "../../src/utils/storage";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 
+
+
 export default function ConductorDashboard() {
     const [busId, setBusId] = useState<string | null>(null);
     const [myBus, setMyBus] = useState<any>(null);
     const [violations, setViolations] = useState<any[]>([]);
+    
+    // Restored State Variables
     const [logs, setLogs] = useState<any[]>([]);
     const [locationName, setLocationName] = useState<string>("Unknown Location");
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(new Date());
+    
+
+    
+    // Live Simulator Data
     
     // Live Simulator Data
     const [riskScore, setRiskScore] = useState(0);
@@ -190,6 +198,13 @@ export default function ConductorDashboard() {
                 <View style={styles.headerActions}>
                      <Button 
                          variant="outline" 
+                         onPress={() => Linking.openURL('tel:911')}
+                         style={[styles.smallBtn, { borderColor: '#ef4444', backgroundColor: '#fef2f2' }]}
+                     >
+                         <Ionicons name="call" size={16} color="#dc2626" />
+                     </Button>
+                     <Button 
+                         variant="outline" 
                          onPress={() => router.replace("/(conductor)/bus-selection")}
                          style={styles.smallBtn}
                      >
@@ -204,6 +219,8 @@ export default function ConductorDashboard() {
                      </Button>
                 </View>
             </View>
+
+
 
             {/* REAL-TIME SIMULATION ALERT OVERLAY */}
             {riskScore > 0.4 && (
