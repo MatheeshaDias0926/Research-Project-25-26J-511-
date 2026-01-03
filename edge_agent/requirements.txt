@@ -1,0 +1,9 @@
+opencv-python
+face_recognition
+requests
+numpy
+
+# For Raspberry Pi / lightweight installs, consider using the minimal set:
+# numpy
+# opencv-python
+# and use the Haar-cascade fallback (see README) to avoid dlib/face_recognition.
