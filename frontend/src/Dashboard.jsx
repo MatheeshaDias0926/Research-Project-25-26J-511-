@@ -7,15 +7,17 @@ const Dashboard = ({ deviceId }) => {
     const [status, setStatus] = useState("Normal");
     const [history, setHistory] = useState([]);
 
+    // inside the Dashboard component
     useEffect(() => {
-        // Listen for specific device alerts
-        socket.on(`alert-${deviceId}`, (data) => {
-            setStatus(data.event);
-            setHistory(prev => [{ ...data, time: new Date().toLocaleTimeString() }, ...prev]);
+        // Listen for the specific device ID
+        socket.on(`alert-BUS_A12`, (data) => {
+        console.log("Alert Received:", data); // Check your browser console (F12)
+        setDeviceStatus("Online ✅"); // Change status to Online
+        setIncidents(prev => [data, ...prev]);
         });
 
-        return () => socket.off(`alert-${deviceId}`);
-    }, [deviceId]);
+        return () => socket.off(`alert-BUS_A12`);
+    }, []);
 
     return (
         <div className="p-6">

@@ -29,7 +29,7 @@ const Incident = mongoose.model('Incident', {
 
 // 2. GOOGLE DRIVE CONFIG
 const SERVICE_ACCOUNT_PATH = path.join(__dirname, 'service-account.json');
-const PARENT_FOLDER_ID = 'YOUR_GOOGLE_DRIVE_FOLDER_ID'; 
+const PARENT_FOLDER_ID = '1KjXGgCgdRCdVkAt2j7cyoJhKE9DzauWg'; 
 
 const auth = new google.auth.GoogleAuth({
     keyFile: SERVICE_ACCOUNT_PATH,
