@@ -22,9 +22,9 @@ async function deviceAuthenticate(req, res) {
 
 async function sendVerification(req, res) {
   try {
-    // Accept multipart (image) or JSON
-    const device = req.device; // from deviceAuth middleware
+    const device = req.device; // From deviceAuth middleware
     const { driverId, result, details } = req.body;
+    
     let imageResult = null;
     if (req.file && req.file.buffer) {
       imageResult = await uploadBufferToCloudinary(req.file.buffer, 'verifications');
@@ -32,12 +32,12 @@ async function sendVerification(req, res) {
 
     const log = await DetectionLog.create({
       deviceId: device.deviceId,
-      device: device._id,
+      device: device._id, // This links the log to the device, which is linked to the User
       driver: driverId || null,
-      fatigueStatus: result || 'unknown',
-      distractionType: details && details.distractionType ? details.distractionType : null,
-      imageUrl: imageResult ? imageResult.secure_url : null,
-      cloudinaryId: imageResult ? imageResult.public_id : null,
+      fatigueStatus: result || 'none',
+      distractionType: details?.distractionType || null,
+      imageUrl: imageResult?.secure_url || null,
+      cloudinaryId: imageResult?.public_id || null,
       details: details || {},
       timestamp: new Date(),
     });

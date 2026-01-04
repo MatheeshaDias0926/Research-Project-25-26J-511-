@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
+import RequireAuth from './components/RequireAuth'
 
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -23,11 +24,11 @@ export default function App() {
             <Route path="/" element={<Navigate to="/dashboard" />} />
             <Route path="/login" element={<Login />} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/devices" element={<DeviceRegistration />} />
-            <Route path="/buses" element={<BusManagement />} />
-            <Route path="/drivers" element={<DriverManagement />} />
-            <Route path="/logs" element={<Logs />} />
+            <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+            <Route path="/devices" element={<RequireAuth><DeviceRegistration /></RequireAuth>} />
+            <Route path="/buses" element={<RequireAuth><BusManagement /></RequireAuth>} />
+            <Route path="/drivers" element={<RequireAuth><DriverManagement /></RequireAuth>} />
+            <Route path="/logs" element={<RequireAuth><Logs /></RequireAuth>} />
           </Routes>
         </main>
       </div>

@@ -5,6 +5,8 @@ const jwtAuth = require('../middleware/jwtAuth');
 
 const router = express.Router();
 
+const { register, login } = require('../controllers/authController');
+
 router.get('/google', (req, res, next) => {
   const redirect = req.query.redirect || process.env.FRONTEND_URL || 'http://localhost:5173';
   // encode redirect in state so it's available in callback
@@ -23,5 +25,9 @@ router.get('/failure', (req, res) => res.status(401).json({ error: 'Authenticati
 router.get('/me', jwtAuth, (req, res) => {
   res.json({ user: req.user });
 });
+
+// Local auth
+router.post('/register', express.json(), register);
+router.post('/login', express.json(), login);
 
 module.exports = router;

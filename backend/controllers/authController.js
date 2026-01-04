@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const bcrypt = require('bcrypt');
 
 async function googleCallback(req, res) {
   try {
@@ -18,11 +19,43 @@ async function googleCallback(req, res) {
       return res.redirect(302, redirectUrl);
     }
 
-    // Otherwise return JSON
-    res.json({ token, user: { id: user._id, email: user.email, name: user.name, role: user.role } });
+    // Otherwise return JSON (include avatar when available)
+    res.json({ token, user: { id: user._id, email: user.email, name: user.name, role: user.role, avatar: user.avatar } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 }
 
-module.exports = { googleCallback };
+async function register(req, res) {
+  try {
+    const { name, email, password } = req.body;
+    if (!email || !password || !name) return res.status(400).json({ error: 'name, email and password required' });
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(409).json({ error: 'User already exists' });
+    const hash = await bcrypt.hash(password, 10);
+    const user = await User.create({ name, email, password: hash });
+    const payload = { id: user._id, email: user.email, role: user.role };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+async function login(req, res) {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+    const user = await User.findOne({ email });
+    if (!user || !user.password) return res.status(401).json({ error: 'Invalid credentials' });
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+    const payload = { id: user._id, email: user.email, role: user.role };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+module.exports = { googleCallback, register, login };

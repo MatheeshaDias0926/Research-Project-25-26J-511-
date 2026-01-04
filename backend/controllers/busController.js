@@ -1,10 +1,14 @@
-const Bus = require('../models/Bus');
+const Bus = require('../models/Bus.js');
 
 async function createBus(req, res) {
   try {
     const { busNumber, route, deviceId } = req.body;
-    if (!busNumber) return res.status(400).json({ error: 'busNumber required' });
-    const bus = await Bus.create({ busNumber, route, device: deviceId || null, createdBy: req.user._id });
+    const bus = await Bus.create({
+      busNumber,
+      route,
+      device: deviceId,
+      createdBy: req.user._id // Set owner
+    });
     res.json(bus);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -13,7 +17,8 @@ async function createBus(req, res) {
 
 async function listBuses(req, res) {
   try {
-    const buses = await Bus.find({ createdBy: req.user._id }).populate('device').populate('drivers');
+    // Only fetch buses created by the logged-in user
+    const buses = await Bus.find({ createdBy: req.user._id }).populate('device drivers');
     res.json(buses);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -24,10 +29,15 @@ async function assignDriver(req, res) {
   try {
     const { busId } = req.params;
     const { driverId } = req.body;
-    const bus = await Bus.findById(busId);
-    if (!bus) return res.status(404).json({ error: 'Bus not found' });
-    if (!bus.drivers.includes(driverId)) bus.drivers.push(driverId);
-    await bus.save();
+    
+    // Ensure the bus belongs to the user before updating
+    const bus = await Bus.findOneAndUpdate(
+      { _id: busId, createdBy: req.user._id }, 
+      { $addToSet: { drivers: driverId } },
+      { new: true }
+    );
+    
+    if (!bus) return res.status(404).json({ error: "Bus not found or unauthorized" });
     res.json(bus);
   } catch (err) {
     res.status(500).json({ error: err.message });

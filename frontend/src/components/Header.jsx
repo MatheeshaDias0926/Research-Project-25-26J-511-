@@ -1,13 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react'
+import api from '../api'
+import { useNavigate } from 'react-router-dom'
+import mannequin from '../assets/mannequin.svg'
 
 export default function Header(){
   const [open, setOpen] = useState(false)
   const ref = useRef()
+  const [me, setMe] = useState(null)
+  const navigate = useNavigate()
 
   useEffect(()=>{
     function onDoc(e){ if(ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('click', onDoc)
     return () => document.removeEventListener('click', onDoc)
+  },[])
+
+  useEffect(() => {
+    let mounted = true
+    async function fetchMe(){
+      try{
+        const r = await api.get('/auth/me')
+        if(mounted) setMe(r.data.user)
+      }catch(err){/* not logged in */}
+    }
+    fetchMe()
+    return ()=>{ mounted = false }
   },[])
 
   return (
@@ -34,8 +51,8 @@ export default function Header(){
 
             <div className="relative" ref={ref}>
               <button onClick={()=>setOpen(v=>!v)} className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-gray-50">
-                <img src={`https://i.pravatar.cc/40?u=edgedriver`} alt="avatar" className="w-8 h-8 rounded-full" />
-                <div className="hidden sm:block text-sm text-gray-700">Sadan</div>
+                <img src={me?.avatar || mannequin} alt="avatar" className="w-8 h-8 rounded-full object-cover" />
+                <div className="hidden sm:block text-sm text-gray-700">{me?.name || 'User'}</div>
               </button>
 
               {open && (
@@ -43,7 +60,7 @@ export default function Header(){
                   <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Profile</button>
                   <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Settings</button>
                   <div className="border-t" />
-                  <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50">Logout</button>
+                  <button onClick={() => { localStorage.removeItem('token'); navigate('/login') }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50">Logout</button>
                 </div>
               )}
             </div>

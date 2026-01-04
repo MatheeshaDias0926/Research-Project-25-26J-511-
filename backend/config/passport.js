@@ -16,15 +16,19 @@ passport.use(
         if (!user) {
           user = await User.findOne({ email });
         }
+        const photo = profile.photos && profile.photos[0] && profile.photos[0].value;
         if (!user) {
           user = await User.create({
             googleId: profile.id,
             email,
             name: profile.displayName,
+            avatar: photo,
           });
         } else {
           user.googleId = profile.id;
           user.name = user.name || profile.displayName;
+          // update avatar if available
+          if (photo) user.avatar = photo;
           await user.save();
         }
         return done(null, user);
