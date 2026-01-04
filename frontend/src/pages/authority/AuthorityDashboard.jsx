@@ -209,7 +209,7 @@ const AuthorityDashboard = () => {
             </div>
             <div
               style={{
-                padding: 12,
+                padding: 18,
                 background: "#bbf7d0",
                 borderRadius: 9999,
                 color: "#22c55e",
