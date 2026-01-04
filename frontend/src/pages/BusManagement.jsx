@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import api from '../api'
 
 export default function BusManagement() {
@@ -6,41 +6,36 @@ export default function BusManagement() {
   const [route, setRoute] = useState('')
   const [buses, setBuses] = useState([])
 
-  const createBus = async () => {
-    try {
-      await api.post('/buses', { busNumber, route })
-      fetchBuses()
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const fetchBuses = async () => {
-    try {
-      const r = await api.get('/buses')
-      setBuses(r.data)
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
   useEffect(() => {
-    fetchBuses()
+    api.get('/buses').then(r => setBuses(r.data))
   }, [])
 
+  const createBus = async () => {
+    await api.post('/buses', { busNumber, route })
+    setBusNumber('')
+    setRoute('')
+  }
+
   return (
-    <div style={{ padding: 24 }}>
-      <h2>Buses</h2>
-      <div>
-        <input placeholder="Bus Number" value={busNumber} onChange={(e) => setBusNumber(e.target.value)} />
-        <input placeholder="Route" value={route} onChange={(e) => setRoute(e.target.value)} />
-        <button onClick={createBus}>Create Bus</button>
+    <div className="max-w-5xl mx-auto space-y-6">
+      <h2 className="text-2xl font-bold text-white">Bus Management</h2>
+
+      <div className="card grid grid-cols-1 md:grid-cols-3 gap-4">
+        <input className="input" placeholder="Bus Number" value={busNumber} onChange={e => setBusNumber(e.target.value)} />
+        <input className="input" placeholder="Route" value={route} onChange={e => setRoute(e.target.value)} />
+        <button className="btn-primary" onClick={createBus}>Add Bus</button>
       </div>
-      <ul>
-        {buses.map((b) => (
-          <li key={b._id}>{b.busNumber} — {b.route}</li>
-        ))}
-      </ul>
+
+      <div className="card">
+        <ul className="space-y-2">
+          {buses.map(b => (
+            <li key={b._id} className="flex justify-between border-b pb-2">
+              <span>{b.busNumber}</span>
+              <span className="text-gray-500">{b.route}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }
