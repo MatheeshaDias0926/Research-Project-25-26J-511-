@@ -6,17 +6,19 @@ const { uploadBufferToCloudinary } = require('../controllers/uploadController');
 
 const router = express.Router();
 
-// Create driver (with optional image)
-router.post('/', jwtAuth, upload.single('image'), async (req, res) => {
+// Create driver (with optional images)
+router.post('/', jwtAuth, upload.array('images'), async (req, res) => {
   try {
     console.log('Create driver request body:', req.body);
-    if (req.file) console.log('Received file:', { originalname: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype });
+    if (req.files && req.files.length) console.log('Received files:', req.files.map(f => ({ originalname: f.originalname, size: f.size, mimetype: f.mimetype })));
     const { name, busId, nicNumber, verificationInterval } = req.body;
     let images = [];
-    if (req.file) {
+    if (req.files && req.files.length) {
       try {
-        const r = await uploadBufferToCloudinary(req.file.buffer, 'drivers');
-        images.push({ url: r.secure_url, public_id: r.public_id });
+        for (const f of req.files) {
+          const r = await uploadBufferToCloudinary(f.buffer, 'drivers');
+          images.push({ url: r.secure_url, public_id: r.public_id });
+        }
       } catch (uErr) {
         console.error('Cloudinary upload failed:', uErr);
         return res.status(502).json({ error: 'Cloudinary upload failed', detail: uErr.message });

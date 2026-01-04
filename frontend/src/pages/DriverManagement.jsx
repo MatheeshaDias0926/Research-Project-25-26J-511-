@@ -83,35 +83,4 @@ export default function DriverManagement() {
         </ul>
       </div>
     )
-
-  const fetchDrivers = async () => {
-    try {
-      const r = await api.get('/drivers')
-      setDrivers(r.data)
-    } catch (err) {
-      console.error(err)
-    }
   }
-
-  useEffect(() => {
-    fetchDrivers()
-  }, [])
-
-  return (
-    <div style={{ padding: 24 }}>
-      <h2>Drivers</h2>
-      <div>
-        <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-        <input placeholder="NIC" value={nic} onChange={(e) => setNic(e.target.value)} />
-        <input placeholder="Bus ID" value={busId} onChange={(e) => setBusId(e.target.value)} />
-        <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
-        <button onClick={createDriver}>Create Driver</button>
-      </div>
-      <ul>
-        {drivers.map((d) => (
-          <li key={d._id}>{d.name} — {d.nicNumber}</li>
-        ))}
-      </ul>
-    </div>
-  )
-}

@@ -1,6 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const { googleCallback } = require('../controllers/authController');
+const jwtAuth = require('../middleware/jwtAuth');
 
 const router = express.Router();
 
@@ -17,5 +18,10 @@ router.get(
 );
 
 router.get('/failure', (req, res) => res.status(401).json({ error: 'Authentication Failed' }));
+
+// Return current authenticated user
+router.get('/me', jwtAuth, (req, res) => {
+  res.json({ user: req.user });
+});
 
 module.exports = router;
