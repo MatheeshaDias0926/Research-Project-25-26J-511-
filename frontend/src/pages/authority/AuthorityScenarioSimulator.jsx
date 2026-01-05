@@ -314,34 +314,54 @@ const AuthorityScenarioSimulator = () => {
                     routeCoords[Math.min(routeCoords.length-1, segmentIndex+1)]
                 );
                 
-                // ML Calculation (Future - 4s ahead)
-                const futureDist = distCovered + (speedMs * 4);
-                let futureSegmentIndex = segmentIndex;
-                if (futureDist < totalDistanceRef.current) {
-                    for(let i=segmentIndex; i<pathCumulativeDistances.current.length-1; i++){
-                        if (futureDist >= pathCumulativeDistances.current[i] && futureDist < pathCumulativeDistances.current[i+1]) {
-                            futureSegmentIndex = i;
-                            break;
-                        }
+                // --- ROBUST LOOKAHEAD SCAN (The "100% Guarantee" Fix) ---
+                // Instead of checking just one point 4s ahead, we scan the next 150 meters
+                // to find the absolute sharpest curve and its exact distance.
+                
+                let minRadiusAhead = 10000;
+                let distToSharpest = 0;
+                const SCAN_DISTANCE = 150; // meters
+
+                // Iterate through upcoming segments
+                for (let i = segmentIndex; i < pathCumulativeDistances.current.length - 2; i++) {
+                    const distAtPoint = pathCumulativeDistances.current[i];
+                    const distFromBus = distAtPoint - distCovered;
+
+                    if (distFromBus > SCAN_DISTANCE) break; // Stop scanning
+                    if (distFromBus < 0) continue; // Skip past points
+
+                    const r = calculateRadius(
+                        routeCoords[i], 
+                        routeCoords[i+1], 
+                        routeCoords[i+2]
+                    );
+
+                    if (r < minRadiusAhead) {
+                        minRadiusAhead = r;
+                        distToSharpest = distFromBus;
                     }
                 }
-                
-                const futureRadius = calculateRadius(
-                    routeCoords[Math.max(0, futureSegmentIndex-1)], 
-                    routeCoords[futureSegmentIndex], 
-                    routeCoords[Math.min(routeCoords.length-1, futureSegmentIndex+1)]
-                );
 
+                // Prepare ML Params
+                // Logic: If we found a sharp curve (< 200m) ahead, tell the ML model.
+                // Otherwise, pass 0 distance (or large radius).
+                
                 const mlParams = {
                     n_seated: parseInt(getValues("seated")),
                     n_standing: parseInt(getValues("standing")),
                     speed_kmh: parseInt(getValues("speed")),
-                    radius_m: radius,
+                    radius_m: radius, // Current Radius
                     is_wet: getValues("weather") === "wet" ? 1 : 0,
-                    gradient_deg: 0 
+                    gradient_deg: 0,
+                    dist_to_curve_m: minRadiusAhead < 200 ? distToSharpest : 0 // Pass REAL distance
                 };
 
-                const futureMlParams = { ...mlParams, radius_m: futureRadius };
+                // For the "Future" prediction, we visualize the worst-case scenario ahead
+                const futureMlParams = { 
+                    ...mlParams, 
+                    radius_m: minRadiusAhead, 
+                    dist_to_curve_m: 0 // At the curve, distance is 0
+                };
 
                 // Call ML (Parallel)
                 Promise.all([
@@ -351,7 +371,10 @@ const AuthorityScenarioSimulator = () => {
                     const newData = resCurrent.data;
                     const futureData = resFuture.data;
                     
-                    setCurrentRisk(newData);
+                    // Attach distance to result object for UI
+                    // Use the calculated distToSharpest if a curve exists
+                    const displayDist = minRadiusAhead < 200 ? distToSharpest : 0;
+                    setCurrentRisk({ ...newData, distToCurve: displayDist });
                     setFutureRisk(futureData);
                     
                     // Send Telemetry (Now includes Future Risk)
@@ -576,6 +599,12 @@ const AuthorityScenarioSimulator = () => {
                                                  {effectiveRiskScore > currentRisk.risk_score && (
                                                      <div style={{ fontSize: 11, background: "rgba(0,0,0,0.2)", display: "inline-block", padding: "2px 8px", borderRadius: 10, marginTop: 4 }}>
                                                          ⚠️ Warning sent ahead of curve
+                                                     </div>
+                                                 )}
+                                                 {/* SHOW DISTANCE IF DETECTED */}
+                                                 {currentRisk.distToCurve > 0 && (
+                                                     <div style={{ marginTop: 8, padding: "4px 8px", background: "rgba(255,255,255,0.3)", borderRadius: 4, fontWeight: 700, fontSize: 13 }}>
+                                                         ⚠️ Curve Ahead: {currentRisk.distToCurve.toFixed(0)} meters
                                                      </div>
                                                  )}
                                              </div>

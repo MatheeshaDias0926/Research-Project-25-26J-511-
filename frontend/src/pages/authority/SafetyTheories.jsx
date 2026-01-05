@@ -811,9 +811,9 @@ const SafetyTheories = () => {
                                   <div style={{ background: "#f0fdf4", padding: "24px", borderRadius: "12px", border: "1px solid #bbf7d0" }}>
                                      <h4 style={{ fontWeight: "600", color: "#15803d", marginBottom: "12px" }}>Step 2: Building 100 Decision Trees</h4>
                                      <p style={{ fontSize: "14px", color: "#334155", fontStyle: "italic" }}>
-                                        "Tree #1: Is speed {'>'} 60? If yes, is road Wet? -> Critical."
+                                        Tree #1: Is speed &gt; 60? If yes, is road Wet? -&gt; Critical.
                                         <br/>
-                                        "Tree #2: Is standing {'>'} 40? If yes, is curve {'<'} 30m? -> Critical."
+                                        Tree #2: Is standing &gt; 40? If yes, is curve &lt; 30m? -&gt; Critical.
                                      </p>
                                      <div style={{ marginTop: "12px", fontSize: "12px", color: "#166534", fontWeight: "700" }}>
                                          Final Result = Average of all 100 Trees (Ensemble)
