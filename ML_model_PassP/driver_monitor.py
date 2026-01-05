@@ -28,14 +28,25 @@ class DriverMonitor:
         self.eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml') # For simple eyes check if needed
 
     def _url_to_image(self, url):
-        """Download image from URL and convert to numpy array"""
+        """Download image from URL or load from local path and convert to numpy array"""
         try:
-            resp = requests.get(url, stream=True).raw
-            image = np.asarray(bytearray(resp.read()), dtype="uint8")
-            image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+            # Check if it's a local file path
+            import os
+            if os.path.exists(url):
+                print(f"Loading local image: {url}")
+                image = cv2.imread(url)
+                if image is None:
+                    print("Error: cv2.imread returned None")
+                    return None
+            else:
+                # Assume URL
+                resp = requests.get(url, stream=True).raw
+                image = np.asarray(bytearray(resp.read()), dtype="uint8")
+                image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+            
             return image
         except Exception as e:
-            print(f"Error downloading image: {e}")
+            print(f"Error loading image: {e}")
             return None
 
     def get_face_encoding(self, image_url):

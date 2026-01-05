@@ -15,6 +15,7 @@ import {
   Navigation,
   UserPlus,
   Camera,
+  Settings as SettingsIcon,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -120,6 +121,12 @@ const Sidebar = () => {
       name: "Scenario Simulator",
       href: "/authority/simulator",
       icon: Navigation,
+      roles: ["authority"],
+    },
+    {
+      name: "Settings",
+      href: "/authority/settings",
+      icon: SettingsIcon,
       roles: ["authority"],
     },
   ];

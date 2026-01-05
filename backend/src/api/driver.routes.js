@@ -2,6 +2,9 @@ import express from "express";
 import { upload } from "../services/cloudinary.service.js";
 import Driver from "../models/Driver.model.js";
 import axios from "axios";
+import fs from "fs";
+import path from "path";
+import { localUpload } from "../services/local.upload.service.js";
 import { protect, authorize } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -75,37 +78,41 @@ function getEuclideanDistance(face1, face2) {
 // @desc    Verify driver face
 // @route   POST /api/driver/verify
 // @access  Private (Conductor/Authority)
-router.post("/verify", protect, upload.single("image"), async (req, res) => {
+// Using local upload to avoid filling Cloudinary with temporary scan images
+router.post("/verify", protect, localUpload.single("image"), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: "Please upload an image to verify" });
         }
 
-        const imageUrl = req.file.path;
+        const imagePath = path.resolve(req.file.path); // Use absolute path for Python script
+        const userMinConfidence = req.body.minConfidence ? parseFloat(req.body.minConfidence) : 50; // Default 50%
 
         // 1. Get encoding of the PROBE image from ML Service
         let probeEncoding = null;
         try {
             const mlResponse = await axios.post(
                 `${process.env.ML_SERVICE_URL}/api/ml/face-encoding`,
-                { imageUrl }
+                { imageUrl: imagePath } // Passing local path
             );
             if (mlResponse.data.encoding && mlResponse.data.encoding.length > 0) {
                 probeEncoding = mlResponse.data.encoding;
             }
         } catch (mlError) {
             console.error("ML Service Encoding Error:", mlError.message);
-            // If ML fails to find a face, we can't verify
+            // Cleanup file
+            if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
             return res.json({ verified: false, message: "No face detected in image" });
         }
+
+        // Cleanup file immediately after scoring
+        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
 
         if (!probeEncoding) {
             return res.json({ verified: false, message: "No face detected in image" });
         }
 
         // 2. Fetch all drivers with encodings
-        // Optimization: In a real system, use MongoDB vector search or similar. 
-        // Here we iterate in memory as driver count is small.
         const drivers = await Driver.find({
             faceEncoding: { $exists: true, $not: { $size: 0 } },
             status: 'active'
@@ -113,18 +120,12 @@ router.post("/verify", protect, upload.single("image"), async (req, res) => {
 
         // 3. Compare
         let bestMatch = null;
-        let minDistance = 1000.0; // Increase init max
+        let minDistance = 1000.0;
 
-        // Determine threshold based on vector size
-        // 128-d (FaceNet) -> ~0.6
-        // 1024-d (32x32 Pixel) -> ~10.0 (Tunable)
-        let THRESHOLD = 0.6;
-        if (probeEncoding.length > 200) {
-            THRESHOLD = 12.0; // Higher threshold for pixel matching
-        }
+        // Determine distance threshold logic
+        // For pixel encoding (1024-d), dist can be large.
 
         for (const driver of drivers) {
-            // Skip mismatched formats
             if (!driver.faceEncoding || driver.faceEncoding.length !== probeEncoding.length) continue;
 
             const dist = getEuclideanDistance(probeEncoding, driver.faceEncoding);
@@ -134,16 +135,19 @@ router.post("/verify", protect, upload.single("image"), async (req, res) => {
             }
         }
 
-        if (bestMatch && minDistance < THRESHOLD) {
-            // Calculate confidence
-            let confidence = 0;
-            if (probeEncoding.length > 200) {
-                // Confidence for pixel match: Max dist ~20?
-                confidence = Math.max(0, 1 - (minDistance / 15.0));
-            } else {
-                confidence = Math.max(0, 1 - minDistance);
-            }
+        // Calculate Confidence (0-100)
+        let confidence = 0.0;
+        if (probeEncoding.length > 200) {
+            // Pixel encoding (32x32 = 1024)
+            // Max distance is 32. Relaxing divisor to 28.0 to boost scores.
+            confidence = Math.max(0, 1 - (minDistance / 28.0)) * 100;
+        } else {
+            // 128-d encoding
+            confidence = Math.max(0, 1 - minDistance) * 100;
+        }
 
+        // Verify against user threshold
+        if (bestMatch && confidence >= userMinConfidence) {
             res.json({
                 verified: true,
                 driverName: bestMatch.name,
@@ -153,8 +157,9 @@ router.post("/verify", protect, upload.single("image"), async (req, res) => {
         } else {
             res.json({
                 verified: false,
-                message: "Driver not recognized",
-                debugDistance: minDistance
+                message: "Access Denied",
+                driverName: "Unknown",
+                confidence: confidence // Return actual confidence even if failed
             });
         }
 

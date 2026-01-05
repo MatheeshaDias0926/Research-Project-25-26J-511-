@@ -32,6 +32,10 @@ const FacialRecognitionLive = () => {
             const formData = new FormData();
             formData.append("image", file);
 
+            // Get user threshold setting
+            const threshold = localStorage.getItem("faceIdThreshold") || 50;
+            formData.append("minConfidence", threshold);
+
             const token = localStorage.getItem("token");
             const config = { headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` } };
 
@@ -82,6 +86,9 @@ const FacialRecognitionLive = () => {
                 </div>
 
                 <div style={{ display: "flex", gap: 16 }}>
+                    <div style={{ padding: "8px 16px", background: "#f1f5f9", color: "#475569", borderRadius: 8, fontWeight: 600, border: "1px solid #e2e8f0" }}>
+                        Threshold: {localStorage.getItem("faceIdThreshold") || 50}%
+                    </div>
                     <div style={{ padding: "8px 16px", background: "#dbeafe", color: "#1e40af", borderRadius: 8, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ width: 10, height: 10, background: "#2563eb", borderRadius: "50%", animation: "pulse 2s infinite" }}></div>
                         SYSTEM ONLINE

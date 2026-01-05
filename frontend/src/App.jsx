@@ -28,6 +28,7 @@ import ConductorManagement from "./pages/authority/ConductorManagement";
 import RegisterDriver from "./pages/authority/RegisterDriver";
 import DriverManagement from "./pages/authority/DriverManagement";
 import FacialRecognitionLive from "./pages/authority/FacialRecognitionLive";
+import Settings from "./pages/authority/Settings";
 
 import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
 import AuthorityPhysicsCheck from "./pages/authority/AuthorityPhysicsCheck";
@@ -117,9 +118,9 @@ function App() {
                 element={<SafetyTheories />}
               />
               <Route
-                path="/authority/simulator"
                 element={<AuthorityScenarioSimulator />}
               />
+              <Route path="/authority/settings" element={<Settings />} />
             </Route>
 
             {/* Default redirect for root */}
