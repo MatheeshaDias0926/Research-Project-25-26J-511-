@@ -31,6 +31,7 @@ def generate_synthetic_data(n_samples=5000):
     radius_m = np.random.uniform(10, 200, n_samples) # Curve radius
     is_wet = np.random.choice([0, 1], n_samples) # 0=Dry, 1=Wet
     gradient_deg = np.random.uniform(-5, 5, n_samples) # Slope
+    dist_to_curve_m = np.random.uniform(0, 150, n_samples) # NEW: Distance to the curve
     
     data = []
     
@@ -54,7 +55,16 @@ def generate_synthetic_data(n_samples=5000):
         
         # 4. Risk Score (Ratio of LatAccel to SSF)
         # > 0.5 is Warning, > 0.7 is Critical
-        risk_score = lat_accel_g / ssf
+        raw_risk_score = lat_accel_g / ssf
+        
+        # SMOOTHING LOGIC:
+        # Risk should decrease as distance increases.
+        # If distance is 0 (at curve), Risk = raw_risk.
+        # If distance is large (e.g. 100m), Risk should be lower (early warning).
+        # We use a decay factor: risk = raw_risk / (1 + decay_rate * distance)
+        # Users want "smooth warnings", so a gradual ramp up.
+        decay_factor = 1.0 / (1.0 + 0.05 * dist_to_curve_m[i])
+        smooth_risk_score = raw_risk_score * decay_factor
         
         # 5. Stopping Distance
         friction = FRICTION_WET if is_wet[i] else FRICTION_DRY
@@ -73,7 +83,8 @@ def generate_synthetic_data(n_samples=5000):
             'radius_m': float(radius_m[i]),
             'is_wet': float(is_wet[i]),
             'gradient_deg': float(gradient_deg[i]),
-            'risk_score': float(risk_score),
+            'dist_to_curve_m': float(dist_to_curve_m[i]), # Feature
+            'risk_score': float(smooth_risk_score),       # Target
             'stopping_dist': float(total_stopping_dist)
         })
         
@@ -87,15 +98,15 @@ from sklearn.multioutput import MultiOutputRegressor
 def train_model():
     df = generate_synthetic_data()
     
-    # Features
-    X = df[['n_seated', 'n_standing', 'speed_kmh', 'radius_m', 'is_wet', 'gradient_deg']]
+    # Features (Added dist_to_curve_m)
+    X = df[['n_seated', 'n_standing', 'speed_kmh', 'radius_m', 'is_wet', 'gradient_deg', 'dist_to_curve_m']]
     
     # Targets (Multi-output regression)
     y = df[['risk_score', 'stopping_dist']]
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    print("Training Multi-Output Random Forest...")
+    print("Training Multi-Output Random Forest with Smoothing Logic...")
     # Wrap in MultiOutputRegressor to get separate estimators
     model = MultiOutputRegressor(RandomForestRegressor(n_estimators=100, random_state=42))
     model.fit(X_train, y_train)
@@ -119,9 +130,9 @@ def train_model():
         indices = np.argsort(importances)[::-1]
         
         for f in range(X.shape[1]):
-            print(f"{f+1}. {features[indices[f]]:<15} {importances[indices[f]]:.4f}")
+            print(f"{f+1}. {features[indices[f]]:<20} {importances[indices[f]]:.4f}")
         
-    # Save (Note: MultiOutputRegressor object behaves slightly differently, ensure loading handles it)
+    # Save 
     joblib.dump(model, 'safety_model.joblib')
     print("\nModel saved to safety_model.joblib")
 

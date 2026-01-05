@@ -201,8 +201,9 @@ def predict_safety():
     try:
         data = request.get_json()
         
-        # Features: n_seated, n_standing, speed_kmh, radius_m, is_wet, gradient_deg
+        # Features: n_seated, n_standing, speed_kmh, radius_m, is_wet, gradient_deg, dist_to_curve_m
         required = ['n_seated', 'n_standing', 'speed_kmh', 'radius_m', 'is_wet', 'gradient_deg']
+        # optional: dist_to_curve_m (default to 0 if missing for backward compatibility)
         missing = [f for f in required if f not in data]
         if missing:
              return jsonify({'error': f'Missing fields: {missing}'}), 400
@@ -215,6 +216,7 @@ def predict_safety():
             'radius_m': float(data['radius_m']),
             'is_wet': float(data['is_wet']),
             'gradient_deg': float(data['gradient_deg']),
+            'dist_to_curve_m': float(data.get('dist_to_curve_m', 0.0)) # Default 0 (max risk) if not provided
         }
         df = pd.DataFrame([input_data])
         

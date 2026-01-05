@@ -163,6 +163,13 @@ const PhysicsCheck = () => {
                   ? "The bus is unstable at this speed with the current load."
                   : "The bus is stable under these conditions."}
               </p>
+              {result["Distance to sharpest curve"] && (
+                 <div style={{ marginTop: 12, padding: 8, background: 'rgba(255,255,255,0.5)', borderRadius: 4 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>
+                        ⚠️ Curve Ahead: {result["Distance to sharpest curve"]}
+                    </p>
+                 </div>
+              )}
             </CardContent>
           </Card>
 
