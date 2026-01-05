@@ -24,7 +24,8 @@
       "Bash(node server.js:*)",
       "Bash(timeout:*)",
       "Bash(powershell -Command:*)",
-      "Bash(ipconfig /flushdns)"
+      "Bash(ipconfig /flushdns)",
+      "Bash(wmic path Win32_SerialPort get:*)"
     ]
   }
 }
