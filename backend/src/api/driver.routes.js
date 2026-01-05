@@ -62,6 +62,16 @@ router.post(
     }
 );
 
+// Helper for Euclidean distance
+function getEuclideanDistance(face1, face2) {
+    if (!face1 || !face2 || face1.length !== face2.length) return 100.0;
+    let sum = 0.0;
+    for (let i = 0; i < face1.length; i++) {
+        sum += Math.pow(face1[i] - face2[i], 2);
+    }
+    return Math.sqrt(sum);
+}
+
 // @desc    Verify driver face
 // @route   POST /api/driver/verify
 // @access  Private (Conductor/Authority)
@@ -73,25 +83,66 @@ router.post("/verify", protect, upload.single("image"), async (req, res) => {
 
         const imageUrl = req.file.path;
 
-        // Call ML Service to verify against known drivers
-        const mlResponse = await axios.post(
-            `${process.env.ML_SERVICE_URL}/api/ml/verify-face`,
-            { imageUrl }
-        );
+        // 1. Get encoding of the PROBE image from ML Service
+        let probeEncoding = null;
+        try {
+            const mlResponse = await axios.post(
+                `${process.env.ML_SERVICE_URL}/api/ml/face-encoding`,
+                { imageUrl }
+            );
+            if (mlResponse.data.encoding && mlResponse.data.encoding.length > 0) {
+                probeEncoding = mlResponse.data.encoding;
+            }
+        } catch (mlError) {
+            console.error("ML Service Encoding Error:", mlError.message);
+            // If ML fails to find a face, we can't verify
+            return res.json({ verified: false, message: "No face detected in image" });
+        }
 
-        if (mlResponse.data.match) {
+        if (!probeEncoding) {
+            return res.json({ verified: false, message: "No face detected in image" });
+        }
+
+        // 2. Fetch all drivers with encodings
+        // Optimization: In a real system, use MongoDB vector search or similar. 
+        // Here we iterate in memory as driver count is small.
+        const drivers = await Driver.find({
+            faceEncoding: { $exists: true, $not: { $size: 0 } },
+            status: 'active'
+        });
+
+        // 3. Compare
+        let bestMatch = null;
+        let minDistance = 100.0;
+        const THRESHOLD = 0.6; // Typical threshold for 128-d encodings
+
+        for (const driver of drivers) {
+            const dist = getEuclideanDistance(probeEncoding, driver.faceEncoding);
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestMatch = driver;
+            }
+        }
+
+        if (bestMatch && minDistance < THRESHOLD) {
+            // Logic for Mock: Mock encoding distance works same way (0.0 distance if both are [1.0]s)
             res.json({
                 verified: true,
-                driverName: mlResponse.data.driverName,
-                confidence: mlResponse.data.confidence
+                driverName: bestMatch.name,
+                confidence: Math.max(0, 1 - minDistance), // Rough confidence score
+                message: "Driver verified successfully"
             });
         } else {
-            res.json({ verified: false, message: "Driver not recognized" });
+            res.json({
+                verified: false,
+                message: "Driver not recognized",
+                debugDistance: minDistance
+            });
         }
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Verification failed" });
+        console.error("Verification Error:", error);
+        res.status(500).json({ message: "Verification failed on server" });
     }
 });
 
