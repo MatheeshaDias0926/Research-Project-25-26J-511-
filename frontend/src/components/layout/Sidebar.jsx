@@ -12,7 +12,8 @@ import {
   Map,
   ShieldAlert,
   BookOpen,
-  Navigation, // Added
+  Navigation,
+  UserPlus,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -79,6 +80,12 @@ const Sidebar = () => {
       roles: ["authority"],
     },
     {
+      name: "Drivers",
+      href: "/authority/drivers",
+      icon: UserPlus,
+      roles: ["authority"],
+    },
+    {
       name: "Maintenance Logs",
       href: "/authority/maintenance",
       icon: Wrench,
@@ -97,16 +104,16 @@ const Sidebar = () => {
       roles: ["authority"],
     },
     {
-        name: "Safety Logic",
-        href: "/authority/theories",
-        icon: BookOpen,
-        roles: ["authority"],
+      name: "Safety Logic",
+      href: "/authority/theories",
+      icon: BookOpen,
+      roles: ["authority"],
     },
     {
-        name: "Scenario Simulator",
-        href: "/authority/simulator",
-        icon: Navigation,
-        roles: ["authority"],
+      name: "Scenario Simulator",
+      href: "/authority/simulator",
+      icon: Navigation,
+      roles: ["authority"],
     },
   ];
 

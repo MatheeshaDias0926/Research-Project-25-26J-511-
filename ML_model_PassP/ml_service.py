@@ -8,9 +8,13 @@ from flask_cors import CORS
 import joblib
 import pandas as pd
 import os
+from driver_monitor import DriverMonitor
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for cross-origin requests from Node.js
+
+# Initialize Driver Monitor
+driver_monitor = DriverMonitor()
 
 # Configuration
 MODEL_PATH = 'xgb_bus_model.joblib'
@@ -249,6 +253,72 @@ def model_info():
         'categorical_features': categorical_features,
         'numerical_features': numerical_features
     }), 200
+
+
+
+@app.route('/api/ml/face-encoding', methods=['POST'])
+def get_face_encoding():
+    """Get 128-d face encoding from image URL"""
+    try:
+        data = request.get_json()
+        image_url = data.get('imageUrl')
+        
+        if not image_url:
+            return jsonify({'error': 'imageUrl is required'}), 400
+            
+        encoding = driver_monitor.get_face_encoding(image_url)
+        
+        if encoding is None:
+             return jsonify({'error': 'No face found in image'}), 400
+             
+        return jsonify({'encoding': encoding}), 200
+        
+    except Exception as e:
+        print(f"Error getting encoding: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/ml/verify-face', methods=['POST'])
+def verify_face():
+    """Verify face against known encoding or list of encodings (not implemented yet, assumed single for now)"""
+    # This endpoint might need to fetch the known encoding from DB, 
+    # but for now let's assume the backend handles the fetching and logic or we just return an encoding to compare?
+    # Actually backend route /verify calls this.
+    # But backend has the encodings in DB.
+    # So backend should probably send the image URL to this service, get an encoding back, and compare in Backend?
+    # OR Backend sends image URL + known encoding to this service.
+    
+    # Let's go with: Backend sends Image URL, this service returns Encoding. 
+    # Backend compares using simple Euclidean distance or cosine similarity.
+    # WAIT, face_recognition.compare_faces is better.
+    # So Backend should send Image URL + Known Encoding (list) to here.
+    pass 
+    # Actually, let's keep it simple: Backend gets encoding from here, then compares itself or calls a comparison endpoint.
+    # Since numpy is in Python, let's do the comparison here.
+    
+    try:
+        data = request.get_json()
+        image_url = data.get('imageUrl')
+        known_encoding = data.get('knownEncoding') # List of floats
+        
+        if not image_url or not known_encoding:
+            return jsonify({'error': 'imageUrl and knownEncoding required'}), 400
+            
+        result = driver_monitor.verify_face(image_url, known_encoding)
+        return jsonify(result), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ml/detect-drowsiness', methods=['POST'])
+def detect_drowsiness():
+    """Detect drowsiness from uploaded image (snapshot)"""
+    if 'image' not in request.files:
+         return jsonify({'error': 'No image file uploaded'}), 400
+         
+    file = request.files['image']
+    result = driver_monitor.detect_drowsiness(file)
+    return jsonify(result), 200
 
 
 if __name__ == '__main__':

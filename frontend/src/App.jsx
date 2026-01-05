@@ -25,6 +25,8 @@ import ViolationsFeed from "./pages/authority/ViolationsFeed";
 import IoTSimulator from "./pages/authority/IoTSimulator";
 import FleetManagement from "./pages/authority/FleetManagement";
 import ConductorManagement from "./pages/authority/ConductorManagement";
+import RegisterDriver from "./pages/authority/RegisterDriver";
+import DriverManagement from "./pages/authority/DriverManagement";
 
 import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
 import AuthorityPhysicsCheck from "./pages/authority/AuthorityPhysicsCheck";
@@ -83,6 +85,14 @@ function App() {
               <Route
                 path="/authority/conductors"
                 element={<ConductorManagement />}
+              />
+              <Route
+                path="/authority/register-driver"
+                element={<RegisterDriver />}
+              />
+              <Route
+                path="/authority/drivers"
+                element={<DriverManagement />}
               />
               <Route
                 path="/authority/violations"

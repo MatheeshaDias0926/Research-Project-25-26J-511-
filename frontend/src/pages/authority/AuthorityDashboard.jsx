@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "../../components/ui/Card";
 import { Bus, AlertTriangle, CheckCircle, Wrench, UserPlus } from "lucide-react";
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis
 } from 'recharts';
@@ -35,7 +35,7 @@ const AuthorityDashboard = () => {
         const analyticsRes = await api.get("/bus/analytics/violations");
         const trendsRes = await api.get("/bus/analytics/trends");
         const occupancyRes = await api.get("/bus/analytics/occupancy");
-        
+
         setStats({
           activeBuses: busesRes.data.length,
           conductors: statsRes.data.conductors,
@@ -257,6 +257,37 @@ const AuthorityDashboard = () => {
               </CardContent>
             </Card>
           </a>
+          <a href="/authority/register-driver" style={{ textDecoration: "none" }}>
+            <Card style={{ cursor: "pointer", transition: "transform 0.2s" }} className="hover:scale-105">
+              <CardContent
+                style={{
+                  padding: 24,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                    Register Driver
+                  </p>
+                  <p style={{ fontSize: 13, color: "#64748b" }}>
+                    Add New Driver & Face ID
+                  </p>
+                </div>
+                <div
+                  style={{
+                    padding: 12,
+                    background: "#f1f5f9",
+                    borderRadius: 9999,
+                    color: "#475569",
+                  }}
+                >
+                  <UserPlus style={{ height: 24, width: 24 }} />
+                </div>
+              </CardContent>
+            </Card>
+          </a>
           <a href="/authority/safety" style={{ textDecoration: "none" }}>
             <Card style={{ cursor: "pointer", transition: "transform 0.2s" }} className="hover:scale-105">
               <CardContent
@@ -305,9 +336,9 @@ const AuthorityDashboard = () => {
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="licensePlate" stroke="#64748b" fontSize={12} tick={{fill: '#64748b'}} />
-                  <YAxis stroke="#64748b" fontSize={12} tick={{fill: '#64748b'}} />
-                  <Tooltip 
+                  <XAxis dataKey="licensePlate" stroke="#64748b" fontSize={12} tick={{ fill: '#64748b' }} />
+                  <YAxis stroke="#64748b" fontSize={12} tick={{ fill: '#64748b' }} />
+                  <Tooltip
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     cursor={{ fill: '#f1f5f9' }}
                   />
@@ -324,7 +355,7 @@ const AuthorityDashboard = () => {
           </CardContent>
         </Card>
       </div>
-      
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 24 }}>
         {/* Violation Trends Chart (Stacked for Detail) */}
         <Card>
@@ -339,9 +370,9 @@ const AuthorityDashboard = () => {
                   margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" stroke="#64748b" fontSize={12} tick={{fill: '#64748b'}} />
-                  <YAxis stroke="#64748b" fontSize={12} tick={{fill: '#64748b'}} />
-                  <Tooltip 
+                  <XAxis dataKey="date" stroke="#64748b" fontSize={12} tick={{ fill: '#64748b' }} />
+                  <YAxis stroke="#64748b" fontSize={12} tick={{ fill: '#64748b' }} />
+                  <Tooltip
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
                   <Legend />
@@ -363,17 +394,17 @@ const AuthorityDashboard = () => {
             <CardTitle>Real-time Fleet Capacity (Per Bus)</CardTitle>
           </CardHeader>
           <CardContent style={{ padding: 24, height: 350 }}>
-             {stats.fleetOccupancy && stats.fleetOccupancy.length > 0 ? (
+            {stats.fleetOccupancy && stats.fleetOccupancy.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart
                   margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="category" dataKey="routeId" name="Route" stroke="#64748b" tick={{fontSize: 12}} />
+                  <XAxis type="category" dataKey="routeId" name="Route" stroke="#64748b" tick={{ fontSize: 12 }} />
                   <YAxis type="number" dataKey="occupancyPct" name="Occupancy" unit="%" stroke="#64748b" domain={[0, 'auto']} />
                   <ZAxis type="number" range={[100, 300]} /> {/* Size of bubbles */}
-                  <Tooltip 
-                    cursor={{ strokeDasharray: '3 3' }} 
+                  <Tooltip
+                    cursor={{ strokeDasharray: '3 3' }}
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
@@ -396,23 +427,23 @@ const AuthorityDashboard = () => {
                     {stats.fleetOccupancy.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={
                         entry.occupancyPct > 120 ? '#ef4444' :  // Overloaded (Red)
-                        entry.occupancyPct > 100 ? '#f59e0b' :  // Standing (Orange)
-                        entry.occupancyPct === 0 ? '#10b981' :  // Empty (Green)
-                        '#3b82f6'                               // Seated (Blue)
+                          entry.occupancyPct > 100 ? '#f59e0b' :  // Standing (Orange)
+                            entry.occupancyPct === 0 ? '#10b981' :  // Empty (Green)
+                              '#3b82f6'                               // Seated (Blue)
                       } />
                     ))}
                   </Scatter>
                 </ScatterChart>
               </ResponsiveContainer>
-             ) : (
+            ) : (
               <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
                 No active buses found.
               </div>
-             )}
+            )}
           </CardContent>
         </Card>
       </div>
-      
+
     </div >
   );
 };
