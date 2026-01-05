@@ -237,7 +237,18 @@ export default function ConductorDashboard() {
                            <Text style={{ color: 'white', fontSize: 16, textAlign: 'center', opacity: 0.9 }}>
                                Stability: {Math.max(0, 100 - (riskScore * 100)).toFixed(0)}%
                            </Text>
-                           <View style={{ marginTop: 8, backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 }}>
+                           
+                           {/* NEW: CURVE DISTANCE WARNING */}
+                           {myBus?.currentStatus?.distToCurve > 0 && (
+                                <View style={{ marginTop: 12, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                     <Ionicons name="return-up-forward" size={24} color="#fff" />
+                                     <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+                                         Curve Ahead: {myBus.currentStatus.distToCurve.toFixed(0)} m
+                                     </Text>
+                                </View>
+                           )}
+
+                           <View style={{ marginTop: 12, backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 }}>
                                 <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
                                     SLOW DOWN IMMEDIATELY
                                 </Text>

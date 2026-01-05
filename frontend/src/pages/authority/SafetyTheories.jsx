@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
-import { BookOpen, Calculator, Activity, AlertTriangle, ArrowRight, ShieldCheck, CloudRain, Sun, Zap, Brain, Server, ClipboardCheck, Target, School } from "lucide-react";
+import { BookOpen, Calculator, Activity, AlertTriangle, ArrowRight, ShieldCheck, CloudRain, Sun, Zap, Brain, Server, ClipboardCheck, Target, School, Share2, Laptop, Smartphone, Database, Send, Radio } from "lucide-react";
 
 const SafetyTheories = () => {
   const [activeTab, setActiveTab] = useState("rollover");
@@ -11,6 +11,7 @@ const SafetyTheories = () => {
     { id: "geometry", label: "Road Geometry", icon: Calculator },
     { id: "constants", label: "Constants & Thresholds", icon: BookOpen },
     { id: "ai_integration", label: "Real-time AI Integration", icon: Zap },
+    { id: "sim_flow", label: "Simulation Architecture", icon: Share2 },
     { id: "verification", label: "Model Verification", icon: ClipboardCheck },
     { id: "training_details", label: "Model Training Details", icon: School },
   ];
@@ -853,6 +854,129 @@ const SafetyTheories = () => {
                                  </div>
                              </div>
                          </div>
+                    </CardContent>
+                 </Card>
+            </div>
+        )}
+        {activeTab === "sim_flow" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                             <Share2 className="text-blue-600" size={28} />
+                             End-to-End Simulation Data Flow
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p style={{ color: "#475569", marginBottom: "32px", lineHeight: "1.6" }}>
+                           This diagram illustrates how the <strong>Live Scenario Simulator</strong> communicates with the entire ecosystem to provide real-time updates to the Control Center and the Bus Conductor's mobile app.
+                        </p>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "32px", alignItems: "center", marginTop: "24px" }}>
+                            
+                            {/* STEP 1: SIMULATOR */}
+                            <div style={{ display: "flex", gap: "24px", width: "100%", maxWidth: "800px", alignItems: "center" }}>
+                                <div style={{ width: "80px", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                                    <div style={{ width: "64px", height: "64px", background: "#eff6ff", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #bfdbfe" }}>
+                                        <Laptop size={32} className="text-blue-600" />
+                                    </div>
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>SIMULATOR</span>
+                                </div>
+                                <div style={{ flex: 1, padding: "20px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", position: "relative" }}>
+                                    <div style={{ position: "absolute", left: "-6px", top: "50%", transform: "translateY(-50%)", width: "12px", height: "12px", background: "#f8fafc", borderLeft: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", rotate: "45deg" }}></div>
+                                    <h4 style={{ fontWeight: "600", color: "#1e293b", marginBottom: "4px" }}>1. Detection & Calculation</h4>
+                                    <p style={{ fontSize: "14px", color: "#64748b" }}>
+                                        The <strong>Simulator Frontend</strong> constantly scans the route 150m ahead.
+                                    </p>
+                                    <ul style={{ marginTop: "8px", fontSize: "13px", color: "#475569", listStyle: "disc", paddingLeft: "16px" }}>
+                                        <li>Detects sharpest curve (e.g., Radius: 30m).</li>
+                                        <li>Calculates <code>distToCurve</code> (e.g., 85m).</li>
+                                        <li>Calls ML Model to predict Risk Score.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <ArrowRight size={24} className="text-slate-300" style={{ transform: "rotate(90deg)" }} />
+
+                            {/* STEP 2: TELEMETRY */}
+                            <div style={{ display: "flex", gap: "24px", width: "100%", maxWidth: "800px", alignItems: "center" }}>
+                                <div style={{ width: "80px", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                                    <div style={{ width: "64px", height: "64px", background: "#f0fdf4", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #bbf7d0" }}>
+                                        <Send size={32} className="text-green-600" />
+                                    </div>
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>API</span>
+                                </div>
+                                <div style={{ flex: 1, padding: "20px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                    <h4 style={{ fontWeight: "600", color: "#1e293b", marginBottom: "4px" }}>2. Transmission</h4>
+                                    <p style={{ fontSize: "14px", color: "#64748b" }}>
+                                        Sends telemetry payload to Backend via <code>/api/iot/mock-data</code>.
+                                    </p>
+                                    <div style={{ marginTop: "8px", background: "#0f172a", borderRadius: "6px", padding: "10px" }}>
+                                        <code style={{ color: "#a5b4fc", fontSize: "11px", display: "block" }}>
+                                            POST {'{'} <br/>
+                                            &nbsp;&nbsp;"licensePlate": "NP-1234",<br/>
+                                            &nbsp;&nbsp;"speed": 60, "riskScore": 0.72,<br/>
+                                            &nbsp;&nbsp;"distToCurve": 85  <span style={{color: "#4ade80"}}>&lt;-- NEW</span><br/>
+                                            {'}'}
+                                        </code>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <ArrowRight size={24} className="text-slate-300" style={{ transform: "rotate(90deg)" }} />
+
+                            {/* STEP 3: BACKEND */}
+                            <div style={{ display: "flex", gap: "24px", width: "100%", maxWidth: "800px", alignItems: "center" }}>
+                                <div style={{ width: "80px", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                                    <div style={{ width: "64px", height: "64px", background: "#fefce8", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #fde047" }}>
+                                        <Database size={32} className="text-yellow-600" />
+                                    </div>
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>BACKEND</span>
+                                </div>
+                                <div style={{ flex: 1, padding: "20px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                    <h4 style={{ fontWeight: "600", color: "#1e293b", marginBottom: "4px" }}>3. Data Persistence</h4>
+                                    <p style={{ fontSize: "14px", color: "#64748b" }}>
+                                        Backend Controller (<code>iot.controller.js</code>) processes the request and saves the live status to the <strong>MongoDB</strong> database.
+                                    </p>
+                                    <ul style={{ marginTop: "8px", fontSize: "13px", color: "#475569", listStyle: "disc", paddingLeft: "16px" }}>
+                                        <li>Updates <code>BusDataLog</code> collection.</li>
+                                        <li>Triggers "Violation Check" service (if Speed > Limit).</li>
+                                        <li>Updates `Bus.currentStatus` pointer.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                             <ArrowRight size={24} className="text-slate-300" style={{ transform: "rotate(90deg)" }} />
+
+                             {/* STEP 4: MOBILE APP */}
+                            <div style={{ display: "flex", gap: "24px", width: "100%", maxWidth: "800px", alignItems: "center" }}>
+                                <div style={{ width: "80px", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                                    <div style={{ width: "64px", height: "64px", background: "#fef2f2", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #fecaca" }}>
+                                        <Smartphone size={32} className="text-red-600" />
+                                    </div>
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>APP</span>
+                                </div>
+                                <div style={{ flex: 1, padding: "20px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                    <h4 style={{ fontWeight: "600", color: "#1e293b", marginBottom: "4px" }}>4. Real-time Polling & Alert</h4>
+                                    <p style={{ fontSize: "14px", color: "#64748b" }}>
+                                        The <strong>Conductor's Mobile App</strong> triggers a polling request every 0.5s.
+                                    </p>
+                                    <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
+                                        <div style={{ flex: 1, background: "#fff", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
+                                            <div style={{ fontSize: "10px", fontWeight: "700", color: "#94a3b8", marginBottom: "4px" }}>DASHBOARD UI</div>
+                                            <div style={{ fontSize: "13px", fontWeight: "700", color: "#dc2626" }}>CRITICAL WARNING</div>
+                                            <div style={{ fontSize: "11px", color: "#ef4444", marginTop: "2px" }}>⚠️ Curve Ahead: 85m</div>
+                                        </div>
+                                         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                                            <p style={{ fontSize: "12px", color: "#64748b" }}>
+                                                Audio/Haptic feedback is triggered instantly when Risk > 0.7.
+                                            </p>
+                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
                     </CardContent>
                  </Card>
             </div>

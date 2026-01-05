@@ -377,8 +377,8 @@ const AuthorityScenarioSimulator = () => {
                     setCurrentRisk({ ...newData, distToCurve: displayDist });
                     setFutureRisk(futureData);
                     
-                    // Send Telemetry (Now includes Future Risk)
-                    sendTelemetry(currentPos, newData.risk_score, futureData.risk_score);
+                    // Send Telemetry (Now includes Future Risk & Distance)
+                    sendTelemetry(currentPos, newData.risk_score, futureData.risk_score, displayDist);
 
                     // Update History
                     setRiskHistory(prev => [...prev, {
@@ -420,7 +420,7 @@ const AuthorityScenarioSimulator = () => {
     const currentRiskRef = useRef(null);
     useEffect(() => { currentRiskRef.current = currentRisk; }, [currentRisk]);
 
-    const sendTelemetry = (pos, currentRiskScore, futureRiskScore) => {
+    const sendTelemetry = (pos, currentRiskScore, futureRiskScore, distToCurve) => {
         const payload = {
             licensePlate: selectedBus, // Use selected bus
             speed: parseInt(getValues("speed")),
@@ -428,6 +428,7 @@ const AuthorityScenarioSimulator = () => {
             footboardStatus: watch("footboard") === "true",
             riskScore: currentRiskScore || 0,
             futureRiskScore: futureRiskScore || 0, // NEW FIELD
+            distToCurve: distToCurve || 0,         // NEW FIELD
             gps: { lat: pos.lat, lon: pos.lng }
         };
         api.post("/iot/mock-data", payload).catch(err => console.error(err));
