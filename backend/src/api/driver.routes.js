@@ -113,10 +113,20 @@ router.post("/verify", protect, upload.single("image"), async (req, res) => {
 
         // 3. Compare
         let bestMatch = null;
-        let minDistance = 100.0;
-        const THRESHOLD = 0.6; // Typical threshold for 128-d encodings
+        let minDistance = 1000.0; // Increase init max
+
+        // Determine threshold based on vector size
+        // 128-d (FaceNet) -> ~0.6
+        // 1024-d (32x32 Pixel) -> ~10.0 (Tunable)
+        let THRESHOLD = 0.6;
+        if (probeEncoding.length > 200) {
+            THRESHOLD = 12.0; // Higher threshold for pixel matching
+        }
 
         for (const driver of drivers) {
+            // Skip mismatched formats
+            if (!driver.faceEncoding || driver.faceEncoding.length !== probeEncoding.length) continue;
+
             const dist = getEuclideanDistance(probeEncoding, driver.faceEncoding);
             if (dist < minDistance) {
                 minDistance = dist;
@@ -125,11 +135,19 @@ router.post("/verify", protect, upload.single("image"), async (req, res) => {
         }
 
         if (bestMatch && minDistance < THRESHOLD) {
-            // Logic for Mock: Mock encoding distance works same way (0.0 distance if both are [1.0]s)
+            // Calculate confidence
+            let confidence = 0;
+            if (probeEncoding.length > 200) {
+                // Confidence for pixel match: Max dist ~20?
+                confidence = Math.max(0, 1 - (minDistance / 15.0));
+            } else {
+                confidence = Math.max(0, 1 - minDistance);
+            }
+
             res.json({
                 verified: true,
                 driverName: bestMatch.name,
-                confidence: Math.max(0, 1 - minDistance), // Rough confidence score
+                confidence: confidence,
                 message: "Driver verified successfully"
             });
         } else {
@@ -207,5 +225,68 @@ router.post(
         }
     }
 );
+
+// @desc    Update driver details (excluding photo/encoding re-calc for simplicity, unless photo provided)
+// @route   PUT /api/driver/:id
+// @access  Private (Authority)
+router.put("/:id", protect, authorize("authority"), upload.single("photo"), async (req, res) => {
+    try {
+        const { name, licenseNumber, contactNumber } = req.body;
+        const driver = await Driver.findById(req.params.id);
+
+        if (!driver) {
+            return res.status(404).json({ message: "Driver not found" });
+        }
+
+        driver.name = name || driver.name;
+        driver.licenseNumber = licenseNumber || driver.licenseNumber;
+        driver.contactNumber = contactNumber || driver.contactNumber;
+
+        if (req.file) {
+            driver.photoUrl = req.file.path;
+            // Note: In a full implementation, we might want to re-run face encoding here
+            // For now, we'll reset encoding if photo changes so they have to re-verify
+            // or we could trigger the ML service again. Let's trigger ML for better UX.
+            try {
+                const mlResponse = await axios.post(
+                    `${process.env.ML_SERVICE_URL}/api/ml/face-encoding`,
+                    { imageUrl: driver.photoUrl }
+                );
+                if (mlResponse.data.encoding && mlResponse.data.encoding.length > 0) {
+                    driver.faceEncoding = mlResponse.data.encoding;
+                } else {
+                    driver.faceEncoding = []; // Reset if no face found
+                }
+            } catch (mlError) {
+                console.error("ML Service Error (Update):", mlError.message);
+                driver.faceEncoding = []; // Reset on error/no-face
+            }
+        }
+
+        await driver.save();
+        res.json(driver);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
+// @desc    Delete driver
+// @route   DELETE /api/driver/:id
+// @access  Private (Authority)
+router.delete("/:id", protect, authorize("authority"), async (req, res) => {
+    try {
+        const driver = await Driver.findById(req.params.id);
+        if (!driver) {
+            return res.status(404).json({ message: "Driver not found" });
+        }
+
+        await driver.deleteOne();
+        res.json({ message: "Driver removed" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
 
 export default router;

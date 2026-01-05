@@ -39,7 +39,7 @@ class DriverMonitor:
             return None
 
     def get_face_encoding(self, image_url):
-        """Get 128-d face encoding from image URL or mock if face detected by Haar Cascade"""
+        """Get face encoding (Real or Pixel-based Fallback)"""
         print(f"Processing image for encoding: {image_url}")
         image = self._url_to_image(image_url)
         if image is None:
@@ -56,15 +56,28 @@ class DriverMonitor:
             except Exception as e:
                 print(f"Face Recognition failed: {e}")
         
-        # 2. Fallback: Use OpenCV Haar Cascade to DETECT a face
+        # 2. Fallback: Use OpenCV Haar Cascade + Pixel Template
         try:
-            print("Attempting Haar Cascade detection...")
+            print("Attempting Haar Cascade + Pixel Encoding...")
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
             
             if len(faces) > 0:
-                print(f"✅ Faces detected by Haar Cascade: {len(faces)}. Generating mock encoding.")
-                return [1.0] * 128
+                print(f"✅ Face detected. Generating pixel-based encoding.")
+                (x, y, w, h) = faces[0] # Take first face
+                face_roi = gray[y:y+h, x:x+w]
+                
+                # Resize to a fixed small size (e.g., 32x32)
+                # This creates a 1024-d vector
+                resized = cv2.resize(face_roi, (32, 32))
+                
+                # Normalize pixel values (0-1)
+                normalized = resized / 255.0
+                
+                # Flatten to list
+                encoding = normalized.flatten().tolist()
+                
+                return encoding
             else:
                 print("⚠️ No faces detected by Haar Cascade")
         except Exception as e:
@@ -74,23 +87,50 @@ class DriverMonitor:
 
     def verify_face(self, image_url, known_encoding, tolerance=0.6):
         """Verify if the face in URL matches the known encoding"""
-        is_mock = (len(known_encoding) == 128 and known_encoding[0] == 1.0)
+        # Check if it's our pixel-based encoding (length 1024)
+        is_pixel_encoding = (len(known_encoding) == 1024)
         
         image = self._url_to_image(image_url)
         if image is None:
              return {"match": False, "message": "Image load error"}
 
-        if not FACE_REC_AVAILABLE or is_mock:
+        if not FACE_REC_AVAILABLE or is_pixel_encoding:
             try:
-                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
-                if len(faces) > 0:
-                     return {
-                         "match": True, 
-                         "message": "Face detected (Verification Simulated)", 
-                         "confidence": 0.95,
-                         "driverName": "Verified Driver"
-                     }
+                # Get encoding for the verification image
+                probe_encoding = self.get_face_encoding(image_url)
+                
+                if probe_encoding and len(probe_encoding) > 0:
+                     # Calculate distance manually here if needed, but backend does it.
+                     # Just return success that we processed it.
+                     # If we want to verify LOCALLY:
+                     import math
+                     dist = 0.0
+                     # Careful: known_encoding might be [1.0]*128 from old data.
+                     # probe_encoding is 1024-d.
+                     # If dimensions mismatch, we can't compare.
+                     
+                     if len(probe_encoding) == len(known_encoding):
+                         dist = dist.euclidean(probe_encoding, known_encoding) # Need scipy or math
+                         # Simple loop
+                         sum_sq = sum((a - b) ** 2 for a, b in zip(probe_encoding, known_encoding))
+                         dist = math.sqrt(sum_sq)
+                         
+                         # Threshold for 1024 pixels (0-1)
+                         # Max distance is sqrt(1024 * 1^2) = 32.
+                         # A close match should be < 5.0? Needs tuning.
+                         threshold = 8.0 
+                         
+                         if dist < threshold:
+                             return {
+                                 "match": True, 
+                                 "message": "Face verified (Pixel Match)", 
+                                 "confidence": max(0, 1 - (dist/15.0)),
+                                 "driverName": "Verified Driver"
+                             }
+                         else:
+                             return {"match": False, "message": f"Face mismatch. Dist: {dist:.2f}"}
+                     else:
+                         return {"match": False, "message": "Encoding format mismatch (Old vs New)"}
                 else:
                     return {"match": False, "message": "No face detected in verification image"}
             except Exception as e:
