@@ -14,6 +14,7 @@ import {
   BookOpen,
   Navigation,
   UserPlus,
+  Camera,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -83,6 +84,12 @@ const Sidebar = () => {
       name: "Drivers",
       href: "/authority/drivers",
       icon: UserPlus,
+      roles: ["authority"],
+    },
+    {
+      name: "Face ID Live",
+      href: "/authority/face-live",
+      icon: Camera,
       roles: ["authority"],
     },
     {

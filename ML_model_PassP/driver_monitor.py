@@ -53,9 +53,8 @@ class DriverMonitor:
     def get_face_encoding(self, image_url):
         """Get 128-d face encoding from image URL"""
         if not FACE_REC_AVAILABLE:
-            print("Face recognition disabled, returning mock encoding")
-            # Return a 128-dimensional vector of zeros as a mock
-            return [0.0] * 128
+            print("Face recognition disabled")
+            return None
             
         # ... logic commented out or unreachable ...
         return None

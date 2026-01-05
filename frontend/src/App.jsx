@@ -27,6 +27,7 @@ import FleetManagement from "./pages/authority/FleetManagement";
 import ConductorManagement from "./pages/authority/ConductorManagement";
 import RegisterDriver from "./pages/authority/RegisterDriver";
 import DriverManagement from "./pages/authority/DriverManagement";
+import FacialRecognitionLive from "./pages/authority/FacialRecognitionLive";
 
 import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
 import AuthorityPhysicsCheck from "./pages/authority/AuthorityPhysicsCheck";
@@ -93,6 +94,10 @@ function App() {
               <Route
                 path="/authority/drivers"
                 element={<DriverManagement />}
+              />
+              <Route
+                path="/authority/face-live"
+                element={<FacialRecognitionLive />}
               />
               <Route
                 path="/authority/violations"
