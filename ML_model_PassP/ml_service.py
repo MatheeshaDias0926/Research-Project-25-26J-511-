@@ -215,6 +215,44 @@ def register_driver_face():
         print(f"Error registering face: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/face/sync-driver', methods=['POST'])
+def sync_driver_data():
+    """Sync driver name or ID updates from Backend"""
+    if not face_recognizer:
+        return jsonify({'error': 'Face recognition service unavailable'}), 503
+    try:
+        data = request.get_json()
+        old_id = data.get('oldDriverId')
+        new_name = data.get('newName')
+        new_id = data.get('newDriverId')
+        
+        if not old_id:
+            return jsonify({'error': 'oldDriverId is required'}), 400
+            
+        success = face_recognizer.sync_driver_info(old_id, new_name, new_id)
+        if success:
+            return jsonify({'message': 'Driver info synced successfully'}), 200
+        else:
+            return jsonify({'error': 'Driver not found in face database'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/face/delete', methods=['POST'])
+def delete_driver_face():
+    """Remove driver face data"""
+    if not face_recognizer:
+        return jsonify({'error': 'Face recognition service unavailable'}), 503
+    try:
+        data = request.get_json()
+        driver_id = data.get('driverId')
+        if not driver_id:
+            return jsonify({'error': 'driverId required'}), 400
+            
+        success = face_recognizer.delete_person(driver_id)
+        return jsonify({'message': 'Deleted' if success else 'Not found'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/face/verify', methods=['POST'])
 def verify_driver_face():
     """Verify a driver from a live image"""

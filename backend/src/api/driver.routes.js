@@ -203,9 +203,27 @@ router.put("/:id", protect, authorize("authority"), upload.single("photo"), asyn
             return res.status(404).json({ message: "Driver not found" });
         }
 
+        const oldLicense = driver.licenseNumber;
+        const nameChanged = name && name !== driver.name;
+        const licenseChanged = licenseNumber && licenseNumber !== driver.licenseNumber;
+
         driver.name = name || driver.name;
         driver.licenseNumber = licenseNumber || driver.licenseNumber;
         driver.contactNumber = contactNumber || driver.contactNumber;
+
+        // If Name or License changed, sync with ML Service
+        if (nameChanged || licenseChanged) {
+            try {
+                await axios.post(`${process.env.ML_SERVICE_URL}/api/face/sync-driver`, {
+                    oldDriverId: oldLicense,
+                    newName: driver.name,
+                    newDriverId: driver.licenseNumber
+                });
+                console.log(`ML Sync success for driver: ${driver.name}`);
+            } catch (syncErr) {
+                console.error("ML Sync failed:", syncErr.message);
+            }
+        }
 
         if (req.file) {
             driver.photoUrl = req.file.path;
@@ -242,6 +260,15 @@ router.delete("/:id", protect, authorize("authority"), async (req, res) => {
         const driver = await Driver.findById(req.params.id);
         if (!driver) {
             return res.status(404).json({ message: "Driver not found" });
+        }
+
+        // Notify ML Service to delete face data
+        try {
+            await axios.post(`${process.env.ML_SERVICE_URL}/api/face/delete`, {
+                driverId: driver.licenseNumber
+            });
+        } catch (mlErr) {
+            console.error("ML Delete failed:", mlErr.message);
         }
 
         await driver.deleteOne();

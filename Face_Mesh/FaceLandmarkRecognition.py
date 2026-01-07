@@ -52,6 +52,19 @@ class FaceLandmarkRecognition:
         self.status_yawning = False
         self.last_ear = 0.0
         self.last_mar = 0.0
+        self.last_match = None
+        self.last_match_confidence = 0.0
+        
+        # Performance Optimizations
+        self.frame_count = 0
+        self.recognition_frequency = 30 # Run recognition every 30 frames (~1 sec)
+        self.cached_tesselation = None
+        try:
+            solutions = getattr(mp, 'solutions', None)
+            if solutions:
+                self.cached_tesselation = list(solutions.face_mesh.FACEMESH_TESSELATION)
+        except:
+            pass
 
         # FaceNet Initialization
         self.use_facenet = HAS_FACENET
@@ -135,12 +148,16 @@ class FaceLandmarkRecognition:
                 "image_source": image_source if isinstance(image_source, str) else "local_upload",
                 "created_at": np.datetime64('now').astype(str)
             }
+            
+            # UNIQUE LOOKUP: Use driver_id if available, otherwise name
+            query = {"driver_id": driver_id} if driver_id else {"name": person_name}
+            
             self.collection.update_one(
-                {"name": person_name},  # Query
-                {"$set": record},       # Update
-                upsert=True             # Create if not exists
+                query,              # Query
+                {"$set": record},   # Update
+                upsert=True         # Create if not exists
             )
-            print(f"[INFO] Registered {person_name} to MongoDB.")
+            print(f"[INFO] Registered/Updated {person_name} (ID: {driver_id}) to MongoDB.")
             return True
         else:
             print("[WARNING] No faces detected in provided image.")
@@ -365,12 +382,15 @@ class FaceLandmarkRecognition:
                 h, w, _ = frame.shape
 
                 if result.face_landmarks:
+                    self.frame_count += 1
                     for face in result.face_landmarks:
-                        # 1. Recognition (Landmark or FaceNet)
-                        landmarks = [(lm.x, lm.y, lm.z) for lm in face]
-                        name = self.match_face(landmarks, image=frame)
-
-                        # 2. Drowsiness Detection (EAR)
+                        # 1. Recognition (Landmark or FaceNet) - THROTTLED
+                        name = self.last_match
+                        if self.frame_count % self.recognition_frequency == 0 or self.last_match is None:
+                            landmarks = [(lm.x, lm.y, lm.z) for lm in face]
+                            name = self.match_face(landmarks, image=frame)
+                        
+                        # 2. Drowsiness Detection (EAR) - EVERY FRAME
                         # Left Eye: 33, 160, 158, 133, 153, 144
                         # Right Eye: 362, 385, 387, 263, 373, 380
                         left_eye = [face[i] for i in [33, 160, 158, 133, 153, 144]]
@@ -422,16 +442,12 @@ class FaceLandmarkRecognition:
                                        (0, 255, 0),
                                        self.dot_thickness)
 
-                        # Draw Mesh
-                        if self.draw_face_mesh:
-                            solutions = getattr(mp, 'solutions', None)
-                            if solutions:
-                                connections = solutions.face_mesh.FACEMESH_TESSELATION
-                                for connection in connections:
-                                    start_idx, end_idx = connection
-                                    x1, y1 = int(face[start_idx].x * w), int(face[start_idx].y * h)
-                                    x2, y2 = int(face[end_idx].x * w), int(face[end_idx].y * h)
-                                    cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 255), 1)
+                        # Draw Mesh - OPTIMIZED
+                        if self.draw_face_mesh and self.cached_tesselation:
+                            for start_idx, end_idx in self.cached_tesselation:
+                                x1, y1 = int(face[start_idx].x * w), int(face[start_idx].y * h)
+                                x2, y2 = int(face[end_idx].x * w), int(face[end_idx].y * h)
+                                cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 255), 1)
 
                         # Status Overlays
                         status_text = []
