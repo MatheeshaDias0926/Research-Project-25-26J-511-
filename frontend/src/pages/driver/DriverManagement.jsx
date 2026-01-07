@@ -344,7 +344,7 @@ const DriverManagement = () => {
                                                             fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 20,
                                                             background: "#fefce8", color: "#854d0e", display: "flex", alignItems: "center", gap: 4
                                                         }}>
-                                                            <AlertTriangle size={12} /> Pending
+                                                            <AlertTriangle size={12} /> Fail
                                                         </div>
                                                     )}
 

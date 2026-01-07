@@ -5,21 +5,10 @@ import mediapipe as mp
 from scipy.spatial import distance as dist
 import logging
 
-# Disable face_recognition for now due to missing models/git
+
 FACE_REC_AVAILABLE = False
 print("Warning: face_recognition module disabled due to missing dependencies. Face ID features will not work.")
 
-"""
-try:
-    import face_recognition
-    FACE_REC_AVAILABLE = True
-except ImportError:
-    FACE_REC_AVAILABLE = False
-    print("Warning: face_recognition module not found. Face ID features will be disabled.")
-except Exception as e:
-    FACE_REC_AVAILABLE = False
-    print(f"Warning: face_recognition error: {e}")
-"""
 
 class DriverMonitor:
     def __init__(self):

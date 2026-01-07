@@ -37,7 +37,7 @@ class FaceLandmarkRecognition:
         self.draw_face_mesh = draw_face_mesh
         self.dot_radius = int(dot_radius)
         self.dot_thickness = int(dot_thickness)
-        self.match_threshold = 4.0 # Stricter fallback to prevent false positives when FaceNet is off/fails
+        self.match_threshold = 2.5 # Stricter fallback (was 4.0) to prevent false positives
 
         # Safety Thresholds
         self.ear_threshold = 0.25  # Below this is "eyes closed" (slightly more sensitive)
@@ -69,8 +69,8 @@ class FaceLandmarkRecognition:
         # FaceNet Initialization
         self.use_facenet = HAS_FACENET
         if self.use_facenet:
-            print("[INFO] Initializing FaceNet (InceptionResnetV1)...")
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            print(f"[INFO] Initializing FaceNet on device: {self.device}")
             self.facenet_model = InceptionResnetV1(pretrained='vggface2').eval().to(self.device)
             self.mtcnn = MTCNN(keep_all=True, device=self.device)
 
@@ -307,7 +307,7 @@ class FaceLandmarkRecognition:
             
         return best_match
 
-    def match_facenet(self, embedding, threshold=0.8):
+    def match_facenet(self, embedding, threshold=0.6):
         """
         Match FaceNet embedding against MongoDB
         threshold: Normalized Euclidean distance threshold (usually 0.8-1.0 for matches)
