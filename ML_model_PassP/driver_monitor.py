@@ -149,12 +149,17 @@ class DriverMonitor:
 
         return {"match": False, "message": "Face recognition disabled"}
 
-    def detect_drowsiness(self, image_file):
+    def detect_drowsiness(self, image_file=None, face_recognizer=None):
         """
-        Detect drowsiness (Simplified for Haar - just cheeks presence, not EAR)
-        Actually EAR is hard with Haar. We will just return false for now or mock it.
+        Detect drowsiness using linked FaceLandmarkRecognition status
         """
-        return {"drowsy": False, "message": "Drowsiness detection requires landmarks (disabled)"}
-        # To really do EAR we need dlib or mediapipe. 
-        # Since mediapipe is crashing, we disable drowsiness for now to keep the service running.
+        if face_recognizer:
+            return {
+                "drowsy": face_recognizer.status_drowsy,
+                "yawning": face_recognizer.status_yawning,
+                "ear": face_recognizer.last_ear,
+                "mar": face_recognizer.last_mar,
+                "message": "Status synchronized from FaceLandmarkRecognition"
+            }
+        return {"drowsy": False, "yawning": False, "message": "No active recognizer linked"}
 

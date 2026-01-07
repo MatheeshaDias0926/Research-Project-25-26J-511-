@@ -125,7 +125,12 @@ const DriverManagement = () => {
             fetchDrivers();
         } catch (error) {
             console.error("Operation failed", error);
-            toast.error(error.response?.data?.message || "Operation failed");
+            if (error.response && error.response.data) {
+                console.error("Server Error Response:", error.response.data);
+                toast.error(error.response.data.message || "Operation failed on server");
+            } else {
+                toast.error(error.message || "Operation failed");
+            }
         } finally {
             setSubmitting(false);
         }
@@ -343,17 +348,15 @@ const DriverManagement = () => {
                                                         </div>
                                                     )}
 
-                                                    {(!driver.faceEncoding || driver.faceEncoding.length === 0) && (
-                                                        <button
-                                                            onClick={() => setReuploadDriverId(driver._id)}
-                                                            style={{
-                                                                fontSize: 12, color: "#4f46e5", background: "none", border: "none",
-                                                                cursor: "pointer", textDecoration: "underline", display: "flex", alignItems: "center", gap: 4
-                                                            }}
-                                                        >
-                                                            <Camera size={12} /> Re-upload
-                                                        </button>
-                                                    )}
+                                                    <button
+                                                        onClick={() => setReuploadDriverId(driver._id)}
+                                                        style={{
+                                                            fontSize: 12, color: "#4f46e5", background: "none", border: "none",
+                                                            cursor: "pointer", textDecoration: "underline", display: "flex", alignItems: "center", gap: 4
+                                                        }}
+                                                    >
+                                                        <Camera size={12} /> Re-upload Photo
+                                                    </button>
                                                 </div>
 
                                                 <div style={{ display: "flex", gap: 4 }}>

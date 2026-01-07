@@ -11,6 +11,7 @@ const Settings = () => {
         max_faces: 2,
         min_detection_confidence: 0.5,
         min_tracking_confidence: 0.5,
+        match_threshold: 5.0,
         draw_face_mesh: true,
         dot_radius: 2,
         dot_thickness: -1
@@ -120,6 +121,24 @@ const Settings = () => {
                                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                             />
                         </div>
+                    </div>
+
+                    {/* Match Threshold */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Matching Distance Threshold: {settings.match_threshold}
+                        </label>
+                        <input
+                            type="range"
+                            name="match_threshold"
+                            min="1.0"
+                            max="15.0"
+                            step="0.1"
+                            value={settings.match_threshold || 5.0}
+                            onChange={handleChange}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Lower is stricter (harder access), Higher is looser (easier access).</p>
                     </div>
 
                     <div className="bg-blue-50 p-4 rounded-md flex gap-3 text-blue-800 text-sm">

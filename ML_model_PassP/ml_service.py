@@ -182,7 +182,11 @@ def get_face_status():
     
     return jsonify({
         'match_name': face_recognizer.last_match,
-        'confidence_dist': face_recognizer.last_match_confidence
+        'confidence_dist': face_recognizer.last_match_confidence,
+        'drowsy': face_recognizer.status_drowsy,
+        'yawning': face_recognizer.status_yawning,
+        'ear': face_recognizer.last_ear,
+        'mar': face_recognizer.last_mar
     })
 
 @app.route('/api/face/register', methods=['POST'])
