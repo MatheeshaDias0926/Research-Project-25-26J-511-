@@ -8,9 +8,9 @@ import {
   CheckCircle,
   XCircle,
   Scan,
-  RefreshCw,
   AlertTriangle,
-  VideoOff
+  VideoOff,
+  User
 } from "lucide-react";
 import { Card } from "../../components/ui/Card";
 
@@ -31,7 +31,7 @@ const FacialRecognitionLive = () => {
     setLogs((prev) => [`[${t}] ${msg}`, ...prev.slice(0, 12)]);
   };
 
-  /* ---------------- AUTO MODE POLLING ---------------- */
+  /* ---------------- AUTO MODE ---------------- */
   useEffect(() => {
     let interval;
     if (mode === "auto") {
@@ -39,42 +39,27 @@ const FacialRecognitionLive = () => {
         try {
           const res = await axios.get("http://localhost:5001/api/face/status");
 
-          // Update Safety Flags
           setSafetyStatus(prev => {
-            const isDrowsy = res.data.drowsy;
-            const isYawning = res.data.yawning;
-
-            if (isDrowsy && !prev.drowsy) addLog("⚠️ DROWSY ALERT DETECTED");
-            if (isYawning && !prev.yawning) addLog("⚠️ YAWNING DETECTED");
-
-            return { drowsy: isDrowsy, yawning: isYawning };
+            if (res.data.drowsy && !prev.drowsy) addLog("⚠️ DROWSY ALERT");
+            if (res.data.yawning && !prev.yawning) addLog("⚠️ YAWNING DETECTED");
+            return { drowsy: res.data.drowsy, yawning: res.data.yawning };
           });
 
           if (res.data.match_name) {
             if (autoMatch?.name !== res.data.match_name) {
-              setAutoMatch({
-                name: res.data.match_name,
-                conf: res.data.confidence_dist
-              });
-              setResult({
-                verified: true,
-                driverName: res.data.match_name
-              });
+              setAutoMatch({ name: res.data.match_name });
+              setResult({ verified: true, driverName: res.data.match_name });
               addLog(`AUTO MATCH → ${res.data.match_name}`);
-              setTimeout(() => setResult(null), 3000);
+              setTimeout(() => setResult(null), 4000);
             }
-          } else {
-            setAutoMatch(null);
-          }
-        } catch {
-          /* silent */
-        }
+          } else setAutoMatch(null);
+        } catch {}
       }, 800);
     }
     return () => clearInterval(interval);
   }, [mode, autoMatch]);
 
-  /* ---------------- MANUAL MODE ---------------- */
+  /* ---------------- MANUAL ---------------- */
   const captureAndVerify = async () => {
     if (!webcamRef.current) return;
     setLoading(true);
@@ -84,13 +69,10 @@ const FacialRecognitionLive = () => {
     const blob = await (await fetch(img)).blob();
 
     const form = new FormData();
-    form.append("image", blob, "capture.jpg");
+    form.append("image", blob);
 
     try {
-      const res = await axios.post(
-        "http://localhost:3000/api/driver/verify",
-        form
-      );
+      const res = await axios.post("http://localhost:3000/api/driver/verify", form);
       setResult(res.data);
       addLog(res.data.verified ? "Access granted" : "Access denied");
     } catch {
@@ -100,64 +82,42 @@ const FacialRecognitionLive = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-blue-100 p-4 lg:p-8">
+  const driverName = result?.driverName || autoMatch?.name || "Unknown Driver";
+  const accessGranted = result?.verified;
 
+  return (
+    <div style={pageStyle}>
       {/* HEADER */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
+      <div style={headerStyle}>
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3">
-            <Scan className="text-blue-600" size={32} />
-            Live Face Recognition
+          <h1 style={titleStyle}>
+            <Scan size={30} /> Live Face Recognition
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <p style={{ color: "#64748b", fontSize: 14 }}>
             Smart Bus Biometric Control Center
           </p>
         </div>
 
-        {/* MODE SWITCH */}
-        <div className="flex bg-white rounded-xl shadow-md overflow-hidden border">
-          <button
-            onClick={() => setMode("auto")}
-            className={`px-6 py-3 font-bold text-sm transition-all
-              ${mode === "auto"
-                ? "bg-blue-600 text-white"
-                : "text-slate-600 hover:bg-slate-100"}`}
-          >
-            AUTO
-          </button>
-          <button
-            onClick={() => setMode("manual")}
-            className={`px-6 py-3 font-bold text-sm transition-all
-              ${mode === "manual"
-                ? "bg-indigo-600 text-white"
-                : "text-slate-600 hover:bg-slate-100"}`}
-          >
-            MANUAL
-          </button>
+        <div style={switchStyle}>
+          <button onClick={() => setMode("auto")} style={mode === "auto" ? activeBtn : btn}>AUTO</button>
+          <button onClick={() => setMode("manual")} style={mode === "manual" ? activeBtn : btn}>MANUAL</button>
         </div>
       </div>
 
-      {/* MAIN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
+      <div style={gridStyle}>
         {/* CAMERA */}
-        <div className="lg:col-span-3 relative rounded-3xl overflow-hidden shadow-2xl border bg-black">
-
+        <div style={cameraWrap}>
           {mode === "auto" ? (
             !videoError ? (
               <img
                 src="http://localhost:5001/api/face/feed"
-                className="w-full aspect-video object-contain"
-                onError={() => {
-                  setVideoError(true);
-                  addLog("Camera feed offline");
-                }}
+                style={videoStyle}
+                onError={() => setVideoError(true)}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center text-white h-full">
+              <div style={offlineStyle}>
                 <VideoOff size={48} />
-                <p className="mt-3 font-bold">Camera Offline</p>
+                Camera Offline
               </div>
             )
           ) : (
@@ -165,102 +125,90 @@ const FacialRecognitionLive = () => {
               ref={webcamRef}
               screenshotFormat="image/jpeg"
               onUserMedia={() => setCamReady(true)}
-              className="w-full aspect-video object-contain"
+              style={videoStyle}
             />
           )}
 
-          {/* STATUS */}
-          <div className="absolute top-4 left-4 bg-black/60 backdrop-blur text-xs text-green-400 px-3 py-1 rounded-full border border-green-800">
-            ● LIVE · {mode.toUpperCase()}
-          </div>
+          <div style={liveBadge}>● LIVE · {mode.toUpperCase()}</div>
 
-          {/* RESULT (Verification) */}
+          {/* RESULT POPUP */}
           {result && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl px-6 py-4 rounded-2xl shadow-xl flex items-center gap-4 z-40">
-              {result.verified ? (
-                <CheckCircle size={32} className="text-green-600" />
+            <div style={resultBox}>
+              {accessGranted ? (
+                <CheckCircle size={30} color="#16a34a" />
               ) : (
-                <XCircle size={32} className="text-red-600" />
+                <XCircle size={30} color="#dc2626" />
               )}
               <div>
-                <div className="font-extrabold text-lg">
-                  {result.verified ? "ACCESS GRANTED" : "ACCESS DENIED"}
-                </div>
-                <div className="text-sm text-slate-500">
-                  {result.driverName || "Unknown"}
-                </div>
+                <strong>{accessGranted ? "ACCESS GRANTED" : "ACCESS DENIED"}</strong>
+                <div style={{ fontSize: 13 }}>{driverName}</div>
               </div>
             </div>
           )}
 
-          {/* SAFETY ALERTS (Drowsy/Yawning) */}
+          {/* CRITICAL ALERT */}
           {(safetyStatus.drowsy || safetyStatus.yawning) && (
-            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-8 rounded-3xl backdrop-blur-2xl shadow-2xl border-4 flex flex-col items-center gap-6 animate-pulse z-50 ${safetyStatus.drowsy ? "bg-red-600/90 border-red-400" : "bg-orange-600/90 border-orange-400"
-              }`}>
-              <AlertTriangle size={80} className="text-white" />
-              <div className="text-center">
-                <h2 className="text-4xl font-black text-white tracking-tighter mb-2">
-                  {safetyStatus.drowsy ? "DROWSY ALERT!" : "YAWN DETECTED!"}
-                </h2>
-                <p className="text-white/90 font-bold text-lg">
-                  {safetyStatus.drowsy ? "DRIVER EYES CLOSED - PLEASE WAKE UP" : "DRIVER YAWNING - TAKE A BREAK IF TIRED"}
-                </p>
+            <div style={alertBox(safetyStatus.drowsy)}>
+              <AlertTriangle size={70} />
+              <h2>{safetyStatus.drowsy ? "DROWSY ALERT!" : "YAWN DETECTED!"}</h2>
+              <p>
+                {safetyStatus.drowsy
+                  ? "DRIVER EYES CLOSED – WAKE UP"
+                  : "TAKE A BREAK IF TIRED"}
+              </p>
+
+              {/* DRIVER INFO BELOW ALERT */}
+              <div style={alertDriverBox}>
+                <User size={18} />
+                <div>
+                  <strong>{driverName}</strong>
+                  <div style={{ fontSize: 13 }}>
+                    {accessGranted ? "ACCESS GRANTED" : "NOT VERIFIED"}
+                  </div>
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {/* SIDEBAR */}
-        <div className="flex flex-col gap-6">
-
-          {/* STATS */}
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="p-4 rounded-2xl bg-white/70 backdrop-blur shadow">
-              <div className="text-xs text-slate-400 flex items-center gap-2">
-                <Activity size={14} /> SYSTEM
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* DRIVER STATUS CARD */}
+          <Card style={driverStatusCard}>
+            <User size={18} />
+            <div>
+              <div style={{ fontWeight: 700 }}>{driverName}</div>
+              <div style={{ fontSize: 13, color: accessGranted ? "#16a34a" : "#dc2626" }}>
+                {accessGranted ? "ACCESS GRANTED" : "NOT VERIFIED"}
               </div>
-              <div className="font-extrabold text-green-600 text-lg">ONLINE</div>
-            </Card>
-
-            <Card className="p-4 rounded-2xl bg-white/70 backdrop-blur shadow">
-              <div className="text-xs text-slate-400 flex items-center gap-2">
-                <Radio size={14} /> DETECTIONS
-              </div>
-              <div className="font-extrabold text-blue-600 text-lg">
-                {autoMatch ? 1 : 0}
-              </div>
-            </Card>
-          </div>
-
-          {/* TERMINAL */}
-          <Card className="flex-1 rounded-3xl bg-slate-900 text-cyan-400 font-mono text-xs shadow-xl overflow-hidden">
-            <div className="bg-slate-800 px-4 py-2 font-bold flex justify-between">
-              TERMINAL <Terminal size={14} />
-            </div>
-            <div className="p-4 space-y-2 overflow-y-auto max-h-[300px]">
-              {logs.map((l, i) => (
-                <div key={i}>&gt; {l}</div>
-              ))}
             </div>
           </Card>
 
-          {/* MANUAL BUTTON */}
+          {/* STATS */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Card style={statCard}><Activity size={14} /> ONLINE</Card>
+            <Card style={statCard}><Radio size={14} /> {autoMatch ? 1 : 0}</Card>
+          </div>
+
+          {/* TERMINAL */}
+          <Card style={terminal}>
+            <div style={terminalHeader}>
+              TERMINAL <Terminal size={14} />
+            </div>
+            <div style={terminalBody}>
+              {logs.map((l, i) => <div key={i}>&gt; {l}</div>)}
+            </div>
+          </Card>
+
           {mode === "manual" && (
             <button
               onClick={captureAndVerify}
               disabled={loading || !camReady}
-              className="rounded-2xl py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-lg shadow-xl transition-all disabled:opacity-50"
+              style={verifyBtn}
             >
               {loading ? "VERIFYING..." : "CAPTURE & VERIFY"}
             </button>
           )}
-
-          {/* INFO */}
-          <div className="p-3 rounded-xl bg-blue-50 text-blue-800 text-xs flex gap-2 items-start border">
-            <AlertTriangle size={14} />
-            Ensure good lighting and face visibility
-          </div>
-
         </div>
       </div>
     </div>
@@ -268,3 +216,150 @@ const FacialRecognitionLive = () => {
 };
 
 export default FacialRecognitionLive;
+
+/* ===================== STYLES ===================== */
+
+const pageStyle = {
+  minHeight: "100vh",
+  padding: 24,
+  background: "linear-gradient(135deg,#f8fafc,#e0f2fe)"
+};
+
+const headerStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 24
+};
+
+const titleStyle = {
+  display: "flex",
+  gap: 10,
+  alignItems: "center",
+  fontSize: 28,
+  fontWeight: 800
+};
+
+const switchStyle = {
+  display: "flex",
+  borderRadius: 12,
+  overflow: "hidden",
+  border: "1px solid #e2e8f0"
+};
+
+const btn = {
+  padding: "10px 20px",
+  background: "white",
+  border: "none",
+  cursor: "pointer"
+};
+
+const activeBtn = { ...btn, background: "#2563eb", color: "white" };
+
+const gridStyle = { display: "grid", gridTemplateColumns: "3fr 1fr", gap: 24 };
+
+const cameraWrap = { position: "relative", borderRadius: 24, overflow: "hidden", background: "black" };
+
+const videoStyle = { width: "100%", aspectRatio: "16/9", objectFit: "contain" };
+
+const liveBadge = {
+  position: "absolute",
+  top: 12,
+  left: 12,
+  background: "rgba(0,0,0,0.6)",
+  color: "#22c55e",
+  padding: "4px 10px",
+  borderRadius: 20,
+  fontSize: 12
+};
+
+const resultBox = {
+  position: "absolute",
+  bottom: 20,
+  left: "50%",
+  transform: "translateX(-50%)",
+  background: "white",
+  padding: 16,
+  borderRadius: 16,
+  display: "flex",
+  gap: 12
+};
+
+const alertBox = (danger) => ({
+  position: "absolute",
+  inset: 0,
+  background: danger ? "rgba(220,38,38,0.92)" : "rgba(234,88,12,0.92)",
+  color: "white",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 16
+});
+
+const alertDriverBox = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  background: "rgba(0,0,0,0.3)",
+  padding: "10px 16px",
+  borderRadius: 14
+};
+
+const statCard = {
+  padding: 16,
+  display: "flex",
+  gap: 8,
+  alignItems: "center",
+  fontWeight: 700
+};
+
+const driverStatusCard = {
+  padding: 16,
+  display: "flex",
+  gap: 12,
+  alignItems: "center",
+  fontWeight: 700,
+  borderLeft: "5px solid #2563eb"
+};
+
+const terminal = {
+  background: "#020617",
+  color: "#22d3ee",
+  borderRadius: 20,
+  overflow: "hidden"
+};
+
+const terminalHeader = {
+  padding: 12,
+  borderBottom: "1px solid #164e63",
+  fontWeight: 700,
+  display: "flex",
+  justifyContent: "space-between"
+};
+
+const terminalBody = {
+  padding: 12,
+  maxHeight: 260,
+  overflowY: "auto",
+  fontSize: 12
+};
+
+const verifyBtn = {
+  padding: 16,
+  borderRadius: 16,
+  background: "#4f46e5",
+  color: "white",
+  fontWeight: 800,
+  border: "none",
+  cursor: "pointer"
+};
+
+const offlineStyle = {
+  color: "white",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  height: "100%"
+};
