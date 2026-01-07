@@ -25,9 +25,10 @@ import ViolationsFeed from "./pages/authority/ViolationsFeed";
 import IoTSimulator from "./pages/authority/IoTSimulator";
 import FleetManagement from "./pages/authority/FleetManagement";
 import ConductorManagement from "./pages/authority/ConductorManagement";
-import RegisterDriver from "./pages/authority/RegisterDriver";
-import DriverManagement from "./pages/authority/DriverManagement";
-import FacialRecognitionLive from "./pages/authority/FacialRecognitionLive";
+// Driver Pages
+import RegisterDriver from "./pages/driver/RegisterDriver";
+import DriverManagement from "./pages/driver/DriverManagement";
+import FacialRecognitionLive from "./pages/driver/FacialRecognitionLive";
 import Settings from "./pages/authority/Settings";
 
 import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
