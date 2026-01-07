@@ -57,7 +57,7 @@ class FaceLandmarkRecognition:
         
         # Performance Optimizations
         self.frame_count = 0
-        self.recognition_frequency = 30 # Run recognition every 30 frames (~1 sec)
+        self.recognition_frequency = 150 # Run recognition every 150 frames (~5 sec)
         self.cached_tesselation = None
         try:
             solutions = getattr(mp, 'solutions', None)
