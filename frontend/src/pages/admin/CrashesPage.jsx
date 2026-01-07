@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getCrashes } from '../../services/crashService';
+import { getCrashes, updateCrashStatus } from '../../services/crashService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import StatusBadge from '../../components/common/StatusBadge';
 import { formatDateTime } from '../../utils/helpers';
@@ -23,6 +23,17 @@ const CrashesPage = () => {
       console.error('Failed to fetch crashes:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (crashId, newStatus) => {
+    try {
+      await updateCrashStatus(crashId, { status: newStatus });
+      // Refresh crashes list
+      await fetchCrashes();
+    } catch (error) {
+      console.error('Failed to update crash status:', error);
+      alert('Failed to update crash status');
     }
   };
 
@@ -52,7 +63,7 @@ const CrashesPage = () => {
             <th>Severity</th>
             <th>Status</th>
             <th>Max Acceleration</th>
-            <th>Details</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -65,11 +76,23 @@ const CrashesPage = () => {
               <td><StatusBadge status={crash.status} /></td>
               <td>{crash.max_acceleration?.toFixed(2)} m/s²</td>
               <td>
-                {crash.location?.latitude && crash.location?.longitude && (
-                  <a href={`https://www.google.com/maps?q=${crash.location.latitude},${crash.location.longitude}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
-                    View Map
-                  </a>
-                )}
+                <select
+                  value={crash.status}
+                  onChange={(e) => handleStatusChange(crash._id, e.target.value)}
+                  style={{
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '4px',
+                    border: '1px solid #d1d5db',
+                    backgroundColor: crash.status === 'active' ? '#fee2e2' : crash.status === 'resolved' ? '#d1fae5' : '#fff',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  <option value="active">Active</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="false_positive">False Positive</option>
+                </select>
               </td>
             </tr>
           ))}

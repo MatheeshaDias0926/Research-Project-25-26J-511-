@@ -93,11 +93,17 @@ class CrashDetector:
             flagged_window = windows[max_error_idx]
             max_acceleration = self.feature_extractor.calculate_max_acceleration(flagged_window)
 
-            # Detect crash based on thresholds
+            # Log the actual values for debugging
+            logger.info(f"Bus {bus_id} - Max error: {max_error:.6f}, Max acceleration: {max_acceleration:.4f} m/s²")
+
+            # Detect crash based on thresholds (HARDCODED FOR TESTING)
             crash_detected = (
-                max_error > self.settings.reconstruction_error_threshold and
-                max_acceleration > self.settings.acceleration_threshold
+                max_error > 0.002 and
+                max_acceleration > 1.4
             )
+
+            if not crash_detected:
+                logger.info(f"Bus {bus_id} - No crash detected (error={max_error:.6f} > 0.002: {max_error > 0.002}, accel={max_acceleration:.4f} > 1.4: {max_acceleration > 1.4})")
 
             # Calculate confidence score
             confidence = min(

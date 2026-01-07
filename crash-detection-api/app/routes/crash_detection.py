@@ -5,6 +5,7 @@ from app.services.database import get_database
 from app.config import get_settings
 from datetime import datetime
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +89,54 @@ async def store_crash_event(sensor_batch: SensorBatch, result: CrashDetectionRes
         await crash_collection.insert_one(crash_event.model_dump())
         logger.info(f"Crash event stored for bus {sensor_batch.bus_id}")
 
+        # Forward crash to Node.js backend for dashboard notifications
+        await forward_crash_to_backend(crash_event)
+
     except Exception as e:
         logger.error(f"Failed to store crash event: {e}")
+
+
+async def forward_crash_to_backend(crash_event: CrashEvent):
+    """Forward crash event to Node.js backend for dashboard notifications"""
+    try:
+        # Serialize sensor_data to remove datetime objects
+        sensor_data_serializable = {}
+        for key, value in crash_event.sensor_data.items():
+            if isinstance(value, dict):
+                # Convert any datetime objects in nested dicts to ISO strings
+                sensor_data_serializable[key] = {
+                    k: v.isoformat() if isinstance(v, datetime) else v
+                    for k, v in value.items()
+                }
+            else:
+                sensor_data_serializable[key] = value
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            payload = {
+                "bus_id": crash_event.bus_id,
+                "reconstruction_error": float(crash_event.reconstruction_error),
+                "max_acceleration": float(crash_event.max_acceleration),
+                "sensor_data": sensor_data_serializable,
+                "location": {
+                    "latitude": 0,
+                    "longitude": 0,
+                    "address": "Location not available"
+                }
+            }
+
+            response = await client.post(
+                "http://localhost:5001/api/crashes",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+
+            if response.status_code == 201:
+                logger.info(f"Crash forwarded to backend for bus {crash_event.bus_id}")
+            else:
+                logger.warning(f"Failed to forward crash to backend: {response.status_code} - {response.text}")
+
+    except Exception as e:
+        logger.error(f"Error forwarding crash to backend: {e}")
 
 
 @router.get("/events/{bus_id}")

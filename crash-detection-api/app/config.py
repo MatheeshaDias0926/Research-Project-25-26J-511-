@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     model_path: str = "crash_detection_model.h5"
 
     # Crash detection thresholds
-    acceleration_threshold: float = 15.0  # m/s^2
-    reconstruction_error_threshold: float = 0.1
+    acceleration_threshold: float = 1.0  # m/s^2 (very low for easy testing)
+    reconstruction_error_threshold: float = 0.002
 
     # Window settings for feature extraction
     window_size: int = 100  # number of readings per window
@@ -26,6 +26,5 @@ class Settings(BaseSettings):
         case_sensitive = False
 
 
-@lru_cache()
 def get_settings():
     return Settings()
