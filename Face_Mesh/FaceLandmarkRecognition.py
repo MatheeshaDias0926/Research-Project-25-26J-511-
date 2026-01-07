@@ -40,10 +40,10 @@ class FaceLandmarkRecognition:
         self.match_threshold = 4.0 # Stricter fallback to prevent false positives when FaceNet is off/fails
 
         # Safety Thresholds
-        self.ear_threshold = 0.22  # Below this is "eyes closed"
+        self.ear_threshold = 0.25  # Below this is "eyes closed" (slightly more sensitive)
         self.mar_threshold = 0.50  # Above this is "yawning"
-        self.consecutive_frames_drowsy = 20 # ~1-2 seconds at 15-20fps
-        self.consecutive_frames_yawn = 15
+        self.consecutive_frames_drowsy = 8 # ~0.5 seconds for testing
+        self.consecutive_frames_yawn = 10
         
         # State Tracking
         self.drowsy_counter = 0
@@ -387,6 +387,12 @@ class FaceLandmarkRecognition:
                         mar = self.calculate_mar([(p.x, p.y, p.z) for p in mouth])
                         self.last_mar = mar
 
+                        # Debug Logging (every few frames to avoid flood)
+                        if self.drowsy_counter % 5 == 0 and self.drowsy_counter > 0:
+                            print(f"[DEBUG] EAR: {ear:.4f} (Threshold: {self.ear_threshold}, Counter: {self.drowsy_counter})")
+                        if self.yawn_counter % 5 == 0 and self.yawn_counter > 0:
+                            print(f"[DEBUG] MAR: {mar:.4f} (Threshold: {self.mar_threshold}, Counter: {self.yawn_counter})")
+
                         # 4. State Management
                         if ear < self.ear_threshold:
                             self.drowsy_counter += 1
@@ -434,10 +440,16 @@ class FaceLandmarkRecognition:
                         if self.status_yawning: status_text.append("YAWNING DETECTED")
 
                         for i, txt in enumerate(status_text):
-                            y_pos = 50 + (i * 35)
+                            y_pos = 50 + (i * 40)
                             color = (0, 0, 255) if "ALERT" in txt else (0, 255, 0)
+                            if "YAWNING" in txt: color = (255, 165, 0)
+                            
+                            # Draw Background Box for Readability
+                            (tw, th), _ = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
+                            cv2.rectangle(frame, (5, y_pos - th - 5), (5 + tw + 10, y_pos + 5), (0, 0, 0), -1)
+                            
                             cv2.putText(frame, txt, (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 
-                                        1, color, 2)
+                                        0.8, color, 2)
                 else:
                      self.last_match = None # Reset if no face detected
 

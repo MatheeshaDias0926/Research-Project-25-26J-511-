@@ -24,6 +24,7 @@ const FacialRecognitionLive = () => {
   const [autoMatch, setAutoMatch] = useState(null);
   const [videoError, setVideoError] = useState(false);
   const [camReady, setCamReady] = useState(false);
+  const [safetyStatus, setSafetyStatus] = useState({ drowsy: false, yawning: false });
 
   const addLog = (msg) => {
     const t = new Date().toLocaleTimeString();
@@ -37,6 +38,18 @@ const FacialRecognitionLive = () => {
       interval = setInterval(async () => {
         try {
           const res = await axios.get("http://localhost:5001/api/face/status");
+
+          // Update Safety Flags
+          setSafetyStatus(prev => {
+            const isDrowsy = res.data.drowsy;
+            const isYawning = res.data.yawning;
+
+            if (isDrowsy && !prev.drowsy) addLog("⚠️ DROWSY ALERT DETECTED");
+            if (isYawning && !prev.yawning) addLog("⚠️ YAWNING DETECTED");
+
+            return { drowsy: isDrowsy, yawning: isYawning };
+          });
+
           if (res.data.match_name) {
             if (autoMatch?.name !== res.data.match_name) {
               setAutoMatch({
@@ -56,7 +69,7 @@ const FacialRecognitionLive = () => {
         } catch {
           /* silent */
         }
-      }, 1000);
+      }, 800);
     }
     return () => clearInterval(interval);
   }, [mode, autoMatch]);
@@ -161,9 +174,9 @@ const FacialRecognitionLive = () => {
             ● LIVE · {mode.toUpperCase()}
           </div>
 
-          {/* RESULT */}
+          {/* RESULT (Verification) */}
           {result && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl px-6 py-4 rounded-2xl shadow-xl flex items-center gap-4">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl px-6 py-4 rounded-2xl shadow-xl flex items-center gap-4 z-40">
               {result.verified ? (
                 <CheckCircle size={32} className="text-green-600" />
               ) : (
@@ -176,6 +189,22 @@ const FacialRecognitionLive = () => {
                 <div className="text-sm text-slate-500">
                   {result.driverName || "Unknown"}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* SAFETY ALERTS (Drowsy/Yawning) */}
+          {(safetyStatus.drowsy || safetyStatus.yawning) && (
+            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-8 rounded-3xl backdrop-blur-2xl shadow-2xl border-4 flex flex-col items-center gap-6 animate-pulse z-50 ${safetyStatus.drowsy ? "bg-red-600/90 border-red-400" : "bg-orange-600/90 border-orange-400"
+              }`}>
+              <AlertTriangle size={80} className="text-white" />
+              <div className="text-center">
+                <h2 className="text-4xl font-black text-white tracking-tighter mb-2">
+                  {safetyStatus.drowsy ? "DROWSY ALERT!" : "YAWN DETECTED!"}
+                </h2>
+                <p className="text-white/90 font-bold text-lg">
+                  {safetyStatus.drowsy ? "DRIVER EYES CLOSED - PLEASE WAKE UP" : "DRIVER YAWNING - TAKE A BREAK IF TIRED"}
+                </p>
               </div>
             </div>
           )}
