@@ -18,6 +18,7 @@ const AuthorityDashboard = () => {
     conductors: 0,
     totalViolations: 0,
     pendingMaintenance: 0,
+    totalDrivers: 0,
     systemStatus: "Healthy",
     violationsByBus: [],
     violationTrends: [],
@@ -35,12 +36,14 @@ const AuthorityDashboard = () => {
         const analyticsRes = await api.get("/bus/analytics/violations");
         const trendsRes = await api.get("/bus/analytics/trends");
         const occupancyRes = await api.get("/bus/analytics/occupancy");
+        const driversRes = await api.get("/driver");
 
         setStats({
           activeBuses: busesRes.data.length,
           conductors: statsRes.data.conductors,
           totalViolations: statsRes.data.totalViolations,
           pendingMaintenance: statsRes.data.pendingMaintenance,
+          totalDrivers: driversRes.data.length,
           systemStatus: "Healthy",
           violationsByBus: analyticsRes.data || [],
           violationTrends: trendsRes.data || [],
@@ -201,6 +204,36 @@ const AuthorityDashboard = () => {
           >
             <div>
               <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+                Total Drivers
+              </p>
+              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+                {stats.totalDrivers}
+              </p>
+            </div>
+            <div
+              style={{
+                padding: 12,
+                background: "#f1f5f9",
+                borderRadius: 9999,
+                color: "#475569",
+              }}
+            >
+              <UserPlus style={{ height: 24, width: 24 }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent
+            style={{
+              padding: 24,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
                 System Status
               </p>
               <p style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>
@@ -257,7 +290,7 @@ const AuthorityDashboard = () => {
               </CardContent>
             </Card>
           </a>
-          <a href="/authority/register-driver" style={{ textDecoration: "none" }}>
+          <a href="/authority/drivers" style={{ textDecoration: "none" }}>
             <Card style={{ cursor: "pointer", transition: "transform 0.2s" }} className="hover:scale-105">
               <CardContent
                 style={{
