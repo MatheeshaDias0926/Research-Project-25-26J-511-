@@ -1,96 +1,111 @@
 # ESP32-CAM AI Passenger Counter Setup Guide
 
-## 🧠 Overview
+## 🚀 Overview
 
-This system uses **Artificial Intelligence (computer vision)** to detect passengers, completely eliminating false positives from bags or arms.
-It involves a **2-Step Process**:
-
-1.  **Phase 1: Collect Data** (Teach the AI what a "Person" looks like).
-2.  **Phase 2: Run Inference** (Flash the "Brain" to the chip).
+This project transforms a \$10 ESP32-CAM into an intelligent passenger counter that uses **Computer Vision** to detect "Heads" and ignore "Bags/Arms".
+It runs normally at 10-15 FPS using **Edge Impulse FOMO** (Faster Objects, More Objects) technology.
 
 ---
 
 ## 🛠️ Prerequisites
 
-1.  **Hardware**: ESP32-CAM module + USB-to-TTL Adapter (for flashing).
-2.  **Software**: VS Code with PlatformIO.
-3.  **Account**: Free account on [Edge Impulse](https://edgeimpulse.com/).
+### Hardware
+
+1. **ESP32-CAM Module** (AI-Thinker model)
+2. **FTDI Programmer** (to upload code)
+3. **Mounting**: Camera must be mounted on the **bus roof**, facing **straight down** at the footboard.
+
+### Software
+
+1. **Arduino IDE** (with ESP32 board support installed).
+2. **Edge Impulse Account** (free at edgeimpulse.com).
 
 ---
 
-## 📸 Phase 1: Data Collection
+## 📸 Phase 1: Data Collection (The Syllabus)
 
-_Goal: Collect 50-100 photos of "Person", "Bag", and "Empty Background"._
+Before the AI can learn, you must "teach" it what a head looks like vs a bag.
 
-1.  **Open Project**: Open the `ESP32_CAM_TinyML` folder in VS Code.
-2.  **Flash Data Collection Firmware**:
-    - Click the PlatformIO Alien Icon 👽.
-    - Expand `env:data_collection` -> `General` -> `Upload`.
-    - _Note: Connect GPIO 0 to GND while flashing, remove after flashing._
-3.  **Start Streaming**:
-    - Open Serial Monitor (`monitor` task).
-    - Reset the board.
-    - Copy the IP address (e.g., `http://192.168.1.105`).
-    - Open it in your browser. You should see the video stream!
-4.  **Capture Images**:
-    - Right-click the video -> "Save Image As...".
-    - Capture:
-      - **50x Person**: Different people, different shirts, entering/exiting.
-      - **50x Obstacles**: Bags, swinging arms, umbrellas.
-      - **50x Background**: Empty door frame.
+### 1. Flash the Collector Firmware
 
-### Option B: Use Existing Dataset (Recommended)
+1. Open `ESP32_CAM_TinyML/Data_Collection_Webserver/Data_Collection_Webserver.ino`.
+2. Update `ssid` and `password`.
+3. Upload to ESP32-CAM (Gpio0 connected to GND).
+4. Open Serial Monitor (baud 115200) to get the IP address (e.g., `192.168.1.105`).
 
-If you already have a prepared dataset (folders of images for `person`, `bag`, `background`), you can skip the manual collection above!
+### 2. Capture Images
 
-1.  **Skip** the "Flash Data Collection Firmware" step.
-2.  **Proceed directly to Phase 2**, where you will upload your files instead of capturing them.
+1. Mount the camera in the **real environment** (or simulate it).
+2. Open `http://<IP_ADDRESS>` in your browser.
+3. **Stream Video** to aim the camera.
+4. **Capture**:
+   - **100 Images** of people walking in/out (capture the "Head/Shoulders" view).
+   - **50 Images** of empty floor.
+   - **50 Images** of objects (Bags on floor, Arms waving) - _These are negative samples_.
+5. Right-click "Save Image As..." for each or use the "Capture Still" button.
 
 ---
 
-## 🧠 Phase 2: Train the "Brain" (Edge Impulse)
+## 🧠 Phase 2: Training the Brain (Edge Impulse)
 
-1.  **Create Project**: Log in to Edge Impulse and create a new project "BusCounter".
-2.  **Upload Data**: Go to **Data acquisition** -> Upload your images. Label them: `person`, `bag`, `background`.
-3.  **Create Impulse**:
-    - **Image Data**: 96x96 pixels (Resize mode: Fit shortest).
-    - **Processing Block**: Image.
-    - **Learning Block**: Transfer Learning (Images).
-4.  **Train**:
-    - Go to **Model I/O** -> **Transfer Learning**.
-    - Select model: **MobilenetV2 0.35** (Fast & formatted for ESP32).
-    - Click **Start Training**.
-5.  **Test**: Using "Live Classification", show it a new photo to verify accuracy.
-
----
-
-## 💾 Phase 3: Export & Deploy
-
-1.  **Export Library**:
-    - Go to **Deployment**.
-    - Select **C++ Library** (Not Arduino Library!).
-    - Click **Build**. Download the `.zip`.
-2.  **Install in PlatformIO**:
-    - Extract the zip.
-    - Copy the folders (usually `edge-impulse-sdk`, `model-parameters`, `tflite-model`) into your project's `lib` folder: `ESP32_CAM_TinyML/lib/`.
-3.  **Update Inference Code**:
-    - Open `ESP32_CAM_TinyML/Inference/src/main.cpp`.
-    - Uncomment `#include <Your_Project_inferencing.h>`.
-    - Uncomment the Logic block inside `runInference()`.
-4.  **Flash Inference Firmware**:
-    - Click PlatformIO Alien Icon 👽.
-    - Expand `env:inference` -> `General` -> `Upload`.
+1. **Create Project**: Go to [Studio](https://studio.edgeimpulse.com/), create a new project "Bus-Passenger-Counter".
+2. **Data Acquisition**: Upload your images.
+   - Label them! Draw a box around every **HEAD**.
+   - **DO NOT** label bags or arms. Leave them unlabelled (Background).
+3. **Impulse Design**:
+   - Image Data: Set to **96x96** (Grayscale).
+   - Block: **Image**.
+   - Learning Block: **Object Detection (Images)**.
+4. **Parameters**:
+   - **Model**: Choose **FOMO (MobileNetV2 0.35)**. This is CRITICAL for speed on ESP32.
+5. **Train**: Click "Start Training".
+   - Target: Aim for > 85% F1 Score.
 
 ---
 
-## ✅ Result
+## 📦 Phase 3: Deployment
 
-Your ESP32-CAM acts as a smart verified counter.
+1. **Export Library**:
+   - Go to "Deployment".
+   - Search for **Arduino Library**.
+   - Click **Build**.
+   - Download the `.zip` file.
+2. **Install in Arduino**:
+   - Sketch -> Include Library -> Add .ZIP Library.
+   - Select the downloaded file.
 
-- **If Person:** `passengerCount` increases -> Sends to API.
-- **If Bag:** Ignored.
+---
 
-### troubleshooting
+## ⚡ Phase 4: Start Inferencing
 
-- **Camera Init Failed?** Check your board selection (AI Thinker vs WROVER). This code assumes AI Thinker (most common).
-- **Brownout?** Use a good 5V 2A power supply, USB ports are often too weak for WiFi + Camera.
+1. Open `ESP32_CAM_TinyML/Main_Inference/Main_Inference.ino`.
+2. **Import Library**:
+   - Change `#include <bus_passenger_counter_inferencing.h>` to the name of the library you just installed (check `File -> Examples -> <Your_Project_Name>`).
+3. **Helper Function**:
+   - Go to your library example (e.g., `esp32_camera`).
+   - Copy the `raw_feature_get_data` implementation and paste it into `Main_Inference.ino` (replacing the placeholder).
+4. **Upload**: Flash the code to ESP32-CAM.
+
+### 🎯 How Counting Works
+
+The code uses **Centroid Tracking**:
+
+- **Line Crossing**: An invisible line exists at `Y=48` (Middle).
+- **Entering**: If a "Head" moves from Top (Y<48) to Bottom (Y>=48).
+- **Exiting**: If a "Head" moves from Bottom (Y>48) to Top (Y<=48).
+
+_Note: If your camera is flipped, swap the logic in the code!_
+
+---
+
+## ✅ Final Check
+
+1. Open Serial Monitor.
+2. Walk under the camera.
+3. You should see:
+   ```
+   HEAD found at Y=30 (Conf: 0.92)
+   HEAD found at Y=50 (Conf: 0.95)
+   >>> PERSON ENTERED <<<
+   Data Sent: 200
+   ```
