@@ -33,20 +33,23 @@ router.post(
 
             const photoUrl = req.file.path;
 
-            // Call ML Service to get face encoding
-            let faceEncoding = [];
+            // Call ML Service to register face with Face Mesh
+            let isFaceRegistered = false;
             try {
+                // We use licenseNumber as the unique driver_id for Face DB
                 const mlResponse = await axios.post(
-                    `${process.env.ML_SERVICE_URL}/api/ml/face-encoding`,
-                    { imageUrl: photoUrl }
+                    `${process.env.ML_SERVICE_URL}/api/face/register`,
+                    {
+                        imageUrl: photoUrl,
+                        name: name,
+                        driverId: licenseNumber
+                    }
                 );
-                // Check if encoding is valid (non-null and has length)
-                if (mlResponse.data.encoding && mlResponse.data.encoding.length > 0) {
-                    faceEncoding = mlResponse.data.encoding;
-                }
+                console.log("Face Mesh Registration success:", mlResponse.data);
+                isFaceRegistered = true;
             } catch (mlError) {
-                console.error("ML Service Error (Non-blocking):", mlError.message);
-                // Continue without face encoding
+                console.error("ML Service Error (Face Mesh):", mlError.message);
+                // We continue, but maybe warn?
             }
 
             const driver = await Driver.create({
@@ -54,7 +57,8 @@ router.post(
                 licenseNumber,
                 contactNumber,
                 photoUrl,
-                faceEncoding,
+                // Use [1] to indicate 'Active' status to frontend, since we don't store raw encoding here anymore
+                faceEncoding: isFaceRegistered ? [1] : [],
             });
 
             res.status(201).json(driver);
@@ -64,16 +68,6 @@ router.post(
         }
     }
 );
-
-// Helper for Euclidean distance
-function getEuclideanDistance(face1, face2) {
-    if (!face1 || !face2 || face1.length !== face2.length) return 100.0;
-    let sum = 0.0;
-    for (let i = 0; i < face1.length; i++) {
-        sum += Math.pow(face1[i] - face2[i], 2);
-    }
-    return Math.sqrt(sum);
-}
 
 // @desc    Verify driver face
 // @route   POST /api/driver/verify
@@ -86,81 +80,46 @@ router.post("/verify", protect, localUpload.single("image"), async (req, res) =>
         }
 
         const imagePath = path.resolve(req.file.path); // Use absolute path for Python script
-        const userMinConfidence = req.body.minConfidence ? parseFloat(req.body.minConfidence) : 50; // Default 50%
 
-        // 1. Get encoding of the PROBE image from ML Service
-        let probeEncoding = null;
+        // Use the new Face Mesh Verify Endpoint
         try {
+            // ML Service expects 'imageUrl'. for local files, we might need to serve it or send base64.
+            // However, FaceLandmarkRecognition._load_image handles local paths if os.path.exists is true.
+            // Since ML Service and Backend are likely on same machine in this setup (localhost), path works.
+            // If they were separate containers, we'd need to upload or send bytes.
+
             const mlResponse = await axios.post(
-                `${process.env.ML_SERVICE_URL}/api/ml/face-encoding`,
-                { imageUrl: imagePath } // Passing local path
+                `${process.env.ML_SERVICE_URL}/api/face/verify`,
+                { imageUrl: imagePath }
             );
-            if (mlResponse.data.encoding && mlResponse.data.encoding.length > 0) {
-                probeEncoding = mlResponse.data.encoding;
+
+            // Cleanup file immediately after scoring
+            if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+
+            const result = mlResponse.data;
+
+            if (result.verified) {
+                // fetch full driver details from DB if needed, but result.driver has the name
+                res.json({
+                    verified: true,
+                    driverName: result.driver,
+                    confidence: 100, // Face Mesh binary match usually, or we can get score
+                    message: "Driver verified successfully"
+                });
+            } else {
+                res.json({
+                    verified: false,
+                    message: result.message || "Access Denied",
+                    driverName: "Unknown",
+                    confidence: 0
+                });
             }
+
         } catch (mlError) {
-            console.error("ML Service Encoding Error:", mlError.message);
+            console.error("ML Service Verification Error:", mlError.message);
             // Cleanup file
             if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-            return res.json({ verified: false, message: "No face detected in image" });
-        }
-
-        // Cleanup file immediately after scoring
-        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-
-        if (!probeEncoding) {
-            return res.json({ verified: false, message: "No face detected in image" });
-        }
-
-        // 2. Fetch all drivers with encodings
-        const drivers = await Driver.find({
-            faceEncoding: { $exists: true, $not: { $size: 0 } },
-            status: 'active'
-        });
-
-        // 3. Compare
-        let bestMatch = null;
-        let minDistance = 1000.0;
-
-        // Determine distance threshold logic
-        // For pixel encoding (1024-d), dist can be large.
-
-        for (const driver of drivers) {
-            if (!driver.faceEncoding || driver.faceEncoding.length !== probeEncoding.length) continue;
-
-            const dist = getEuclideanDistance(probeEncoding, driver.faceEncoding);
-            if (dist < minDistance) {
-                minDistance = dist;
-                bestMatch = driver;
-            }
-        }
-
-        // Calculate Confidence (0-100)
-        let confidence = 0.0;
-        if (probeEncoding.length > 200) {
-            // Pixel encoding (32x32 = 1024)
-            // Max distance is 32. Relaxing divisor to 28.0 to boost scores.
-            confidence = Math.max(0, 1 - (minDistance / 28.0)) * 100;
-        } else {
-            // 128-d encoding
-            confidence = Math.max(0, 1 - minDistance) * 100;
-        }
-
-        // Verify against user threshold
-        if (bestMatch && confidence >= userMinConfidence) {
-            res.json({
-                verified: true,
-                driverName: bestMatch.name,
-                confidence: confidence,
-                message: "Driver verified successfully"
-            });
-        } else {
-            res.json({
-                verified: false,
-                message: "Access Denied",
-                driverName: "Unknown",
-                confidence: confidence // Return actual confidence even if failed
-            });
+            return res.json({ verified: false, message: "Face Verification Service Failed" });
         }
 
     } catch (error) {
@@ -204,23 +163,24 @@ router.post(
 
             const photoUrl = req.file.path;
 
-            // Call ML Service to get face encoding
-            let faceEncoding = [];
+            // Call ML Service to register face
+            let isFaceRegistered = false;
             try {
-                const mlResponse = await axios.post(
-                    `${process.env.ML_SERVICE_URL}/api/ml/face-encoding`,
-                    { imageUrl: photoUrl }
+                await axios.post(
+                    `${process.env.ML_SERVICE_URL}/api/face/register`,
+                    {
+                        imageUrl: photoUrl,
+                        name: driver.name,
+                        driverId: driver.licenseNumber
+                    }
                 );
-
-                if (mlResponse.data.encoding && mlResponse.data.encoding.length > 0) {
-                    faceEncoding = mlResponse.data.encoding;
-                }
+                isFaceRegistered = true;
             } catch (mlError) {
                 console.error("ML Service Error (Non-blocking):", mlError.message);
             }
 
             driver.photoUrl = photoUrl;
-            driver.faceEncoding = faceEncoding;
+            driver.faceEncoding = isFaceRegistered ? [1] : []; // Mark as active if success
             await driver.save();
 
             res.json(driver);
@@ -249,22 +209,20 @@ router.put("/:id", protect, authorize("authority"), upload.single("photo"), asyn
 
         if (req.file) {
             driver.photoUrl = req.file.path;
-            // Note: In a full implementation, we might want to re-run face encoding here
-            // For now, we'll reset encoding if photo changes so they have to re-verify
-            // or we could trigger the ML service again. Let's trigger ML for better UX.
+
             try {
-                const mlResponse = await axios.post(
-                    `${process.env.ML_SERVICE_URL}/api/ml/face-encoding`,
-                    { imageUrl: driver.photoUrl }
+                await axios.post(
+                    `${process.env.ML_SERVICE_URL}/api/face/register`,
+                    {
+                        imageUrl: driver.photoUrl,
+                        name: driver.name,
+                        driverId: driver.licenseNumber
+                    }
                 );
-                if (mlResponse.data.encoding && mlResponse.data.encoding.length > 0) {
-                    driver.faceEncoding = mlResponse.data.encoding;
-                } else {
-                    driver.faceEncoding = []; // Reset if no face found
-                }
+                driver.faceEncoding = [1]; // Mark active
             } catch (mlError) {
                 console.error("ML Service Error (Update):", mlError.message);
-                driver.faceEncoding = []; // Reset on error/no-face
+                driver.faceEncoding = []; // Reset on error
             }
         }
 

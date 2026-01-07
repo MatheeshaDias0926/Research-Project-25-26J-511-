@@ -3,25 +3,72 @@ Flask ML Prediction Service
 Loads the trained XGBoost model and provides a REST API endpoint for predictions.
 """
 
-from flask import Flask, request, jsonify
+import sys
+import os
+from dotenv import load_dotenv
+
+# Add Face_Mesh to path to import the module
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Face_Mesh')))
+
+# Load environment variables from backend .env
+env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend', '.env'))
+load_dotenv(env_path)
+
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import joblib
 import pandas as pd
-import os
 from driver_monitor import DriverMonitor
+try:
+    from FaceLandmarkRecognition import FaceLandmarkRecognition
+except ImportError:
+    print("Warning: Could not import FaceLandmarkRecognition. Make sure the path is correct.")
+    FaceLandmarkRecognition = None
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for cross-origin requests from Node.js
+# Enable CORS for cross-origin requests from Node.js
+# Specific configuration if needed, or default to all
+CORS(app)
 
-# Initialize Driver Monitor
+# ---------------------------------------------------------------------
+# INITIALIZATION
+# ---------------------------------------------------------------------
+
+# 1. Driver Monitor
 driver_monitor = DriverMonitor()
 
-# Configuration
-MODEL_PATH = 'xgb_bus_model.joblib'
-PORT = 5001
+# 2. Face Recognition
+face_config = {
+    "max_faces": 1, 
+    "min_detection_confidence": 0.5,
+    "min_tracking_confidence": 0.5,
+    "draw_face_mesh": True,
+    "dot_radius": 2,
+    "dot_thickness": -1
+}
 
-# Load the trained model at startup
-# Load the trained model at startup (Optional)
+face_recognizer = None
+if FaceLandmarkRecognition:
+    try:
+        # Model path relative to this script
+        model_path = os.path.join(os.path.dirname(__file__), '..', 'Face_Mesh', 'face_landmarker.task')
+        
+        # Get MongoDB URI from env
+        mongo_uri = os.getenv('MONGO_URI', "mongodb://localhost:27017/")
+        
+        face_recognizer = FaceLandmarkRecognition(
+            model_path=model_path,
+            mongo_uri=mongo_uri,
+            **face_config
+        )
+        print(f"✓ FaceLandmarkRecognition System initialized with DB: {mongo_uri.split('@')[-1] if '@' in mongo_uri else 'Local'}")
+    except Exception as e:
+        print(f"⚠️ Failed to init FaceLandmarkRecognition: {e}")
+else:
+    print("⚠️ FaceLandmarkRecognition class not loaded.")
+
+# 3. Occupancy Model
+MODEL_PATH = 'xgb_bus_model.joblib'
 occupancy_model = None
 if os.path.exists(MODEL_PATH):
     try:
@@ -30,23 +77,30 @@ if os.path.exists(MODEL_PATH):
     except Exception as e:
          print(f"⚠️ Failed to load Occupancy Model: {e}")
 else:
-    print(f"ℹ️ Occupancy Model not found. Service will run in Safety-Only mode.")
+    print(f"ℹ️ Occupancy Model not found ({MODEL_PATH}). Service will run in Safety-Only mode.")
 
+# 4. Safety Model
 SAFETY_MODEL_PATH = 'safety_model.joblib'
-print(f"Loading safety model from {SAFETY_MODEL_PATH}...")
+safety_model = None
 if os.path.exists(SAFETY_MODEL_PATH):
-    safety_model = joblib.load(SAFETY_MODEL_PATH)
-    print("✓ Safety Model loaded successfully!")
+    try:
+        safety_model = joblib.load(SAFETY_MODEL_PATH)
+        print("✓ Safety Model loaded successfully!")
+    except Exception as e:
+        print(f"⚠️ Failed to load Safety Model: {e}")
 else:
-    print("⚠️ Safety model not found. /predict-safety endpoint will fail.")
-    safety_model = None
+    print(f"⚠️ Safety model not found ({SAFETY_MODEL_PATH}). /predict-safety endpoint will fail.")
+
+
+# ---------------------------------------------------------------------
+# HELPERS
+# ---------------------------------------------------------------------
 
 # Define the feature columns (must match training data)
 categorical_features = ['route_id', 'day_of_week', 'time_of_day', 'weather']
 numerical_features = ['stop_id']
 
 # Store encoder columns (these were determined during training)
-# Must match exactly what the model was trained with
 ENCODER_COLUMNS = [
     'stop_id',
     'route_id_B',
@@ -66,22 +120,10 @@ ENCODER_COLUMNS = [
     'weather_rain'
 ]
 
-
 def prepare_features(route_id, stop_id, day_of_week, time_of_day, weather):
     """
     Prepare input features for prediction using the same encoding as training.
-    
-    Args:
-        route_id: Bus route identifier (e.g., 'A', 'B')
-        stop_id: Bus stop number (1-10)
-        day_of_week: Day of the week (e.g., 'Monday', 'Sunday')
-        time_of_day: Time bin (e.g., '8-10', '18-20')
-        weather: Weather condition ('rain' or 'not_rain')
-    
-    Returns:
-        DataFrame ready for model prediction
     """
-    # Create input dictionary
     input_data = {
         'route_id': route_id,
         'stop_id': stop_id,
@@ -90,87 +132,189 @@ def prepare_features(route_id, stop_id, day_of_week, time_of_day, weather):
         'weather': weather
     }
     
-    # Convert to DataFrame
     df = pd.DataFrame([input_data])
-    
-    # One-hot encode categorical features (drop_first=True to match training)
     df_encoded = pd.get_dummies(df, columns=categorical_features, drop_first=True)
-    
-    # Reindex to match training columns, filling missing columns with 0
     df_encoded = df_encoded.reindex(columns=ENCODER_COLUMNS, fill_value=0)
     
     return df_encoded
 
+
+# ---------------------------------------------------------------------
+# ROUTES: FACE RECOGNITION
+# ---------------------------------------------------------------------
+
+@app.route('/api/face/settings', methods=['POST'])
+def update_face_settings():
+    """Update Face Mesh Settings Dynamically"""
+    global face_recognizer, face_config
+    try:
+        data = request.get_json()
+        
+        # Update config dict
+        for key in face_config.keys():
+            if key in data:
+                face_config[key] = data[key]
+                
+        # Update existing instance dynamically
+        if face_recognizer:
+            face_recognizer.update_settings(face_config)
+            return jsonify({'message': 'Face settings updated dynamically', 'config': face_config}), 200
+        else:
+             return jsonify({'error': 'Face module not available'}), 503
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/face/feed')
+def video_feed():
+    """Video streaming route. Put this in the src attribute of an img tag."""
+    if not face_recognizer:
+        return jsonify({'error': 'Face service not ready'}), 503
+        
+    return Response(face_recognizer.generate_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/api/face/status')
+def get_face_status():
+    """Get current recognition status (for UI polling)"""
+    if not face_recognizer:
+         return jsonify({'status': 'service_unavailable'}), 503
+    
+    return jsonify({
+        'match_name': face_recognizer.last_match,
+        'confidence_dist': face_recognizer.last_match_confidence
+    })
+
+@app.route('/api/face/register', methods=['POST'])
+def register_driver_face():
+    """Register a driver's face from a Cloudinary URL"""
+    if not face_recognizer:
+        return jsonify({'error': 'Face recognition service unavailable'}), 503
+        
+    try:
+        data = request.get_json()
+        image_url = data.get('imageUrl')
+        name = data.get('name')
+        driver_id = data.get('driverId')
+        
+        if not image_url or not name:
+            return jsonify({'error': 'imageUrl and name are required'}), 400
+            
+        success = face_recognizer.register_person(name, image_url, driver_id)
+        
+        if success:
+            return jsonify({'message': f'Successfully registered {name}'}), 200
+        else:
+            return jsonify({'error': 'Failed to detect face in image'}), 400
+            
+    except Exception as e:
+        print(f"Error registering face: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/face/verify', methods=['POST'])
+def verify_driver_face():
+    """Verify a driver from a live image"""
+    
+    if not face_recognizer:
+        return jsonify({'error': 'Face recognition service unavailable'}), 503
+        
+    try:
+        data = request.get_json()
+        image_url = data.get('imageUrl')
+        
+        if not image_url:
+            return jsonify({'error': 'imageUrl required'}), 400
+        
+        img = face_recognizer._load_image(image_url)
+        if img is None:
+             return jsonify({'error': 'Could not load image'}), 400
+             
+        import mediapipe as mp
+        import cv2
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB,
+                            data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+                            
+        result = face_recognizer.face_landmarker.detect(mp_image)
+        
+        if result.face_landmarks:
+            landmarks = [(lm.x, lm.y, lm.z) for lm in result.face_landmarks[0]]
+            matched_name = face_recognizer.match_face(landmarks)
+            
+            if matched_name:
+                 return jsonify({'verified': True, 'driver': matched_name}), 200
+            else:
+                 return jsonify({'verified': False, 'message': 'No match found'}), 200
+        else:
+             return jsonify({'error': 'No face detected'}), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/face/preview', methods=['POST'])
+def launch_preview():
+    """Launch local OpenCV preview window (Server-side)"""
+    if not face_recognizer:
+        return jsonify({'error': 'Service not ready'}), 503
+        
+    try:
+        import threading
+        # Run video loop in background thread to not block Flask
+        def run_preview():
+            print("Launching Live Preview...")
+            # Use 0 for default webcam
+            face_recognizer.recognize_from_video(0)
+            print("Live Preview Closed.")
+
+        thread = threading.Thread(target=run_preview)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({'message': 'Live preview window launched on server.'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------
+# ROUTES: PREDICTION & SAFETY
+# ---------------------------------------------------------------------
 
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint to verify service is running."""
     return jsonify({
         'status': 'healthy',
-        'model_loaded': True,
+        'model_loaded': occupancy_model is not None,
+        'safety_loaded': safety_model is not None,
+        'face_loaded': face_recognizer is not None,
         'service': 'ML Prediction Service'
     }), 200
 
-
 @app.route('/predict', methods=['POST'])
 def predict():
-    """
-    Prediction endpoint.
-    
-    Expected JSON body:
-    {
-        "route_id": "A",
-        "stop_id": 5,
-        "day_of_week": "Monday",
-        "time_of_day": "8-10",
-        "weather": "rain"
-    }
-    
-    Returns:
-    {
-        "predicted_occupancy": 42.5,
-        "route_id": "A",
-        "stop_id": 5,
-        "day_of_week": "Monday",
-        "time_of_day": "8-10",
-        "weather": "rain",
-        "confidence": 0.92
-    }
-    """
+    """Prediction endpoint for Occupancy."""
     try:
-        # Parse request data
         data = request.get_json()
-        
-        # Validate required fields
         required_fields = ['route_id', 'stop_id', 'day_of_week', 'time_of_day', 'weather']
         missing_fields = [field for field in required_fields if field not in data]
         
         if missing_fields:
-            return jsonify({
-                'error': f"Missing required fields: {', '.join(missing_fields)}"
-            }), 400
+            return jsonify({'error': f"Missing required fields: {', '.join(missing_fields)}"}), 400
         
-        # Extract parameters
         route_id = data['route_id']
         stop_id = int(data['stop_id'])
         day_of_week = data['day_of_week']
         time_of_day = data['time_of_day']
         weather = data['weather']
         
-        # Validate inputs
         if stop_id < 1:
             return jsonify({'error': 'stop_id must be a positive number'}), 400
-        
         if weather not in ['rain', 'not_rain']:
             return jsonify({'error': "weather must be 'rain' or 'not_rain'"}), 400
         
-        # Prepare features
         features = prepare_features(route_id, stop_id, day_of_week, time_of_day, weather)
         
-        # Make prediction
         if occupancy_model:
             prediction = occupancy_model.predict(features)[0]
-            # Ensure prediction is within reasonable bounds (0 to bus capacity + standing)
             prediction = max(0, min(prediction, 75))
             
             response = {
@@ -192,26 +336,19 @@ def predict():
         print(f"Error during prediction: {str(e)}")
         return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
 
-
 @app.route('/predict-safety', methods=['POST'])
 def predict_safety():
-    """
-    Safety Prediction endpoint.
-    Predicts rollover risk and stopping distance.
-    """
+    """Safety Prediction endpoint."""
     if not safety_model:
         return jsonify({'error': 'Safety model not loaded'}), 503
 
     try:
         data = request.get_json()
-        
-        # Features: n_seated, n_standing, speed_kmh, radius_m, is_wet, gradient_deg
         required = ['n_seated', 'n_standing', 'speed_kmh', 'radius_m', 'is_wet', 'gradient_deg']
         missing = [f for f in required if f not in data]
         if missing:
              return jsonify({'error': f'Missing fields: {missing}'}), 400
 
-        # Construct DataFrame in exact order
         input_data = {
             'n_seated': float(data['n_seated']),
             'n_standing': float(data['n_standing']),
@@ -222,9 +359,7 @@ def predict_safety():
         }
         df = pd.DataFrame([input_data])
         
-        # Predict: Returns Risk Score, Stopping Dist
         prediction = safety_model.predict(df)[0]
-        
         risk_score = float(prediction[0])
         stopping_dist = float(prediction[1])
         
@@ -238,78 +373,6 @@ def predict_safety():
         print(f"Error safety prediction: {e}")
         return jsonify({'error': str(e)}), 500
 
-
-
-
-
-@app.route('/model-info', methods=['GET'])
-def model_info():
-    """Get information about the loaded model."""
-    return jsonify({
-        'model_type': 'XGBoost Regressor',
-        'model_path': MODEL_PATH,
-        'features': ENCODER_COLUMNS,
-        'feature_count': len(ENCODER_COLUMNS),
-        'categorical_features': categorical_features,
-        'numerical_features': numerical_features
-    }), 200
-
-
-
-@app.route('/api/ml/face-encoding', methods=['POST'])
-def get_face_encoding():
-    """Get 128-d face encoding from image URL"""
-    try:
-        data = request.get_json()
-        image_url = data.get('imageUrl')
-        
-        if not image_url:
-            return jsonify({'error': 'imageUrl is required'}), 400
-            
-        encoding = driver_monitor.get_face_encoding(image_url)
-        
-        if encoding is None:
-             return jsonify({'error': 'No face found in image'}), 400
-             
-        return jsonify({'encoding': encoding}), 200
-        
-    except Exception as e:
-        print(f"Error getting encoding: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/ml/verify-face', methods=['POST'])
-def verify_face():
-    """Verify face against known encoding or list of encodings (not implemented yet, assumed single for now)"""
-    # This endpoint might need to fetch the known encoding from DB, 
-    # but for now let's assume the backend handles the fetching and logic or we just return an encoding to compare?
-    # Actually backend route /verify calls this.
-    # But backend has the encodings in DB.
-    # So backend should probably send the image URL to this service, get an encoding back, and compare in Backend?
-    # OR Backend sends image URL + known encoding to this service.
-    
-    # Let's go with: Backend sends Image URL, this service returns Encoding. 
-    # Backend compares using simple Euclidean distance or cosine similarity.
-    # WAIT, face_recognition.compare_faces is better.
-    # So Backend should send Image URL + Known Encoding (list) to here.
-    pass 
-    # Actually, let's keep it simple: Backend gets encoding from here, then compares itself or calls a comparison endpoint.
-    # Since numpy is in Python, let's do the comparison here.
-    
-    try:
-        data = request.get_json()
-        image_url = data.get('imageUrl')
-        known_encoding = data.get('knownEncoding') # List of floats
-        
-        if not image_url or not known_encoding:
-            return jsonify({'error': 'imageUrl and knownEncoding required'}), 400
-            
-        result = driver_monitor.verify_face(image_url, known_encoding)
-        return jsonify(result), 200
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/ml/detect-drowsiness', methods=['POST'])
 def detect_drowsiness():
     """Detect drowsiness from uploaded image (snapshot)"""
@@ -320,15 +383,28 @@ def detect_drowsiness():
     result = driver_monitor.detect_drowsiness(file)
     return jsonify(result), 200
 
+@app.route('/model-info', methods=['GET'])
+def model_info():
+    """Get information about the loaded model."""
+    return jsonify({
+        'model_type': 'XGBoost Regressor',
+        'model_path': MODEL_PATH,
+        'features': ENCODER_COLUMNS,
+    }), 200
+
+# ---------------------------------------------------------------------
+# MAIN ENTRY POINT
+# ---------------------------------------------------------------------
+
+PORT = 5001
 
 if __name__ == '__main__':
     print(f"\n{'='*60}")
     print("🚀 Starting ML Prediction Service")
     print(f"{'='*60}")
-    print(f"Model: {MODEL_PATH}")
     print(f"Port: {PORT}")
     print(f"Health check: http://localhost:{PORT}/health")
-    print(f"Prediction endpoint: http://localhost:{PORT}/predict")
+    print(f"Face Feed:    http://localhost:{PORT}/api/face/feed")
     print(f"{'='*60}\n")
     
     app.run(host='0.0.0.0', port=PORT, debug=True)
