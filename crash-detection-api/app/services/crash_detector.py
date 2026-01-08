@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class CrashDetector:
-    """Crash detection service using trained autoencoder model"""
-
     def __init__(self, model_path: str):
         self.settings = get_settings()
         self.model_path = model_path
@@ -21,7 +19,6 @@ class CrashDetector:
         self.load_model()
 
     def load_model(self):
-        """Load the trained autoencoder model"""
         try:
             self.model = SimpleAutoencoder(self.model_path)
             logger.info(f"Model loaded successfully from {self.model_path}")
@@ -30,17 +27,6 @@ class CrashDetector:
             raise
 
     def detect_crash(self, bus_id: str, readings: List[SensorReading]) -> CrashDetectionResponse:
-        """
-        Detect crash from sensor readings using the autoencoder model.
-
-        Process:
-        1. Create sliding windows from readings
-        2. Extract features from each window
-        3. Use autoencoder to compute reconstruction error
-        4. Flag windows with high reconstruction error
-        5. Check if acceleration exceeds threshold
-        6. Classify as crash if both conditions are met
-        """
         try:
             logger.info(f"Received {len(readings)} readings for bus {bus_id}")
             if len(readings) < self.settings.window_size:
@@ -93,19 +79,17 @@ class CrashDetector:
             flagged_window = windows[max_error_idx]
             max_acceleration = self.feature_extractor.calculate_max_acceleration(flagged_window)
 
-            # Log the actual values for debugging
             logger.info(f"Bus {bus_id} - Max error: {max_error:.6f}, Max acceleration: {max_acceleration:.4f} m/s²")
 
-            # Detect crash based on thresholds (HARDCODED FOR TESTING)
             crash_detected = (
                 max_error > 0.002 and
                 max_acceleration > 1.4
             )
 
-            if not crash_detected:
+            if crash_detected:
+                logger.warning(f"🚨 CRASH DETECTED for Bus {bus_id} - Max error: {max_error:.6f}, Max acceleration: {max_acceleration:.4f} m/s²")
+            else:
                 logger.info(f"Bus {bus_id} - No crash detected (error={max_error:.6f} > 0.002: {max_error > 0.002}, accel={max_acceleration:.4f} > 1.4: {max_acceleration > 1.4})")
-
-            # Calculate confidence score
             confidence = min(
                 (max_error / self.settings.reconstruction_error_threshold) * 0.5 +
                 (max_acceleration / self.settings.acceleration_threshold) * 0.5,

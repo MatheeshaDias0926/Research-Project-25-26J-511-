@@ -1,8 +1,12 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.config import get_settings
 import logging
+import dns.resolver
 
 logger = logging.getLogger(__name__)
+
+dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
+dns.resolver.default_resolver.nameservers = ['8.8.8.8', '8.8.4.4']
 
 
 class Database:
@@ -17,11 +21,15 @@ async def connect_to_mongo():
     """Create database connection"""
     settings = get_settings()
     try:
-        db.client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=5000)
+        db.client = AsyncIOMotorClient(
+            settings.mongo_uri,
+            serverSelectionTimeoutMS=30000,
+            connectTimeoutMS=30000,
+            socketTimeoutMS=30000
+        )
         db.db = db.client[settings.database_name]
         logger.info(f"Connected to MongoDB database: {settings.database_name}")
 
-        # Test the connection
         await db.client.admin.command('ping')
         logger.info("MongoDB connection successful")
     except Exception as e:

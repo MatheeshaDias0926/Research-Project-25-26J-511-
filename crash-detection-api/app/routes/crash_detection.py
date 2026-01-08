@@ -23,23 +23,12 @@ def set_crash_detector(detector: CrashDetector):
 
 @router.post("/detect", response_model=CrashDetectionResponse)
 async def detect_crash(sensor_batch: SensorBatch):
-    """
-    Detect crash from a batch of sensor readings.
-
-    Parameters:
-    - bus_id: Unique identifier for the bus
-    - readings: List of sensor readings (accelerometer + gyroscope)
-
-    Returns:
-    - CrashDetectionResponse with detection results
-    """
     if not crash_detector:
         raise HTTPException(status_code=500, detail="Crash detector not initialized")
 
     try:
         result = crash_detector.detect_crash(sensor_batch.bus_id, sensor_batch.readings)
 
-        # If crash detected, store in database
         if result.crash_detected:
             await store_crash_event(sensor_batch, result)
 
@@ -64,11 +53,9 @@ async def health_check():
 
 
 async def store_crash_event(sensor_batch: SensorBatch, result: CrashDetectionResponse):
-    """Store crash event in MongoDB"""
     try:
         db = await get_database()
         if db is None:
-            logger.warning("MongoDB not available, crash event not stored")
             return
 
         crash_collection = db["crash_events"]
@@ -89,7 +76,6 @@ async def store_crash_event(sensor_batch: SensorBatch, result: CrashDetectionRes
         await crash_collection.insert_one(crash_event.model_dump())
         logger.info(f"Crash event stored for bus {sensor_batch.bus_id}")
 
-        # Forward crash to Node.js backend for dashboard notifications
         await forward_crash_to_backend(crash_event)
 
     except Exception as e:
@@ -97,13 +83,10 @@ async def store_crash_event(sensor_batch: SensorBatch, result: CrashDetectionRes
 
 
 async def forward_crash_to_backend(crash_event: CrashEvent):
-    """Forward crash event to Node.js backend for dashboard notifications"""
     try:
-        # Serialize sensor_data to remove datetime objects
         sensor_data_serializable = {}
         for key, value in crash_event.sensor_data.items():
             if isinstance(value, dict):
-                # Convert any datetime objects in nested dicts to ISO strings
                 sensor_data_serializable[key] = {
                     k: v.isoformat() if isinstance(v, datetime) else v
                     for k, v in value.items()
