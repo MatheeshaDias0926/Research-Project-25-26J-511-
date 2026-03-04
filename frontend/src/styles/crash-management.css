@@ -4,6 +4,7 @@
 
 /* Color Palette */
 :root {
+  /* Semantic severity/status colors (same in both themes) */
   --color-critical: #dc2626;
   --color-high: #ea580c;
   --color-medium: #f59e0b;
@@ -12,10 +13,88 @@
   --color-in-progress: #ea580c;
   --color-resolved: #16a34a;
   --color-false-positive: #6b7280;
-  --color-bg: #f9fafb;
-  --color-card: #ffffff;
-  --color-text: #111827;
-  --color-text-light: #6b7280;
+
+  /* Theme-aware UI colors — Light mode defaults */
+  --bg-primary: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-alt: #f8fafc;
+  --bg-hover: #eef2ff;
+  --bg-input: #ffffff;
+  --bg-muted: #f1f5f9;
+
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --text-faint: #cbd5e1;
+  --text-table-header: #1e293b;
+  --text-label: #475569;
+  --text-body: #334155;
+
+  --border-primary: #e2e8f0;
+  --border-secondary: #e5e7eb;
+  --border-input: #d1d5db;
+  --border-strong: #cbd5e1;
+
+  --table-header-gradient: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  --table-row-bg: #ffffff;
+  --table-row-alt: #f8fafc;
+  --table-row-hover: #eef2ff;
+
+  --modal-bg: #ffffff;
+  --modal-border: #f1f5f9;
+
+  --shadow-card: 0 1px 2px 0 rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 8px 25px rgba(0,0,0,0.1);
+
+  --scrollbar-track: #f1f5f9;
+  --scrollbar-thumb: #cbd5e1;
+
+  /* Legacy aliases */
+  --color-bg: var(--bg-primary);
+  --color-card: var(--bg-card);
+  --color-text: var(--text-primary);
+  --color-text-light: var(--text-secondary);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-alt: #0f172a;
+  --bg-hover: #1e3a5f;
+  --bg-input: #1e293b;
+  --bg-muted: #334155;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-faint: #475569;
+  --text-table-header: #e2e8f0;
+  --text-label: #94a3b8;
+  --text-body: #cbd5e1;
+
+  --border-primary: #334155;
+  --border-secondary: #475569;
+  --border-input: #475569;
+  --border-strong: #475569;
+
+  --table-header-gradient: linear-gradient(180deg, #1e293b 0%, #334155 100%);
+  --table-row-bg: #1e293b;
+  --table-row-alt: #0f172a;
+  --table-row-hover: #1e3a5f;
+
+  --modal-bg: #1e293b;
+  --modal-border: #334155;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-card-hover: 0 8px 25px rgba(0,0,0,0.4);
+
+  --scrollbar-track: #1e293b;
+  --scrollbar-thumb: #475569;
+
+  --color-bg: var(--bg-primary);
+  --color-card: var(--bg-card);
+  --color-text: var(--text-primary);
+  --color-text-light: var(--text-secondary);
 }
 
 /* Common Styles */
@@ -411,6 +490,16 @@ body {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Theme transition */
+body,
+.dashboard-content,
+.dashboard-content table,
+.dashboard-content thead tr,
+.dashboard-content tbody tr,
+.table-card {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
 /* Responsive */

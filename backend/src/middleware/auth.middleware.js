@@ -72,8 +72,10 @@ export const isConductor = (req, res, next) => {
 /**
  * @desc    Check if user is an authority
  */
+const AUTHORITY_ROLES = ["authority", "police", "hospital", "bus_owner", "admin"];
+
 export const isAuthority = (req, res, next) => {
-  if (req.user && req.user.role === "authority") {
+  if (req.user && AUTHORITY_ROLES.includes(req.user.role)) {
     next();
   } else {
     res
@@ -88,7 +90,7 @@ export const isAuthority = (req, res, next) => {
 export const isConductorOrAuthority = (req, res, next) => {
   if (
     req.user &&
-    (req.user.role === "conductor" || req.user.role === "authority")
+    (req.user.role === "conductor" || AUTHORITY_ROLES.includes(req.user.role))
   ) {
     next();
   } else {

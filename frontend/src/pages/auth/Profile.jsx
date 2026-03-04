@@ -36,7 +36,7 @@ const Profile = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
+      <h1 style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>
         My Profile
       </h1>
 
@@ -56,16 +56,16 @@ const Profile = () => {
               alignItems: "center",
               justifyContent: "space-between",
               padding: 16,
-              background: "#f8fafc",
+              background: "var(--bg-primary)",
               borderRadius: 8,
-              border: "1px solid #f1f5f9",
+              border: "1px solid var(--bg-muted)",
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>
                 Username
               </p>
-              <p style={{ fontSize: 18, fontWeight: 600, color: "#0f172a" }}>
+              <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>
                 {user.username}
               </p>
             </div>
@@ -77,13 +77,13 @@ const Profile = () => {
               alignItems: "center",
               justifyContent: "space-between",
               padding: 16,
-              background: "#f8fafc",
+              background: "var(--bg-primary)",
               borderRadius: 8,
-              border: "1px solid #f1f5f9",
+              border: "1px solid var(--bg-muted)",
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>
                 Role
               </p>
               <div
@@ -99,7 +99,7 @@ const Profile = () => {
                   style={{
                     fontWeight: 600,
                     textTransform: "capitalize",
-                    color: "#0f172a",
+                    color: "var(--text-primary)",
                   }}
                 >
                   {user.role}
@@ -124,20 +124,20 @@ const Profile = () => {
               alignItems: "center",
               justifyContent: "space-between",
               padding: 16,
-              background: "#f8fafc",
+              background: "var(--bg-primary)",
               borderRadius: 8,
-              border: "1px solid #f1f5f9",
+              border: "1px solid var(--bg-muted)",
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>
                 Account ID
               </p>
               <p
                 style={{
                   fontSize: 14,
                   fontFamily: "monospace",
-                  color: "#475569",
+                  color: "var(--text-label)",
                   marginTop: 4,
                 }}
               >

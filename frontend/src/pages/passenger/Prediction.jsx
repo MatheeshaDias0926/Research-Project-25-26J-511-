@@ -59,8 +59,8 @@ const Prediction = () => {
             style={{
               height: 40,
               borderRadius: 8,
-              border: "1px solid #d1d5db",
-              background: "#fff",
+              border: "1px solid var(--border-input)",
+              background: "var(--bg-card)",
               padding: "0 12px",
               fontSize: 14,
               outline: "none",
@@ -123,7 +123,7 @@ const Prediction = () => {
                 style={{
                   textAlign: "center",
                   padding: 16,
-                  background: "#f8fafc",
+                  background: "var(--bg-primary)",
                   borderRadius: 16,
                 }}
               >
@@ -135,13 +135,13 @@ const Prediction = () => {
                     margin: "0 auto 8px",
                   }}
                 />
-                <p style={{ fontSize: 14, color: "#64748b", marginBottom: 4 }}>
+                <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 4 }}>
                   Predicted Occupancy
                 </p>
-                <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+                <p style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>
                   {prediction.predictedOccupancy || 42}
                 </p>
-                <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
                   Passengers
                 </p>
               </div>
@@ -150,7 +150,7 @@ const Prediction = () => {
                 style={{
                   textAlign: "center",
                   padding: 16,
-                  background: "#f8fafc",
+                  background: "var(--bg-primary)",
                   borderRadius: 16,
                 }}
               >
@@ -162,16 +162,16 @@ const Prediction = () => {
                     margin: "0 auto 8px",
                   }}
                 />
-                <p style={{ fontSize: 14, color: "#64748b", marginBottom: 4 }}>
+                <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 4 }}>
                   Confidence Score
                 </p>
-                <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+                <p style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>
                   {prediction.confidence
                     ? (prediction.confidence * 100).toFixed(0)
                     : 85}
                   %
                 </p>
-                <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
                   Accuracy Probability
                 </p>
               </div>
@@ -180,7 +180,7 @@ const Prediction = () => {
                 style={{
                   textAlign: "center",
                   padding: 16,
-                  background: "#f8fafc",
+                  background: "var(--bg-primary)",
                   borderRadius: 16,
                 }}
               >
@@ -192,13 +192,13 @@ const Prediction = () => {
                     margin: "0 auto 8px",
                   }}
                 />
-                <p style={{ fontSize: 14, color: "#64748b", marginBottom: 4 }}>
+                <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 4 }}>
                   Next Bus In
                 </p>
-                <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+                <p style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>
                   12
                 </p>
-                <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
                   Minutes (Est)
                 </p>
               </div>

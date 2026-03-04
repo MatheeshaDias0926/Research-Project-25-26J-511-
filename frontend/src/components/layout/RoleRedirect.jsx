@@ -16,9 +16,13 @@ const RoleRedirect = () => {
         passenger: "/passenger",
         conductor: "/conductor",
         authority: "/authority",
+        admin: "/admin",
+        police: "/police",
+        hospital: "/hospital",
+        busowner: "/busowner",
     };
 
-    const targetPath = dashboardMap[user.role] || "/passenger"; // Default to passenger or handle error
+    const targetPath = dashboardMap[user.role] || "/passenger";
 
     return <Navigate to={targetPath} replace />;
 };

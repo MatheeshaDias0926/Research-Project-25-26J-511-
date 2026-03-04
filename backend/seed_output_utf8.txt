@@ -1,0 +1,46 @@
+(node:22492) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/SLIIT/RP/Research-Project-25-26J-511-/backend/seed_v2.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to D:\SLIIT\RP\Research-Project-25-26J-511-\backend\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+🌱 Connected to MongoDB for seeding...
+✅ Cleared existing data
+❌ Error seeding database: MongoBulkWriteError: E11000 duplicate key error collection: CrashData.users index: email_1 dup key: { email: null }
+    at OrderedBulkOperation.handleWriteError (D:\SLIIT\RP\Research-Project-25-26J-511-\backend\node_modules\mongodb\lib\bulk\common.js:804:19)
+    at executeCommands (D:\SLIIT\RP\Research-Project-25-26J-511-\backend\node_modules\mongodb\lib\bulk\common.js:346:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\SLIIT\RP\Research-Project-25-26J-511-\backend\node_modules\mongodb\lib\bulk\common.js:790:24
+    at async MongoClient.withSession (D:\SLIIT\RP\Research-Project-25-26J-511-\backend\node_modules\mongodb\lib\mongo_client.js:477:20)
+    at async OrderedBulkOperation.execute (D:\SLIIT\RP\Research-Project-25-26J-511-\backend\node_modules\mongodb\lib\bulk\common.js:789:20)
+    at async Collection.bulkWrite (D:\SLIIT\RP\Research-Project-25-26J-511-\backend\node_modules\mongodb\lib\collection.js:224:16)
+    at async Collection.insertMany (D:\SLIIT\RP\Research-Project-25-26J-511-\backend\node_modules\mongodb\lib\collection.js:171:25) {
+  errorLabelSet: Set(0) {},
+  errorResponse: {
+    message: 'E11000 duplicate key error collection: CrashData.users index: email_1 dup key: { email: null }',
+    code: 11000,
+    writeErrors: [ [Object] ]
+  },
+  code: 11000,
+  writeErrors: [ { err: [Object], index: 1 } ],
+  result: BulkWriteResult {
+    insertedCount: 1,
+    matchedCount: 0,
+    modifiedCount: 0,
+    deletedCount: 0,
+    upsertedCount: 0,
+    upsertedIds: {},
+    insertedIds: { '0': new ObjectId('698d88c656411fca76d1234c') }
+  },
+  insertedDocs: [
+    {
+      username: 'admin',
+      password: '$2a$10$oixfY6yTejtjQdjEgLp/JODyK.RPPB6s2cXOBL73ivOHa8Otdob0a',
+      role: 'authority',
+      assignedBus: null,
+      phoneNumber: '+94771234567',
+      _id: new ObjectId('698d88c656411fca76d1234c'),
+      __v: 0,
+      createdAt: 2026-02-12T08:01:10.418Z,
+      updatedAt: 2026-02-12T08:01:10.418Z
+    }
+  ]
+}

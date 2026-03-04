@@ -44,7 +44,7 @@ const PassengerDashboard = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: 32, textAlign: "center", color: "#64748b" }}>
+      <div style={{ padding: 32, textAlign: "center", color: "var(--text-secondary)" }}>
         Loading live bus data...
       </div>
     );
@@ -63,7 +63,7 @@ const PassengerDashboard = () => {
             <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
             Live Bus Tracker
             </h1>
-            <p style={{ color: "#64748b", marginTop: 4 }}>
+            <p style={{ color: "var(--text-secondary)", marginTop: 4 }}>
                 Real-time updates on occupancy, speed, and safety.
             </p>
         </div>
@@ -92,16 +92,16 @@ const PassengerDashboard = () => {
             return (
                 <Card key={bus._id} style={{ transition: "box-shadow 0.2s", overflow: "hidden" }}>
                     {/* Header Section */}
-                    <div style={{ background: "#f8fafc", padding: "16px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ background: "var(--bg-primary)", padding: "16px 24px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <div style={{ padding: 8, background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                            <div style={{ padding: 8, background: "var(--bg-card)", borderRadius: 8, border: "1px solid var(--border-primary)" }}>
                                 <Bus size={20} className="text-blue-600" />
                             </div>
                             <div>
-                                <h3 style={{ fontWeight: 700, fontSize: 18, color: "#0f172a" }}>
+                                <h3 style={{ fontWeight: 700, fontSize: 18, color: "var(--text-primary)" }}>
                                     {bus.licensePlate}
                                 </h3>
-                                <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#64748b" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "var(--text-secondary)" }}>
                                     <Route size={12} />
                                     <span>Route {bus.routeId}</span>
                                 </div>
@@ -116,7 +116,7 @@ const PassengerDashboard = () => {
                         {/* Occupancy Section */}
                         <div style={{ marginBottom: 24 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, alignItems: "baseline" }}>
-                                <span style={{ fontSize: 14, color: "#64748b", display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ fontSize: 14, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
                                     <Users size={14} /> Crowding
                                 </span>
                                 <span style={{ fontWeight: 600, fontSize: 14, color: occupancyLevel.color }}>
@@ -124,7 +124,7 @@ const PassengerDashboard = () => {
                                 </span>
                             </div>
                             {/* Progress Bar */}
-                            <div style={{ height: 8, background: "#e2e8f0", borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ height: 8, background: "var(--border-primary)", borderRadius: 4, overflow: "hidden" }}>
                                 <div 
                                     style={{ 
                                         width: `${occupancyPct}%`, 
@@ -139,18 +139,18 @@ const PassengerDashboard = () => {
                         {/* Telemetry Grid */}
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                              {/* Speed Widget */}
-                             <div style={{ padding: 12, background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
-                                <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                             <div style={{ padding: 12, background: "var(--bg-primary)", borderRadius: 12, border: "1px solid var(--border-primary)" }}>
+                                <div style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                                     <Gauge size={14} /> Speed
                                 </div>
-                                <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>
-                                    {speed} <span style={{ fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>km/h</span>
+                                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
+                                    {speed} <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)" }}>km/h</span>
                                 </div>
                              </div>
 
                              {/* Safety Widget */}
-                             <div style={{ padding: 12, background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
-                                 <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                             <div style={{ padding: 12, background: "var(--bg-primary)", borderRadius: 12, border: "1px solid var(--border-primary)" }}>
+                                 <div style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                                     <Activity size={14} /> Safety
                                  </div>
                                  {/* Simple Safety Badge */}
@@ -167,8 +167,8 @@ const PassengerDashboard = () => {
                         </div>
                         
                         {/* Footer Action */}
-                        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px dashed #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div style={{ fontSize: 13, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
+                        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px dashed var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
                                 <MapPin size={14} />
                                 {status?.gps ? "Tracking Active" : "No GPS Signal"}
                             </div>
@@ -197,7 +197,7 @@ const PassengerDashboard = () => {
               gridColumn: "1/-1",
               textAlign: "center",
               padding: "48px 0",
-              color: "#64748b",
+              color: "var(--text-secondary)",
             }}
           >
             No active buses found at the moment.

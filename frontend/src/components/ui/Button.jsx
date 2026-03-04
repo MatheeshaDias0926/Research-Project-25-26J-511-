@@ -6,9 +6,9 @@ const buttonVariantStyles = {
     border: "none",
   },
   secondary: {
-    background: "#fff",
-    color: "#334155",
-    border: "1px solid #d1d5db",
+    background: "var(--bg-card)",
+    color: "var(--text-body)",
+    border: "1px solid var(--border-input)",
   },
   danger: {
     background: "#dc2626",
@@ -17,13 +17,13 @@ const buttonVariantStyles = {
   },
   ghost: {
     background: "transparent",
-    color: "#334155",
+    color: "var(--text-body)",
     border: "none",
   },
   outline: {
-    background: "#fff",
-    color: "#0f172a",
-    border: "1px solid #e2e8f0",
+    background: "var(--bg-card)",
+    color: "var(--text-primary)",
+    border: "1px solid var(--border-primary)",
   },
 };
 

@@ -106,7 +106,7 @@ const FleetManagement = () => {
                 }}
               >
                 <label
-                  style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                  style={{ fontSize: 14, fontWeight: 500, color: "var(--text-body)" }}
                 >
                   License Plate
                 </label>
@@ -125,7 +125,7 @@ const FleetManagement = () => {
                 }}
               >
                 <label
-                  style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                  style={{ fontSize: 14, fontWeight: 500, color: "var(--text-body)" }}
                 >
                   Route ID
                 </label>
@@ -144,7 +144,7 @@ const FleetManagement = () => {
                 }}
               >
                 <label
-                  style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                  style={{ fontSize: 14, fontWeight: 500, color: "var(--text-body)" }}
                 >
                   Capacity
                 </label>
@@ -173,14 +173,14 @@ const FleetManagement = () => {
           <button
             onClick={fetchBuses}
             style={{
-              color: "#94a3b8",
+              color: "var(--text-muted)",
               transition: "color 0.2s",
               background: "none",
               border: "none",
               cursor: "pointer",
             }}
             onMouseOver={(e) => (e.currentTarget.style.color = "#0284c7")}
-            onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+            onMouseOut={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
           >
             <RefreshCw style={{ height: 20, width: 20 }} />
           </button>
@@ -196,9 +196,9 @@ const FleetManagement = () => {
                 <thead
                   style={{
                     fontSize: 12,
-                    color: "#64748b",
+                    color: "var(--text-secondary)",
                     textTransform: "uppercase",
-                    background: "#f8fafc",
+                    background: "var(--bg-primary)",
                   }}
                 >
                   <tr>
@@ -217,7 +217,7 @@ const FleetManagement = () => {
                         style={{
                           textAlign: "center",
                           padding: "32px 0",
-                          color: "#64748b",
+                          color: "var(--text-secondary)",
                         }}
                       >
                         No buses in fleet.
@@ -228,11 +228,11 @@ const FleetManagement = () => {
                     <tr
                       key={bus._id}
                       style={{
-                        borderBottom: "1px solid #f1f5f9",
+                        borderBottom: "1px solid var(--bg-muted)",
                         transition: "background 0.2s",
                       }}
                       onMouseOver={(e) =>
-                        (e.currentTarget.style.background = "#f8fafc")
+                        (e.currentTarget.style.background = "var(--bg-primary)")
                       }
                       onMouseOut={(e) =>
                         (e.currentTarget.style.background = "transparent")
@@ -242,14 +242,14 @@ const FleetManagement = () => {
                         style={{
                           padding: "12px",
                           fontWeight: 500,
-                          color: "#0f172a",
+                          color: "var(--text-primary)",
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
                         }}
                       >
                         <Bus
-                          style={{ height: 16, width: 16, color: "#94a3b8" }}
+                          style={{ height: 16, width: 16, color: "var(--text-muted)" }}
                         />
                         {bus.licensePlate}
                       </td>
@@ -277,7 +277,7 @@ const FleetManagement = () => {
                           padding: "12px",
                           fontFamily: "monospace",
                           fontSize: 12,
-                          color: "#64748b",
+                          color: "var(--text-secondary)",
                         }}
                       >
                         {bus._id}

@@ -11,7 +11,12 @@ import {
   LogOut,
   Map,
   ShieldAlert,
-  BookOpen, // Added
+  BookOpen,
+  Siren,
+  History,
+  Hospital,
+  CarFront,
+  Building2,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -101,6 +106,86 @@ const Sidebar = () => {
         icon: BookOpen,
         roles: ["authority"],
     },
+
+    // Admin Links
+    {
+      name: "Dashboard",
+      href: "/admin",
+      icon: LayoutDashboard,
+      roles: ["admin"],
+    },
+    {
+      name: "Crash Alerts",
+      href: "/admin/crashes",
+      icon: Siren,
+      roles: ["admin"],
+    },
+    {
+      name: "Fleet",
+      href: "/admin/buses",
+      icon: Bus,
+      roles: ["admin"],
+    },
+    {
+      name: "Police Stations",
+      href: "/admin/police-stations",
+      icon: Building2,
+      roles: ["admin"],
+    },
+    {
+      name: "Hospitals",
+      href: "/admin/hospitals",
+      icon: Hospital,
+      roles: ["admin"],
+    },
+    {
+      name: "Users",
+      href: "/admin/users",
+      icon: User,
+      roles: ["admin"],
+    },
+
+    // Police Links
+    {
+      name: "Crash Alerts",
+      href: "/police",
+      icon: Siren,
+      roles: ["police"],
+    },
+    {
+      name: "Alert History",
+      href: "/police/history",
+      icon: History,
+      roles: ["police"],
+    },
+
+    // Hospital Links
+    {
+      name: "Emergency Intake",
+      href: "/hospital",
+      icon: Hospital,
+      roles: ["hospital"],
+    },
+    {
+      name: "Alert History",
+      href: "/hospital/history",
+      icon: History,
+      roles: ["hospital"],
+    },
+
+    // Bus Owner Links
+    {
+      name: "My Buses",
+      href: "/busowner",
+      icon: Bus,
+      roles: ["busowner"],
+    },
+    {
+      name: "Crash History",
+      href: "/busowner/crashes",
+      icon: CarFront,
+      roles: ["busowner"],
+    },
   ];
 
   const filteredLinks = links.filter((link) => link.roles.includes(role));
@@ -137,7 +222,7 @@ const Sidebar = () => {
             textTransform: "capitalize",
           }}
         >
-          {role} Portal
+          {role === "busowner" ? "Bus Owner" : role.charAt(0).toUpperCase() + role.slice(1)} Portal
         </p>
       </div>
 

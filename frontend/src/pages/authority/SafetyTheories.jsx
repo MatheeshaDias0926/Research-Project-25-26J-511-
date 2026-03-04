@@ -15,10 +15,10 @@ const SafetyTheories = () => {
   return (
     <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto", paddingBottom: "100px" }}>
       <div style={{ marginBottom: "32px" }}>
-        <h1 style={{ fontSize: "32px", fontWeight: "700", color: "#1e293b", marginBottom: "8px" }}>
+        <h1 style={{ fontSize: "32px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "8px" }}>
           Safety Logic & Theories
         </h1>
-        <p style={{ color: "#64748b", fontSize: "16px" }}>
+        <p style={{ color: "var(--text-secondary)", fontSize: "16px" }}>
           Comprehensive documentation of the physics models and algorithms driving the Smart Bus Safety System.
         </p>
       </div>
@@ -37,9 +37,9 @@ const SafetyTheories = () => {
                 gap: "8px",
                 padding: "12px 24px",
                 borderRadius: "12px",
-                border: activeTab === tab.id ? "2px solid #2563eb" : "1px solid #e2e8f0",
-                background: activeTab === tab.id ? "#eff6ff" : "#fff",
-                color: activeTab === tab.id ? "#2563eb" : "#64748b",
+                border: activeTab === tab.id ? "2px solid #2563eb" : "1px solid var(--border-primary)",
+                background: activeTab === tab.id ? "#eff6ff" : "var(--bg-card)",
+                color: activeTab === tab.id ? "#2563eb" : "var(--text-secondary)",
                 fontWeight: "600",
                 cursor: "pointer",
                 transition: "all 0.2s",
@@ -61,7 +61,7 @@ const SafetyTheories = () => {
                 <CardTitle>Rollover Prediction Model</CardTitle>
               </CardHeader>
               <CardContent>
-                <p style={{ color: "#475569", marginBottom: "24px", lineHeight: "1.6" }}>
+                <p style={{ color: "var(--text-label)", marginBottom: "24px", lineHeight: "1.6" }}>
                   The core of our safety system is the <strong style={{color: "#2563eb"}}>Digital Twin</strong> model for the Ashok Leyland Viking bus. 
                   It predicts rollover risk in real-time by comparing the vehicle's <strong style={{color: "#2563eb"}}>Lateral Acceleration</strong> against its <strong style={{color: "#2563eb"}}>Static Stability Factor (SSF)</strong>.
                 </p>
@@ -69,30 +69,30 @@ const SafetyTheories = () => {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
                   {/* Left Column: Formulas */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-                    <div style={{ background: "#f8fafc", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                        <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "#1e293b" }}>1. Static Stability Factor (SSF)</h3>
-                        <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "12px" }}>
+                    <div style={{ background: "var(--bg-primary)", padding: "24px", borderRadius: "12px", border: "1px solid var(--border-primary)" }}>
+                        <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "var(--text-primary)" }}>1. Static Stability Factor (SSF)</h3>
+                        <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "12px" }}>
                         Resistance to rollover based on geometry. Lower is worse.
                         </p>
-                        <div style={{ background: "#fff", padding: "16px", borderRadius: "8px", border: "1px solid #cbd5e1", textAlign: "center", marginBottom: "12px" }}>
-                        <code style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>SSF = T / (2 × h_CoG)</code>
+                        <div style={{ background: "var(--bg-card)", padding: "16px", borderRadius: "8px", border: "1px solid var(--border-input)", textAlign: "center", marginBottom: "12px" }}>
+                        <code style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-primary)" }}>SSF = T / (2 × h_CoG)</code>
                         </div>
                     </div>
 
-                    <div style={{ background: "#f8fafc", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                        <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "#1e293b" }}>2. Lateral Acceleration</h3>
-                        <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "12px" }}>
+                    <div style={{ background: "var(--bg-primary)", padding: "24px", borderRadius: "12px", border: "1px solid var(--border-primary)" }}>
+                        <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "var(--text-primary)" }}>2. Lateral Acceleration</h3>
+                        <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "12px" }}>
                             The "tipping force" felt while cornering.
                         </p>
-                        <div style={{ background: "#fff", padding: "16px", borderRadius: "8px", border: "1px solid #cbd5e1", textAlign: "center", marginBottom: "12px" }}>
-                        <code style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>a_lat = v² / (r × g)</code>
+                        <div style={{ background: "var(--bg-card)", padding: "16px", borderRadius: "8px", border: "1px solid var(--border-input)", textAlign: "center", marginBottom: "12px" }}>
+                        <code style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-primary)" }}>a_lat = v² / (r × g)</code>
                         </div>
                     </div>
                   </div>
 
                   {/* Right Column: Diagram */}
-                  <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                      <h4 style={{ marginBottom: "16px", fontWeight: "600", color: "#475569" }}>Force Vector Diagram</h4>
+                  <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)", borderRadius: "12px", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                      <h4 style={{ marginBottom: "16px", fontWeight: "600", color: "var(--text-label)" }}>Force Vector Diagram</h4>
                       <svg width="300" height="250" viewBox="0 0 300 250">
                           {/* Ground */}
                           <line x1="20" y1="220" x2="280" y2="220" stroke="#334155" strokeWidth="2" />
@@ -134,14 +134,14 @@ const SafetyTheories = () => {
 
                 {/* Example Calculation Box */}
                 <div style={{ marginTop: "32px" }}>
-                    <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "#1e293b" }}>Real-World Calculation Example</h3>
-                    <div style={{ background: "#f1f5f9", borderRadius: "12px", border: "1px solid #cbd5e1", overflow: "hidden" }}>
-                        <div style={{ background: "#e2e8f0", padding: "12px 24px", borderBottom: "1px solid #cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontWeight: "600", color: "#334155" }}>Scenario: Overloaded Bus on Sharp Curve</span>
+                    <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "var(--text-primary)" }}>Real-World Calculation Example</h3>
+                    <div style={{ background: "var(--bg-muted)", borderRadius: "12px", border: "1px solid var(--border-input)", overflow: "hidden" }}>
+                        <div style={{ background: "var(--border-primary)", padding: "12px 24px", borderBottom: "1px solid var(--border-input)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontWeight: "600", color: "var(--text-body)" }}>Scenario: Overloaded Bus on Sharp Curve</span>
                             <span style={{ fontSize: "12px", background: "#ef4444", color: "#fff", padding: "4px 8px", borderRadius: "4px", fontWeight: "700" }}>CRITICAL RISK</span>
                         </div>
                         <div style={{ padding: "24px", display: "grid", gridTemplateColumns: "1fr 2fr", gap: "32px" }}>
-                            <div style={{ fontSize: "14px", color: "#475569" }}>
+                            <div style={{ fontSize: "14px", color: "var(--text-label)" }}>
                                 <div style={{ marginBottom: "12px" }}><strong>Inputs:</strong></div>
                                 <ul style={{ listStyleType: "disc", paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
                                     <li>Standing Passengers: <strong>75</strong></li>
@@ -151,19 +151,19 @@ const SafetyTheories = () => {
                             </div>
                             <div style={{ fontSize: "14px" }}>
                                 <div style={{ marginBottom: "16px" }}>
-                                    <div style={{ marginBottom: "4px", color: "#64748b" }}>1. Calculate CoG Height</div>
-                                    <code style={{ background: "#fff", padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0" }}>h_CoG ≈ 1.53 m</code> (High due to 75 standing people)
+                                    <div style={{ marginBottom: "4px", color: "var(--text-secondary)" }}>1. Calculate CoG Height</div>
+                                    <code style={{ background: "var(--bg-card)", padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--border-primary)" }}>h_CoG ≈ 1.53 m</code> (High due to 75 standing people)
                                 </div>
                                 <div style={{ marginBottom: "16px" }}>
-                                    <div style={{ marginBottom: "4px", color: "#64748b" }}>2. Calculate Stability (SSF)</div>
-                                    <code style={{ background: "#fff", padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0" }}>SSF = 2.0 / (2 × 1.53) = 0.65</code>
+                                    <div style={{ marginBottom: "4px", color: "var(--text-secondary)" }}>2. Calculate Stability (SSF)</div>
+                                    <code style={{ background: "var(--bg-card)", padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--border-primary)" }}>SSF = 2.0 / (2 × 1.53) = 0.65</code>
                                 </div>
                                 <div style={{ marginBottom: "16px" }}>
-                                    <div style={{ marginBottom: "4px", color: "#64748b" }}>3. Calculate Lateral Force</div>
-                                    <code style={{ background: "#fff", padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0" }}>a_lat = (13.9)² / (30 × 9.81) = 0.66 g</code>
+                                    <div style={{ marginBottom: "4px", color: "var(--text-secondary)" }}>3. Calculate Lateral Force</div>
+                                    <code style={{ background: "var(--bg-card)", padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--border-primary)" }}>a_lat = (13.9)² / (30 × 9.81) = 0.66 g</code>
                                 </div>
                                 <div>
-                                    <div style={{ marginBottom: "4px", color: "#64748b" }}>4. Conclusion</div>
+                                    <div style={{ marginBottom: "4px", color: "var(--text-secondary)" }}>4. Conclusion</div>
                                     <code style={{ background: "#fee2e2", color: "#b91c1c", padding: "4px 8px", borderRadius: "4px", border: "1px solid #fecaca", fontWeight: "700" }}>0.66 g {'>'} 0.65 SSF → ROLLOVER IMMINENT</code>
                                 </div>
                             </div>
@@ -176,21 +176,21 @@ const SafetyTheories = () => {
             <Card>
                <CardHeader><CardTitle>Dynamic Center of Gravity (CoG)</CardTitle></CardHeader>
                <CardContent>
-                  <p style={{ color: "#475569", marginBottom: "16px" }}>
+                  <p style={{ color: "var(--text-label)", marginBottom: "16px" }}>
                      The most critical variable. Standing passengers significantly raise the CoG, making the bus unstable.
                   </p>
-                  <div style={{ background: "#f1f5f9", padding: "24px", borderRadius: "12px", overflowX: "auto" }}>
-                      <code style={{ color: "#334155", display: "block", marginBottom: "8px" }}>
+                  <div style={{ background: "var(--bg-muted)", padding: "24px", borderRadius: "12px", overflowX: "auto" }}>
+                      <code style={{ color: "var(--text-body)", display: "block", marginBottom: "8px" }}>
                           h_CoG = ( (m_bus × h_empty) + (M_seated × h_seat) + (M_standing × h_stand) ) / M_total
                       </code>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginTop: "16px" }}>
                           <div>
-                              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>EMPTY BUS</div>
-                              <div style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>1.2 m</div>
+                              <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: "600" }}>EMPTY BUS</div>
+                              <div style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-primary)" }}>1.2 m</div>
                           </div>
                           <div>
-                              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>SEATED PAX</div>
-                              <div style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>1.4 m</div>
+                              <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: "600" }}>SEATED PAX</div>
+                              <div style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-primary)" }}>1.4 m</div>
                           </div>
                           <div>
                               <div style={{ fontSize: "12px", color: "#ef4444", fontWeight: "600" }}>STANDING PAX</div>
@@ -208,55 +208,55 @@ const SafetyTheories = () => {
                <Card>
                    <CardHeader><CardTitle>Stopping Distance Calculation</CardTitle></CardHeader>
                    <CardContent>
-                       <p style={{ color: "#475569", marginBottom: "24px" }}>
+                       <p style={{ color: "var(--text-label)", marginBottom: "24px" }}>
                            Calculates the total distance required to bring the bus to a halt, considering <strong style={{color:"#2563eb"}}>Reaction Time</strong> and <strong style={{color:"#ef4444"}}>Braking Distance</strong>.
                        </p>
                        
                        {/* Formula Visual */}
-                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", padding: "32px", background: "#f8fafc", borderRadius: "12px", marginBottom: "32px" }}>
+                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", padding: "32px", background: "var(--bg-primary)", borderRadius: "12px", marginBottom: "32px" }}>
                            <div style={{ textAlign: "center" }}>
-                               <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "4px" }}>Reaction Distance</div>
+                               <div style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "4px" }}>Reaction Distance</div>
                                <div style={{ fontSize: "24px", fontWeight: "700", color: "#3b82f6" }}>d_react</div>
                            </div>
-                           <div style={{ fontSize: "24px", color: "#cbd5e1" }}>+</div>
+                           <div style={{ fontSize: "24px", color: "var(--text-faint)" }}>+</div>
                            <div style={{ textAlign: "center" }}>
-                               <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "4px" }}>Braking Distance</div>
+                               <div style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "4px" }}>Braking Distance</div>
                                <div style={{ fontSize: "24px", fontWeight: "700", color: "#ef4444" }}>d_brake</div>
                            </div>
-                           <div style={{ fontSize: "24px", color: "#cbd5e1" }}>=</div>
+                           <div style={{ fontSize: "24px", color: "var(--text-faint)" }}>=</div>
                             <div style={{ textAlign: "center" }}>
-                               <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "4px" }}>Total Distance</div>
-                               <div style={{ fontSize: "24px", fontWeight: "700", color: "#0f172a" }}>d_total</div>
+                               <div style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "4px" }}>Total Distance</div>
+                               <div style={{ fontSize: "24px", fontWeight: "700", color: "var(--text-primary)" }}>d_total</div>
                            </div>
                        </div>
                        
                         {/* Comparison Chart */}
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px" }}>
                             <div>
-                                <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "#1e293b" }}>Environmental Impact</h3>
-                                <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "24px", lineHeight: "1.6" }}>
+                                <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "var(--text-primary)" }}>Environmental Impact</h3>
+                                <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "24px", lineHeight: "1.6" }}>
                                     Road conditions drastically affect stopping distance by changing the friction coefficient (μ).
                                 </p>
                                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                                    <div style={{ padding: "16px", border: "1px solid #e2e8f0", borderRadius: "8px", display: "flex", alignItems: "center", gap: "12px" }}>
+                                    <div style={{ padding: "16px", border: "1px solid var(--border-primary)", borderRadius: "8px", display: "flex", alignItems: "center", gap: "12px" }}>
                                         <Sun className="text-amber-500" size={24} />
                                         <div>
-                                            <div style={{ fontWeight: "600", color: "#334155" }}>Dry Asphalt</div>
-                                            <div style={{ fontSize: "13px", color: "#64748b" }}>Friction (μ) ≈ 0.7</div>
+                                            <div style={{ fontWeight: "600", color: "var(--text-body)" }}>Dry Asphalt</div>
+                                            <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Friction (μ) ≈ 0.7</div>
                                         </div>
                                     </div>
                                     <div style={{ padding: "16px", border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: "8px", display: "flex", alignItems: "center", gap: "12px" }}>
                                         <CloudRain className="text-blue-500" size={24} />
                                         <div>
-                                            <div style={{ fontWeight: "600", color: "#334155" }}>Wet Road</div>
-                                            <div style={{ fontSize: "13px", color: "#64748b" }}>Friction (μ) ≈ 0.4</div>
+                                            <div style={{ fontWeight: "600", color: "var(--text-body)" }}>Wet Road</div>
+                                            <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Friction (μ) ≈ 0.4</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Bar Chart SVG */}
-                            <div style={{ border: "1px solid #e2e8f0", borderRadius: "12px", padding: "24px", background: "#fff" }}>
+                            <div style={{ border: "1px solid var(--border-primary)", borderRadius: "12px", padding: "24px", background: "var(--bg-card)" }}>
                                 <h4 style={{ marginBottom: "16px", fontWeight: "600", textAlign: "center", fontSize: "14px" }}>Stopping Distance at 50 km/h</h4>
                                 <svg width="100%" height="150">
                                     {/* Dry Bar */}
@@ -274,7 +274,7 @@ const SafetyTheories = () => {
                                     <line x1="160" y1="20" x2="160" y2="120" stroke="#e2e8f0" strokeDasharray="4,4" />
                                     <line x1="280" y1="20" x2="280" y2="120" stroke="#e2e8f0" strokeDasharray="4,4" />
                                 </svg> 
-                                <p style={{ fontSize: "12px", color: "#94a3b8", textAlign: "center", marginTop: "12px" }}>
+                                <p style={{ fontSize: "12px", color: "var(--text-muted)", textAlign: "center", marginTop: "12px" }}>
                                     Wet roads increase stopping distance by ~57%
                                 </p>
                             </div>
@@ -289,14 +289,14 @@ const SafetyTheories = () => {
                <Card>
                    <CardHeader><CardTitle>Road Geometry & Curvature</CardTitle></CardHeader>
                    <CardContent>
-                       <p style={{ color: "#475569", marginBottom: "24px" }}>
+                       <p style={{ color: "var(--text-label)", marginBottom: "24px" }}>
                            We use the <strong>Menger Curvature</strong> theorem (Circumradius of 3 points) to calculate the instantaneous curve radius from GPS data.
                        </p>
                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
                            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                                <div style={{ background: "#f8fafc", padding: "20px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                                    <h4 style={{ fontWeight: "600", color: "#1e293b", marginBottom: "8px" }}>Method 1: Live GPS (Reactive)</h4>
-                                    <p style={{ fontSize: "14px", color: "#64748b" }}>
+                                <div style={{ background: "var(--bg-primary)", padding: "20px", borderRadius: "12px", border: "1px solid var(--border-primary)" }}>
+                                    <h4 style={{ fontWeight: "600", color: "var(--text-primary)", marginBottom: "8px" }}>Method 1: Live GPS (Reactive)</h4>
+                                    <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>
                                         Takes the last 3 GPS points (P1, P2, P3) to fit a circle.
                                         <br/><br/>
                                         <em>Best for:</em> Tunnels, areas with poor map data.
@@ -311,7 +311,7 @@ const SafetyTheories = () => {
                                     </p>
                                 </div>
                            </div>
-                           <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                           <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)", borderRadius: "12px", padding: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 {/* Improved visualization of 3 points making a circle */}
                                 <svg width="250" height="200" viewBox="0 0 250 200">
                                     {/* Road Path */}
@@ -349,56 +349,56 @@ const SafetyTheories = () => {
                         <div style={{ overflowX: "auto" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
                                 <thead>
-                                    <tr style={{ background: "#f8fafc", textAlign: "left" }}>
-                                        <th style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Parameter</th>
-                                        <th style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Symbol</th>
-                                        <th style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Value</th>
-                                        <th style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Unit</th>
-                                        <th style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Description</th>
+                                    <tr style={{ background: "var(--bg-primary)", textAlign: "left" }}>
+                                        <th style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Parameter</th>
+                                        <th style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Symbol</th>
+                                        <th style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Value</th>
+                                        <th style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Unit</th>
+                                        <th style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Description</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Bus Mass</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>m_bus</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>10,000</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>kg</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Empty vehicle weight</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Bus Mass</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>m_bus</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", fontWeight: "600" }}>10,000</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>kg</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", color: "var(--text-secondary)" }}>Empty vehicle weight</td>
                                     </tr>
                                     <tr>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Track Width</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>T</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>2.0</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>m</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Width between wheel centers</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Track Width</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>T</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", fontWeight: "600" }}>2.0</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>m</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", color: "var(--text-secondary)" }}>Width between wheel centers</td>
                                     </tr>
                                     <tr>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Empty CoG</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>h_empty</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>1.2</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>m</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Height of CoG (Empty)</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Empty CoG</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>h_empty</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", fontWeight: "600" }}>1.2</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>m</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", color: "var(--text-secondary)" }}>Height of CoG (Empty)</td>
                                     </tr>
                                     <tr>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Seated CoG</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>h_seat</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>1.4</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>m</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Height of seated passenger CoG</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Seated CoG</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>h_seat</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", fontWeight: "600" }}>1.4</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>m</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", color: "var(--text-secondary)" }}>Height of seated passenger CoG</td>
                                     </tr>
                                      <tr>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>Standing CoG</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>h_stand</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>2.2</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>m</td>
-                                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Height of standing passenger CoG</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>Standing CoG</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>h_stand</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", fontWeight: "600" }}>2.2</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)" }}>m</td>
+                                        <td style={{ padding: "12px", borderBottom: "1px solid var(--border-primary)", color: "var(--text-secondary)" }}>Height of standing passenger CoG</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
 
                         <div style={{ marginTop: "32px" }}>
-                             <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "#1e293b" }}>Safety Margins</h3>
+                             <h3 style={{ fontWeight: "600", marginBottom: "16px", color: "var(--text-primary)" }}>Safety Margins</h3>
                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
                                  <div style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", padding: "16px", borderRadius: "8px" }}>
                                      <div style={{ color: "#166534", fontWeight: "700", marginBottom: "4px" }}>SAFE</div>

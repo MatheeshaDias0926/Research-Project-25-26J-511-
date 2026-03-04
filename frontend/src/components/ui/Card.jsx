@@ -1,9 +1,10 @@
 const cardBaseStyle = {
   borderRadius: 16,
-  border: "1px solid #e5e7eb",
-  background: "#fff",
-  color: "#0f172a",
-  boxShadow: "0 1px 2px 0 rgba(0,0,0,0.04)",
+  border: "1px solid var(--border-secondary)",
+  background: "var(--bg-card)",
+  color: "var(--text-primary)",
+  boxShadow: "var(--shadow-card)",
+  transition: "background 0.2s, border-color 0.2s, color 0.2s",
 };
 
 const Card = ({ style, children, ...props }) => {

@@ -1,9 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { getCrashes, getSystemStats, updateCrashStatus } from '../services/crashService';
-import LoadingSpinner from '../components/common/LoadingSpinner';
-import StatusBadge from '../components/common/StatusBadge';
-import { formatDateTime } from '../utils/helpers';
-import './AdminDashboard.css';
+import { Card, CardContent } from '../components/ui/Card';
+import { Shield, AlertTriangle, Clock, CheckCircle, Bus, MapPin, ChevronRight, Activity } from 'lucide-react';
+
+const severityConfig = {
+  critical: { bg: "#fee2e2", text: "#dc2626" },
+  high: { bg: "#ffedd5", text: "#ea580c" },
+  medium: { bg: "#fef9c3", text: "#ca8a04" },
+  low: { bg: "#dbeafe", text: "#2563eb" },
+};
+
+const statusConfig = {
+  active: { bg: "#fee2e2", text: "#dc2626", dot: "#dc2626" },
+  in_progress: { bg: "#ffedd5", text: "#ea580c", dot: "#ea580c" },
+  resolved: { bg: "#dcfce7", text: "#16a34a", dot: "#16a34a" },
+  false_positive: { bg: "#f1f5f9", text: "#64748b", dot: "#64748b" },
+};
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
@@ -34,92 +46,189 @@ const AdminDashboard = () => {
   const handleStatusChange = async (crashId, newStatus) => {
     try {
       await updateCrashStatus(crashId, { status: newStatus });
-      // Refresh data
       await fetchData();
     } catch (error) {
       console.error('Failed to update crash status:', error);
-      alert('Failed to update crash status');
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: 40, height: 40, border: "3px solid var(--border-secondary)", borderTopColor: "#7c3aed",
+            borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px",
+          }} />
+          <p style={{ color: "var(--text-secondary)", fontSize: 15 }}>Loading admin panel...</p>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    );
+  }
+
+  const statCards = [
+    { label: "Active Crashes", value: stats?.activeCrashes || 0, color: "#dc2626", bgGrad: "linear-gradient(135deg, #fef2f2, #fee2e2)", borderColor: "#fecaca", icon: AlertTriangle, iconBg: "#dc2626" },
+    { label: "Pending Responses", value: stats?.pendingResponses || 0, color: "#ea580c", bgGrad: "linear-gradient(135deg, #fff7ed, #ffedd5)", borderColor: "#fed7aa", icon: Clock, iconBg: "#ea580c" },
+    { label: "Resolved Today", value: stats?.resolvedToday || 0, color: "#16a34a", bgGrad: "linear-gradient(135deg, #f0fdf4, #dcfce7)", borderColor: "#bbf7d0", icon: CheckCircle, iconBg: "#16a34a" },
+    { label: "Total Buses", value: stats?.totalBuses || 0, color: "#2563eb", bgGrad: "linear-gradient(135deg, #eff6ff, #dbeafe)", borderColor: "#bfdbfe", icon: Bus, iconBg: "#2563eb" },
+  ];
 
   return (
-    <div className="admin-dashboard">
-      <h1>Admin Dashboard</h1>
-
-      <div className="overview-cards">
-        <div className="stat-card red">
-          <h3>{stats?.activeCrashes || 0}</h3>
-          <p>Active Crashes</p>
-        </div>
-        <div className="stat-card orange">
-          <h3>{stats?.pendingResponses || 0}</h3>
-          <p>Pending Responses</p>
-        </div>
-        <div className="stat-card green">
-          <h3>{stats?.resolvedToday || 0}</h3>
-          <p>Resolved Today</p>
-        </div>
-        <div className="stat-card blue">
-          <h3>{stats?.totalBuses || 0}</h3>
-          <p>Total Buses</p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      {/* Header */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+          <div style={{ padding: 10, background: "linear-gradient(135deg, #7c3aed, #8b5cf6)", borderRadius: 12 }}>
+            <Shield style={{ height: 24, width: 24, color: "#fff" }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+              Admin Dashboard
+            </h1>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0, marginTop: 2 }}>
+              System-wide crash monitoring and management
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="crash-table-section">
-        <h2>Recent Crashes</h2>
-        <table className="crash-table">
-          <thead>
-            <tr>
-              <th>Bus ID</th>
-              <th>Timestamp</th>
-              <th>Location</th>
-              <th>Severity</th>
-              <th>Status</th>
-              <th>Acceleration</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {crashes.map(crash => (
-              <tr key={crash._id} className={crash.status === 'active' ? 'row-emergency' : ''}>
-                <td><strong>{crash.bus_id}</strong></td>
-                <td>{formatDateTime(crash.timestamp)}</td>
-                <td>{crash.location?.address || 'Unknown'}</td>
-                <td><StatusBadge severity={crash.severity} /></td>
-                <td><StatusBadge status={crash.status} /></td>
-                <td>{crash.max_acceleration?.toFixed(2)} m/s²</td>
-                <td>
-                  <select
-                    value={crash.status}
-                    onChange={(e) => handleStatusChange(crash._id, e.target.value)}
-                    style={{
-                      padding: '0.4rem 0.6rem',
-                      borderRadius: '4px',
-                      border: '1px solid #d1d5db',
-                      backgroundColor: crash.status === 'active' ? '#fee2e2' : crash.status === 'resolved' ? '#d1fae5' : '#fff',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <option value="active">Active</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="false_positive">False Positive</option>
-                  </select>
-                </td>
-              </tr>
-            ))}
-            {crashes.length === 0 && (
-              <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
-                  No crashes recorded
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* Stats Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+        {statCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} style={{ background: s.bgGrad, border: `1px solid ${s.borderColor}`, transition: "transform 0.2s, box-shadow 0.2s", cursor: "default" }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "var(--shadow-card-hover)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--shadow-card)"; }}
+            >
+              <CardContent style={{ padding: 22, paddingTop: 22, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{s.label}</p>
+                  <p style={{ fontSize: 36, fontWeight: 800, color: s.color, letterSpacing: "-0.03em", lineHeight: 1 }}>{s.value}</p>
+                </div>
+                <div style={{ padding: 14, background: s.iconBg, borderRadius: 14, color: "#fff", boxShadow: `0 4px 14px ${s.iconBg}40` }}>
+                  <Icon style={{ height: 24, width: 24 }} />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Crash Table */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Recent Crashes</h2>
+          <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>{crashes.length} records</span>
+        </div>
+        <div className="table-card">
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  {["Bus ID", "Timestamp", "Location", "Severity", "Status", "Acceleration", "Actions"].map((h) => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {crashes.map((crash, idx) => {
+                  const sev = severityConfig[crash.severity] || severityConfig.medium;
+                  const stat = statusConfig[crash.status] || statusConfig.active;
+                  const isActive = crash.status === "active";
+                  return (
+                    <tr
+                      key={crash._id}
+                      data-active={isActive ? "true" : undefined}
+                    >
+                      <td>
+                        {crash.bus_id}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)" }}>
+                          <Clock style={{ height: 14, width: 14, flexShrink: 0 }} />
+                          {new Date(crash.timestamp).toLocaleString()}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)" }}>
+                          <MapPin style={{ height: 14, width: 14, flexShrink: 0 }} />
+                          {crash.location?.address || 'Unknown'}
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: "5px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                          background: sev.bg, color: sev.text, letterSpacing: "0.03em",
+                        }}>
+                          {crash.severity?.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {isActive && (
+                            <span style={{
+                              width: 8, height: 8, borderRadius: "50%", background: stat.dot,
+                              boxShadow: `0 0 0 3px ${stat.dot}30`,
+                              animation: "pulse 1.5s ease-in-out infinite",
+                            }} />
+                          )}
+                          <span style={{
+                            padding: "5px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                            background: stat.bg, color: stat.text, letterSpacing: "0.03em",
+                          }}>
+                            {crash.status?.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)" }}>
+                          <Activity style={{ height: 14, width: 14, flexShrink: 0 }} />
+                          {crash.max_acceleration?.toFixed(2) || '—'} m/s²
+                        </div>
+                      </td>
+                      <td>
+                        <select
+                          value={crash.status}
+                          onChange={(e) => handleStatusChange(crash._id, e.target.value)}
+                          style={{
+                            padding: "7px 12px",
+                            borderRadius: 8,
+                            border: "1.5px solid var(--border-primary)",
+                            background: "var(--bg-card)",
+                            cursor: "pointer",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: "var(--text-body)",
+                            outline: "none",
+                            transition: "border-color 0.2s",
+                          }}
+                          onFocus={e => { e.target.style.borderColor = "#7c3aed"; }}
+                          onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; }}
+                        >
+                          <option value="active">Active</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="resolved">Resolved</option>
+                          <option value="false_positive">False Positive</option>
+                        </select>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {crashes.length === 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: 48, textAlign: "center" }}>
+                      <Shield style={{ height: 40, width: 40, color: "var(--border-input)", margin: "0 auto 12px", display: "block" }} />
+                      <p style={{ color: "var(--text-muted)", fontSize: 15, fontWeight: 500 }}>No crashes recorded</p>
+                      <p style={{ color: "var(--text-faint)", fontSize: 13 }}>System is running normally</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );

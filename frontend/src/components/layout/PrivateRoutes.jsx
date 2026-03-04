@@ -29,6 +29,10 @@ const PrivateRoutes = ({ roles = [] }) => {
       passenger: "/passenger",
       conductor: "/conductor",
       authority: "/authority",
+      admin: "/admin",
+      police: "/police",
+      hospital: "/hospital",
+      busowner: "/busowner",
     };
     return <Navigate to={dashboardMap[user.role] || "/"} replace />;
   }

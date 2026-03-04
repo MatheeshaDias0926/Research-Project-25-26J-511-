@@ -74,13 +74,13 @@ const MaintenanceReport = () => {
         <h1 style={{ fontSize: 32, fontWeight: 700, color: "#1e293b" }}>
           Report Issue
         </h1>
-        <p style={{ color: "#64748b", marginTop: 4 }}>
+        <p style={{ color: "var(--text-secondary)", marginTop: 4 }}>
           Submit a maintenance request for your assigned bus.
         </p>
       </div>
 
       <Card>
-        <CardHeader style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: 16 }}>
+        <CardHeader style={{ borderBottom: "1px solid var(--bg-muted)", paddingBottom: 16 }}>
           <CardTitle style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ background: "#eff6ff", padding: 8, borderRadius: 8, color: "#2563eb" }}>
               <Wrench size={20} />
@@ -133,19 +133,19 @@ const MaintenanceReport = () => {
             style={{ display: "flex", flexDirection: "column", gap: 20 }}
           >
             {/* Bus Info Section */}
-            <div style={{ background: "#f8fafc", padding: 16, borderRadius: 8, border: "1px solid #e2e8f0" }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            <div style={{ background: "var(--bg-primary)", padding: 16, borderRadius: 8, border: "1px solid var(--border-primary)" }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Reporting For Bus
               </label>
               <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 12 }}>
-                <Bus size={24} color="#334155" />
+                <Bus size={24} color="var(--text-body)" />
                 <div>
                   {user.assignedBus ? (
                     <>
-                      <p style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
+                      <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
                         {user.assignedBus.licensePlate || "Unknown Plate"}
                       </p>
-                      <p style={{ fontSize: 13, color: "#64748b" }}>
+                      <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                         Route {user.assignedBus.routeId || "N/A"} • System ID: {user.assignedBus._id}
                       </p>
                     </>
@@ -163,7 +163,7 @@ const MaintenanceReport = () => {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label
-                style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                style={{ fontSize: 14, fontWeight: 500, color: "var(--text-body)" }}
               >
                 Issue Title
               </label>
@@ -176,7 +176,7 @@ const MaintenanceReport = () => {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label
-                style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                style={{ fontSize: 14, fontWeight: 500, color: "var(--text-body)" }}
               >
                 Detailed Description
               </label>
@@ -187,10 +187,11 @@ const MaintenanceReport = () => {
                   minHeight: 120,
                   width: "100%",
                   borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  background: "#fff",
+                  border: "1px solid var(--border-input)",
+                  background: "var(--bg-card)",
                   padding: "10px 14px",
                   fontSize: 14,
+                  color: "var(--text-primary)",
                   outline: "none",
                   resize: "vertical",
                   fontFamily: "inherit"
@@ -202,7 +203,7 @@ const MaintenanceReport = () => {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label
-                style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                style={{ fontSize: 14, fontWeight: 500, color: "var(--text-body)" }}
               >
                 Priority Level
               </label>
@@ -213,13 +214,13 @@ const MaintenanceReport = () => {
                   height: 42,
                   width: "100%",
                   borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  background: "#fff",
+                  border: "1px solid var(--border-input)",
+                  background: "var(--bg-card)",
                   padding: "0 12px",
                   fontSize: 14,
                   outline: "none",
                   cursor: "pointer",
-                  color: "#0f172a"
+                  color: "var(--text-primary)"
                 }}
                 disabled={!user?.assignedBus}
               >

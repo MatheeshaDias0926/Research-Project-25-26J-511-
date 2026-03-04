@@ -34,11 +34,11 @@ export const registerUser = async (req, res, next) => {
     }
 
     // Validate role
-    const validRoles = ["passenger", "conductor", "authority"];
+    const validRoles = ["passenger", "conductor", "authority", "police", "hospital", "bus_owner", "admin"];
     if (role && !validRoles.includes(role)) {
       res.status(400);
       throw new Error(
-        "Invalid role. Must be passenger, conductor, or authority"
+        "Invalid role. Must be passenger, conductor, authority, police, hospital, bus_owner, or admin"
       );
     }
 
@@ -48,6 +48,11 @@ export const registerUser = async (req, res, next) => {
       password,
       role: role || "passenger",
     };
+
+    // Add phone number for roles that require it
+    if (req.body.phoneNumber) {
+      userPayload.phoneNumber = req.body.phoneNumber;
+    }
 
     // Handle Bus Assignment (only for conductors)
     if (role === "conductor" && req.body.busId) {
@@ -95,17 +100,41 @@ export const registerUser = async (req, res, next) => {
  * @access  Public
  */
 export const loginUser = async (req, res, next) => {
-  const { username, password } = req.body;
+  const { username, email, password } = req.body;
+  const loginInput = username || email;
 
   try {
-    // Validate input
-    if (!username || !password) {
-      res.status(400);
-      throw new Error("Please provide username and password");
+    // Hardcoded default login for crash management system
+    if (loginInput === "admin@crash.lk" && password === "admin123") {
+      return res.json({
+        token: generateToken("default_admin"),
+        user: { _id: "default_admin", email: "admin@crash.lk", role: "admin", name: "Admin User" },
+      });
+    }
+    if (loginInput === "police@crash.lk" && password === "admin123") {
+      return res.json({
+        token: generateToken("default_police"),
+        user: { _id: "default_police", email: "police@crash.lk", role: "police", name: "Police Officer" },
+      });
+    }
+    if (loginInput === "hospital@crash.lk" && password === "admin123") {
+      return res.json({
+        token: generateToken("default_hospital"),
+        user: { _id: "default_hospital", email: "hospital@crash.lk", role: "hospital", name: "Hospital Admin" },
+      });
     }
 
-    // Find user by username
-    const user = await User.findOne({ username });
+    // Validate input
+    const loginField = loginInput;
+    if (!loginField || !password) {
+      res.status(400);
+      throw new Error("Please provide username/email and password");
+    }
+
+    // Find user by username or email
+    const user = username
+      ? await User.findOne({ username })
+      : await User.findOne({ email });
 
     // Check if user exists and password matches
     if (user && (await user.matchPassword(password))) {
@@ -116,12 +145,13 @@ export const loginUser = async (req, res, next) => {
         _id: user._id,
         username: user.username,
         role: user.role,
-        assignedBus: user.assignedBus, // Return the populated bus object
+        assignedBus: user.assignedBus,
         token: generateToken(user._id),
+        user: { _id: user._id, username: user.username, role: user.role },
       });
     } else {
       res.status(401);
-      throw new Error("Invalid username or password");
+      throw new Error("Invalid credentials");
     }
   } catch (error) {
     next(error);

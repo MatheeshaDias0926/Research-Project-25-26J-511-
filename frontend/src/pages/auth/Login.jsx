@@ -26,7 +26,7 @@ const Login = () => {
   const onSubmit = async (data) => {
     setLoading(true);
     setError("");
-    const result = await login(data.username, data.password);
+    const result = await login(data.email, data.password);
     setLoading(false);
 
     if (result.success) {
@@ -111,15 +111,15 @@ const Login = () => {
               <label
                 style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
               >
-                Username
+                Email
               </label>
               <Input
-                {...register("username", { required: "Username is required" })}
-                placeholder="Enter your username"
+                {...register("email", { required: "Email is required" })}
+                placeholder="Enter your email"
               />
-              {errors.username && (
+              {errors.email && (
                 <p style={{ fontSize: 12, color: "#ef4444" }}>
-                  {errors.username.message}
+                  {errors.email.message}
                 </p>
               )}
             </div>

@@ -1,89 +1,225 @@
-import React, { useEffect, useState } from 'react';
-import { getAlerts, acceptAlert, dispatchUnits, closeCase } from '../services/alertService';
-import LoadingSpinner from '../components/common/LoadingSpinner';
-import StatusBadge from '../components/common/StatusBadge';
-import { formatDateTime } from '../utils/helpers';
-import './PoliceDashboard.css';
+import { useEffect, useState } from "react";
+import api from "../api/axios";
+import {
+  Card,
+  CardContent,
+} from "../components/ui/Card";
+import { Siren, Clock, CheckCircle, AlertTriangle, Radio, MapPin, ChevronRight } from "lucide-react";
+
+const severityConfig = {
+  critical: { bg: "#fee2e2", text: "#dc2626", gradient: "linear-gradient(135deg, #dc2626, #b91c1c)", icon: "#fca5a5" },
+  high: { bg: "#ffedd5", text: "#ea580c", gradient: "linear-gradient(135deg, #ea580c, #c2410c)", icon: "#fdba74" },
+  medium: { bg: "#fef9c3", text: "#ca8a04", gradient: "linear-gradient(135deg, #eab308, #ca8a04)", icon: "#fde047" },
+  low: { bg: "#dbeafe", text: "#2563eb", gradient: "linear-gradient(135deg, #3b82f6, #2563eb)", icon: "#93c5fd" },
+};
+
+const statusConfig = {
+  active: { bg: "#fee2e2", text: "#dc2626", dot: "#dc2626" },
+  responded: { bg: "#ffedd5", text: "#ea580c", dot: "#ea580c" },
+  resolved: { bg: "#dcfce7", text: "#16a34a", dot: "#16a34a" },
+};
 
 const PoliceDashboard = () => {
-  const [alerts, setAlerts] = useState([]);
+  const [crashes, setCrashes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAlert, setSelectedAlert] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    fetchAlerts();
-    const interval = setInterval(fetchAlerts, 5000);
+    const fetchCrashes = async () => {
+      try {
+        const res = await api.get("/crashes");
+        const data = res.data.crashes || res.data.data || (Array.isArray(res.data) ? res.data : []);
+        setCrashes(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+      } catch (error) {
+        console.error("Failed to load crash alerts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCrashes();
+    const interval = setInterval(fetchCrashes, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchAlerts = async () => {
-    try {
-      const data = await getAlerts();
-      setAlerts(data.sort((a, b) => {
-        const priority = { critical: 3, high: 2, medium: 1, low: 0 };
-        return priority[b.severity] - priority[a.severity];
-      }));
-    } catch (error) {
-      console.error('Failed to load alerts:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: 40, height: 40, border: "3px solid var(--border-secondary)", borderTopColor: "#2563eb",
+            borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px",
+          }} />
+          <p style={{ color: "var(--text-secondary)", fontSize: 15 }}>Loading dashboard...</p>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    );
+  }
 
-  const handleAccept = async (alert) => {
-    setActionLoading(true);
-    try {
-      await acceptAlert(alert._id);
-      await fetchAlerts();
-      alert('Alert acknowledged successfully');
-    } catch (error) {
-      alert('Failed to acknowledge alert');
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  const active = crashes.filter((c) => c.status === "active");
+  const responded = crashes.filter((c) => c.status === "responded");
+  const resolved = crashes.filter((c) => c.status === "resolved");
 
-  if (loading) return <LoadingSpinner />;
-
-  const pendingAlerts = alerts.filter(a => a.status === 'pending');
+  const stats = [
+    { label: "Active Alerts", value: active.length, color: "#dc2626", bgGrad: "linear-gradient(135deg, #fef2f2, #fee2e2)", borderColor: "#fecaca", icon: Siren, iconBg: "#dc2626" },
+    { label: "Responded", value: responded.length, color: "#ea580c", bgGrad: "linear-gradient(135deg, #fff7ed, #ffedd5)", borderColor: "#fed7aa", icon: Radio, iconBg: "#ea580c" },
+    { label: "Resolved", value: resolved.length, color: "#16a34a", bgGrad: "linear-gradient(135deg, #f0fdf4, #dcfce7)", borderColor: "#bbf7d0", icon: CheckCircle, iconBg: "#16a34a" },
+    { label: "Total Incidents", value: crashes.length, color: "#2563eb", bgGrad: "linear-gradient(135deg, #eff6ff, #dbeafe)", borderColor: "#bfdbfe", icon: AlertTriangle, iconBg: "#2563eb" },
+  ];
 
   return (
-    <div className="police-dashboard">
-      <h1>Police Emergency Response</h1>
-      <div className="alert-count-banner">
-        <h2>{pendingAlerts.length} ALERTS AWAITING RESPONSE</h2>
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      {/* Header */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+          <div style={{ padding: 10, background: "linear-gradient(135deg, #1e40af, #3b82f6)", borderRadius: 12 }}>
+            <Siren style={{ height: 24, width: 24, color: "#fff" }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+              Police Emergency Response
+            </h1>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0, marginTop: 2 }}>
+              Real-time crash monitoring and dispatch coordination
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="alerts-grid">
-        {alerts.map(alert => (
-          <div
-            key={alert._id}
-            className={`alert-card ${alert.severity}`}
-          >
-            <div className="alert-header">
-              <StatusBadge severity={alert.severity} />
-              <span className="time">{formatDateTime(alert.timestamp)}</span>
-            </div>
-            <h3>{alert.bus_id}</h3>
-            <p className="location">{alert.location?.address || 'Location unavailable'}</p>
-            <p className="acceleration">Impact: {alert.max_acceleration?.toFixed(2)} m/s²</p>
-            <p className="status">Status: <StatusBadge status={alert.status} /></p>
+      {/* Stats Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+        {stats.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} style={{ background: s.bgGrad, border: `1px solid ${s.borderColor}`, transition: "transform 0.2s, box-shadow 0.2s", cursor: "default" }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "var(--shadow-card-hover)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--shadow-card)"; }}
+            >
+              <CardContent style={{ padding: 22, paddingTop: 22, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{s.label}</p>
+                  <p style={{ fontSize: 36, fontWeight: 800, color: s.color, letterSpacing: "-0.03em", lineHeight: 1 }}>{s.value}</p>
+                </div>
+                <div style={{ padding: 14, background: s.iconBg, borderRadius: 14, color: "#fff", boxShadow: `0 4px 14px ${s.iconBg}40` }}>
+                  <Icon style={{ height: 24, width: 24 }} />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-            {alert.status === 'pending' && (
-              <button
-                onClick={() => handleAccept(alert)}
-                className="btn-respond"
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Processing...' : 'RESPOND NOW'}
-              </button>
-            )}
+      {/* Active Alert Banner */}
+      {active.length > 0 && (
+        <div style={{
+          background: "linear-gradient(135deg, #dc2626, #991b1b)",
+          borderRadius: 14,
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+          boxShadow: "0 4px 20px rgba(220, 38, 38, 0.3)",
+        }}>
+          <div style={{
+            width: 10, height: 10, borderRadius: "50%", background: "#fff",
+            animation: "pulse 1.5s ease-in-out infinite",
+          }} />
+          <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "0.05em", margin: 0 }}>
+            {active.length} ACTIVE ALERT{active.length > 1 ? "S" : ""} REQUIRING IMMEDIATE RESPONSE
+          </p>
+          <div style={{
+            width: 10, height: 10, borderRadius: "50%", background: "#fff",
+            animation: "pulse 1.5s ease-in-out infinite",
+          }} />
+          <style>{`@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }`}</style>
+        </div>
+      )}
+
+      {/* Crash Alerts Table */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Recent Crash Alerts</h2>
+          <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>{crashes.length} total records</span>
+        </div>
+        <div className="table-card">
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  {["Bus", "Time", "Location", "Severity", "Status", ""].map((h) => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {crashes.map((crash) => {
+                  const sev = severityConfig[crash.severity] || severityConfig.medium;
+                  const stat = statusConfig[crash.status] || statusConfig.active;
+                  const isActive = crash.status === "active";
+                  return (
+                    <tr key={crash._id} data-active={isActive ? "true" : undefined}>
+                      <td>
+                        <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                          {crash.bus_id || crash.busId?.licensePlate || "N/A"}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)" }}>
+                          <Clock style={{ height: 14, width: 14, flexShrink: 0 }} />
+                          {new Date(crash.timestamp).toLocaleString()}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)" }}>
+                          <MapPin style={{ height: 14, width: 14, flexShrink: 0 }} />
+                          {crash.location?.address || (crash.location ? `${crash.location.latitude || crash.location.lat}, ${crash.location.longitude || crash.location.lon}` : "N/A")}
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: "5px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                          background: sev.bg, color: sev.text, letterSpacing: "0.03em",
+                        }}>
+                          {crash.severity?.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {isActive && (
+                            <span style={{
+                              width: 8, height: 8, borderRadius: "50%", background: stat.dot,
+                              boxShadow: `0 0 0 3px ${stat.dot}30`,
+                              animation: "pulse 1.5s ease-in-out infinite",
+                            }} />
+                          )}
+                          <span style={{
+                            padding: "5px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                            background: stat.bg, color: stat.text, letterSpacing: "0.03em",
+                          }}>
+                            {crash.status?.toUpperCase()}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <ChevronRight style={{ height: 16, width: 16, color: "var(--text-faint)" }} />
+                      </td>
+                    </tr>
+                  );
+                })}
+                {crashes.length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: 48, textAlign: "center" }}>
+                      <CheckCircle style={{ height: 40, width: 40, color: "var(--border-input)", margin: "0 auto 12px", display: "block" }} />
+                      <p style={{ color: "var(--text-muted)", fontSize: 15, fontWeight: 500 }}>No crash alerts at this time</p>
+                      <p style={{ color: "var(--text-faint)", fontSize: 13 }}>All clear - system is monitoring</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        ))}
-        {alerts.length === 0 && (
-          <div className="no-alerts">No alerts at this time</div>
-        )}
+        </div>
       </div>
     </div>
   );

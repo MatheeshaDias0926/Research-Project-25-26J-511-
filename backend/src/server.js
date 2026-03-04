@@ -9,6 +9,7 @@ import authRoutes from "./api/auth.routes.js";
 import iotRoutes from "./api/iot.routes.js";
 import busRoutes from "./api/bus.routes.js";
 import maintenanceRoutes from "./api/maintenance.routes.js";
+import crashRoutes from "./api/crash.routes.js";
 
 // Load environment variables
 dotenv.config();
@@ -28,6 +29,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/iot", iotRoutes);
 app.use("/api/bus", busRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
+app.use("/api/crashes", crashRoutes);
 
 // Root route
 app.get("/", (req, res) => {

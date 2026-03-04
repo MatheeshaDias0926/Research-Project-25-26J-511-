@@ -67,10 +67,10 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>
                 Active Buses
               </p>
-              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+              <p style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>
                 {stats.activeBuses}
               </p>
             </div>
@@ -97,10 +97,10 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>
                 Total Conductors
               </p>
-              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+              <p style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>
                 {stats.conductors}
               </p>
             </div>
@@ -127,10 +127,10 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>
                 Violations (24h)
               </p>
-              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+              <p style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>
                 {stats.totalViolations}
               </p>
             </div>
@@ -157,10 +157,10 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>
                 Maintenance
               </p>
-              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+              <p style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>
                 {stats.pendingMaintenance}
               </p>
             </div>
@@ -187,7 +187,7 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>
                 System Status
               </p>
               <p style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>
@@ -224,19 +224,19 @@ const AuthorityDashboard = () => {
                 }}
               >
                 <div>
-                  <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                  <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
                     Manage Conductors
                   </p>
-                  <p style={{ fontSize: 13, color: "#64748b" }}>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                     Register & Assign Buses
                   </p>
                 </div>
                 <div
                   style={{
                     padding: 12,
-                    background: "#f1f5f9",
+                    background: "var(--bg-muted)",
                     borderRadius: 9999,
-                    color: "#475569",
+                    color: "var(--text-label)",
                   }}
                 >
                   <UserPlus style={{ height: 24, width: 24 }} />
@@ -255,19 +255,19 @@ const AuthorityDashboard = () => {
                 }}
               >
                 <div>
-                  <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                  <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
                     Safety Check
                   </p>
-                  <p style={{ fontSize: 13, color: "#64748b" }}>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                     Run Physics Simulation
                   </p>
                 </div>
                 <div
                   style={{
                     padding: 12,
-                    background: "#f1f5f9",
+                    background: "var(--bg-muted)",
                     borderRadius: 9999,
-                    color: "#475569",
+                    color: "var(--text-label)",
                   }}
                 >
                   <AlertTriangle style={{ height: 24, width: 24 }} />

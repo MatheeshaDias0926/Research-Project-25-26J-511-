@@ -65,23 +65,23 @@ const ViolationCard = ({ violation, getViolationBadge }) => {
                 marginBottom: 4,
               }}
             >
-              <h3 style={{ fontWeight: 700, fontSize: 18, color: "#0f172a" }}>
+              <h3 style={{ fontWeight: 700, fontSize: 18, color: "var(--text-primary)" }}>
                 {violation.busId?.licensePlate || "Unknown Bus"}
               </h3>
               {getViolationBadge(violation.violationType)}
             </div>
-            <p style={{ color: "#475569", fontWeight: 500 }}>
+            <p style={{ color: "var(--text-label)", fontWeight: 500 }}>
               Violation type: {violation.violationType}
             </p>
             {violation.speed && (
-              <p style={{ fontSize: 14, color: "#64748b", marginTop: 4 }}>
+              <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 4 }}>
                 Speed: {violation.speed} km/h
               </p>
             )}
             <p
               style={{
                 fontSize: 13,
-                color: "#64748b",
+                color: "var(--text-secondary)",
                 marginTop: 4,
                 fontStyle: "italic",
               }}
@@ -99,7 +99,7 @@ const ViolationCard = ({ violation, getViolationBadge }) => {
             alignItems: "flex-end",
             gap: 4,
             fontSize: 14,
-            color: "#64748b",
+            color: "var(--text-secondary)",
             minWidth: 150,
           }}
         >
@@ -117,7 +117,7 @@ const ViolationCard = ({ violation, getViolationBadge }) => {
               View on Google Maps
             </a>
           </div>
-          <span style={{ fontSize: 12, color: "#94a3b8" }}>
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
             {new Date(violation.createdAt).toLocaleDateString()}
           </span>
         </div>
@@ -208,7 +208,7 @@ const ViolationsFeed = () => {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <label
             htmlFor="bus-select"
-            style={{ fontWeight: 500, color: "#475569" }}
+            style={{ fontWeight: 500, color: "var(--text-label)" }}
           >
             Select Bus:
           </label>
@@ -220,8 +220,8 @@ const ViolationsFeed = () => {
               height: 40,
               padding: "0 12px",
               borderRadius: 8,
-              border: "1px solid #cbd5e1",
-              background: "#fff",
+              border: "1px solid var(--border-input)",
+              background: "var(--bg-card)",
               minWidth: 200,
             }}
           >
@@ -236,13 +236,13 @@ const ViolationsFeed = () => {
       </div>
 
       {loadingViolations ? (
-        <div style={{ padding: 48, textAlign: "center", color: "#64748b" }}>
+        <div style={{ padding: 48, textAlign: "center", color: "var(--text-secondary)" }}>
           Loading violation history...
         </div>
       ) : violations.length === 0 ? (
         <Card>
           <CardContent style={{ padding: 48, textAlign: "center" }}>
-            <p style={{ color: "#64748b", fontSize: 16 }}>
+            <p style={{ color: "var(--text-secondary)", fontSize: 16 }}>
               No violations recorded for this bus.
             </p>
           </CardContent>

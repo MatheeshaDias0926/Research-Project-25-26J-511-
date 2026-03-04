@@ -114,9 +114,9 @@ const ConductorDashboard = () => {
   if (!user?.assignedBus) {
       return (
         <div style={{ textAlign: "center", padding: 48 }}>
-            <Bus style={{ height: 48, width: 48, margin: "0 auto 16px", color: "#94a3b8" }} />
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#334155" }}>No Bus Assigned</h2>
-            <p style={{ color: "#64748b" }}>Please contact the authority to assign a bus to your account.</p>
+            <Bus style={{ height: 48, width: 48, margin: "0 auto 16px", color: "var(--text-faint)" }} />
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-body)" }}>No Bus Assigned</h2>
+            <p style={{ color: "var(--text-secondary)" }}>Please contact the authority to assign a bus to your account.</p>
         </div>
       );
   }
@@ -128,7 +128,7 @@ const ConductorDashboard = () => {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>My Bus Dashboard</h1>
-          <p style={{ color: "#64748b" }}>Real-time overview of your vehicle status.</p>
+          <p style={{ color: "var(--text-secondary)" }}>Real-time overview of your vehicle status.</p>
         </div>
         <div style={{ display: "flex", gap: 12 }}>
             <Button 
@@ -211,9 +211,9 @@ const ConductorDashboard = () => {
                     <div key={v._id} style={{ padding: 12, background: "#fef2f2", borderRadius: 8, border: "1px solid #fee2e2" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                             <span style={{ color: "#dc2626", fontWeight: 600, fontSize: 14 }}>{v.violationType}</span>
-                            <span style={{ fontSize: 12, color: "#94a3b8" }}>{new Date(v.createdAt).toLocaleTimeString()}</span>
+                            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{new Date(v.createdAt).toLocaleTimeString()}</span>
                         </div>
-                        <p style={{ fontSize: 13, color: "#64748b" }}>
+                        <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                             Location: {v.gps?.lat?.toFixed(4)}, {v.gps?.lon?.toFixed(4)}. Speed: {v.speed || 0} km/h
                         </p>
                     </div>
@@ -245,9 +245,9 @@ const ConductorDashboard = () => {
                  </MapContainer>
             </div>
 
-            <div style={{ padding: 16, background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
+            <div style={{ padding: 16, background: "var(--bg-primary)", borderTop: "1px solid var(--border-primary)" }}>
                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
-                    <span style={{ color: "#64748b" }}>Updated: {lastUpdated.toLocaleTimeString()}</span>
+                    <span style={{ color: "var(--text-secondary)" }}>Updated: {lastUpdated.toLocaleTimeString()}</span>
                     <Badge variant="success">Signal: Strong</Badge>
                  </div>
             </div>
@@ -263,21 +263,21 @@ const ConductorDashboard = () => {
                 <div style={{ width: "100%", height: 300 }}>
                     <ResponsiveContainer>
                         <AreaChart data={logs}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis 
-                                dataKey="time" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{ fill: "#64748b", fontSize: 12 }} 
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-primary)" />
+                            <XAxis
+                                dataKey="time"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
                                 dy={10}
                             />
-                            <YAxis 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{ fill: "#64748b", fontSize: 12 }} 
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
                             />
-                            <Tooltip 
-                                contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                            <Tooltip
+                                contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
                             />
                             <Area 
                                 type="monotone" 

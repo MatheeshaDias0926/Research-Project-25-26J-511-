@@ -8,13 +8,20 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["passenger", "conductor", "authority"],
+      enum: ["passenger", "conductor", "authority", "police", "hospital", "bus_owner", "admin"],
       default: "passenger",
     },
     assignedBus: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Bus",
       default: null,
+    },
+    phoneNumber: {
+      type: String,
+      required: function () {
+        return ["authority", "police", "hospital", "bus_owner", "conductor"].includes(this.role);
+      },
+      default: "",
     },
   },
   { timestamps: true }

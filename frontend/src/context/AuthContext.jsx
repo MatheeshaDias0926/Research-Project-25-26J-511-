@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { validateToken } from "../services/authService";
+import api from "../api/axios";
 
 const AuthContext = createContext();
 
@@ -11,18 +11,17 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const checkAuth = async () => {
+        const checkAuth = () => {
             const token = localStorage.getItem("token");
-            if (token) {
+            const storedUser = localStorage.getItem("user");
+            if (token && storedUser) {
                 try {
-                    const userData = await validateToken();
+                    const userData = JSON.parse(storedUser);
                     setUser(userData);
                     setIsAuthenticated(true);
-                } catch (error) {
+                } catch {
                     localStorage.removeItem("token");
                     localStorage.removeItem("user");
-                    setUser(null);
-                    setIsAuthenticated(false);
                 }
             }
             setLoading(false);
@@ -30,13 +29,50 @@ export const AuthProvider = ({ children }) => {
         checkAuth();
     }, []);
 
+    const login = async (email, password) => {
+        try {
+            const res = await api.post("/auth/login", { email, password });
+            const data = res.data;
+
+            const token = data.token;
+            const userData = data.user || {
+                _id: data._id,
+                name: data.name,
+                email: data.email,
+                role: data.role,
+            };
+
+            localStorage.setItem("token", token);
+            localStorage.setItem("user", JSON.stringify(userData));
+            setUser(userData);
+            setIsAuthenticated(true);
+
+            return { success: true };
+        } catch (error) {
+            const message =
+                error.response?.data?.error || error.response?.data?.message || "Invalid credentials";
+            return { success: false, error: message };
+        }
+    };
+
+    const logout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setUser(null);
+        setIsAuthenticated(false);
+    };
+
     const value = {
         user,
         setUser,
         isAuthenticated,
         setIsAuthenticated,
-        loading
+        loading,
+        login,
+        logout,
     };
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    );
 };

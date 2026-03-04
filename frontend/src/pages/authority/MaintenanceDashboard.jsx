@@ -71,8 +71,8 @@ const MaintenanceDashboard = () => {
                         style={{
                             padding: "8px 16px",
                             borderRadius: 6,
-                            background: filter === "all" ? "#0284c7" : "#e2e8f0",
-                            color: filter === "all" ? "#fff" : "#64748b",
+                            background: filter === "all" ? "#0284c7" : "var(--border-primary)",
+                            color: filter === "all" ? "#fff" : "var(--text-secondary)",
                             fontWeight: 500,
                             border: "none",
                             cursor: "pointer",
@@ -85,8 +85,8 @@ const MaintenanceDashboard = () => {
                         style={{
                             padding: "8px 16px",
                             borderRadius: 6,
-                            background: filter === "pending" ? "#0284c7" : "#e2e8f0",
-                            color: filter === "pending" ? "#fff" : "#64748b",
+                            background: filter === "pending" ? "#0284c7" : "var(--border-primary)",
+                            color: filter === "pending" ? "#fff" : "var(--text-secondary)",
                             fontWeight: 500,
                             border: "none",
                             cursor: "pointer",
@@ -99,8 +99,8 @@ const MaintenanceDashboard = () => {
                         style={{
                             padding: "8px 16px",
                             borderRadius: 6,
-                            background: filter === "resolved" ? "#0284c7" : "#e2e8f0",
-                            color: filter === "resolved" ? "#fff" : "#64748b",
+                            background: filter === "resolved" ? "#0284c7" : "var(--border-primary)",
+                            color: filter === "resolved" ? "#fff" : "var(--text-secondary)",
                             fontWeight: 500,
                             border: "none",
                             cursor: "pointer",
@@ -113,7 +113,7 @@ const MaintenanceDashboard = () => {
 
             <div style={{ display: "grid", gap: 16 }}>
                 {filteredLogs.length === 0 ? (
-                    <p style={{ color: "#64748b" }}>No maintenance logs found.</p>
+                    <p style={{ color: "var(--text-secondary)" }}>No maintenance logs found.</p>
                 ) : (
                     filteredLogs.map((log) => (
                         <Card key={log._id}>
@@ -126,7 +126,7 @@ const MaintenanceDashboard = () => {
                                                     fontSize: 14,
                                                     fontWeight: 700,
                                                     color: "#1e293b",
-                                                    background: "#f1f5f9",
+                                                    background: "var(--bg-muted)",
                                                     padding: "4px 8px",
                                                     borderRadius: 4,
                                                 }}
@@ -164,13 +164,13 @@ const MaintenanceDashboard = () => {
                                                 {log.status}
                                             </span>
                                         </div>
-                                        <h3 style={{ fontSize: 18, fontWeight: 600, color: "#0f172a", marginBottom: 4 }}>
+                                        <h3 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
                                             {log.issue}
                                         </h3>
-                                        <p style={{ color: "#64748b", fontSize: 14, marginBottom: 12 }}>
+                                        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 12 }}>
                                             {log.description}
                                         </p>
-                                        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                                             Reported by: <span style={{ fontWeight: 500 }}>{log.reportedBy?.username || "Unknown"}</span> •{" "}
                                             {new Date(log.createdAt).toLocaleString()}
                                         </div>

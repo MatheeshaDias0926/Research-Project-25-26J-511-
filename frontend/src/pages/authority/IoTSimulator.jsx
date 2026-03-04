@@ -159,28 +159,28 @@ const IoTSimulator = () => {
                         <CardContent>
                             <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                    <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>License Plate</label>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>License Plate</label>
                                     <Input {...register("licensePlate", { required: true })} />
                                 </div>
 
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                        <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Speed (km/h)</label>
+                                        <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>Speed (km/h)</label>
                                         <Input type="number" {...register("speed", { required: true })} />
                                     </div>
                                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                        <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Occupancy</label>
+                                        <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>Occupancy</label>
                                         <Input type="number" {...register("occupancy", { required: true })} />
                                     </div>
                                 </div>
 
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                    <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Footboard Status</label>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>Footboard Status</label>
                                     <select
                                         {...register("footboard")}
                                         style={{
                                             display: "flex", height: 40, width: "100%", borderRadius: 8,
-                                            border: "1px solid #d1d5db", background: "#fff", padding: "0 12px", outline: "none"
+                                            border: "1px solid var(--border-input)", background: "var(--bg-card)", padding: "0 12px", outline: "none"
                                         }}
                                     >
                                         <option value="false">Clear (Safe)</option>
@@ -188,15 +188,15 @@ const IoTSimulator = () => {
                                     </select>
                                 </div>
 
-                                <div style={{ paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
-                                    <p style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 8 }}>GPS Coordinates</p>
+                                <div style={{ paddingTop: 12, borderTop: "1px solid var(--bg-muted)" }}>
+                                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-body)", marginBottom: 8 }}>GPS Coordinates</p>
                                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                                         <div>
-                                            <label style={{ fontSize: 12, color: "#94a3b8" }}>Lat</label>
+                                            <label style={{ fontSize: 12, color: "var(--text-muted)" }}>Lat</label>
                                             <Input step="any" type="number" {...register("lat", { required: true })} />
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: 12, color: "#94a3b8" }}>Lon</label>
+                                            <label style={{ fontSize: 12, color: "var(--text-muted)" }}>Lon</label>
                                             <Input step="any" type="number" {...register("lon", { required: true })} />
                                         </div>
                                     </div>
@@ -215,14 +215,14 @@ const IoTSimulator = () => {
                         </CardHeader>
                         <CardContent>
                              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto" }}>
-                                {logs.length === 0 && <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", fontStyle: "italic", padding: 20 }}>No packets sent yet.</p>}
+                                {logs.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13, textAlign: "center", fontStyle: "italic", padding: 20 }}>No packets sent yet.</p>}
                                 {logs.map((log, idx) => (
-                                    <div key={idx} style={{ padding: 10, background: "#f8fafc", borderRadius: 6, border: "1px solid #f1f5f9", fontSize: 12 }}>
+                                    <div key={idx} style={{ padding: 10, background: "var(--bg-primary)", borderRadius: 6, border: "1px solid var(--bg-muted)", fontSize: 12 }}>
                                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                                            <span style={{ fontWeight: 700, color: "#334155" }}>{log.licensePlate}</span>
-                                            <span style={{ color: "#94a3b8" }}>{log.timestamp}</span>
+                                            <span style={{ fontWeight: 700, color: "var(--text-body)" }}>{log.licensePlate}</span>
+                                            <span style={{ color: "var(--text-muted)" }}>{log.timestamp}</span>
                                         </div>
-                                        <div style={{ display: "flex", gap: 12, color: "#64748b" }}>
+                                        <div style={{ display: "flex", gap: 12, color: "var(--text-secondary)" }}>
                                             <span>{log.speed} km/h</span>
                                             <span>Lat: {log.gps.lat.toFixed(4)}</span>
                                         </div>
@@ -235,7 +235,7 @@ const IoTSimulator = () => {
 
                 {/* Right Column: Map */}
                 <Card style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 120px)", overflow: "hidden" }}>
-                    <CardHeader style={{ padding: "12px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                    <CardHeader style={{ padding: "12px 20px", background: "var(--bg-primary)", borderBottom: "1px solid var(--border-primary)" }}>
                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                               <CardTitle style={{ fontSize: 16, display: "flex", alignItems: "center", gap: 8 }}>
                                    <MapPin size={16} /> Select Location

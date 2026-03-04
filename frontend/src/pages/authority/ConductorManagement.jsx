@@ -104,7 +104,7 @@ const ConductorManagement = () => {
                 <h1 style={{ fontSize: 32, fontWeight: 700, color: "#1e293b" }}>
                     Manage Conductors
                 </h1>
-                <p style={{ color: "#64748b", marginTop: 4 }}>
+                <p style={{ color: "var(--text-secondary)", marginTop: 4 }}>
                     Register new conductors and manage existing fleet assignments.
                 </p>
             </div>
@@ -114,7 +114,7 @@ const ConductorManagement = () => {
                 {/* Left Column: Register Form */}
                 <div>
                     <Card style={{ position: "sticky", top: 20 }}>
-                        <CardHeader style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: 16 }}>
+                        <CardHeader style={{ borderBottom: "1px solid var(--bg-muted)", paddingBottom: 16 }}>
                             <CardTitle style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 18 }}>
                                 <div style={{ background: "#eff6ff", padding: 8, borderRadius: 8, color: "#2563eb" }}>
                                     <UserPlus size={20} />
@@ -145,7 +145,7 @@ const ConductorManagement = () => {
 
                             <form onSubmit={handleSubmit} style={{ display: "grid", gap: 20 }}>
                                 <div>
-                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#334155" }}>
+                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "var(--text-body)" }}>
                                         Username
                                     </label>
                                     <Input
@@ -159,7 +159,7 @@ const ConductorManagement = () => {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#334155" }}>
+                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "var(--text-body)" }}>
                                         Password
                                     </label>
                                     <Input
@@ -173,9 +173,9 @@ const ConductorManagement = () => {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#334155" }}>
+                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "var(--text-body)" }}>
                                         Assign Bus
-                                        <span style={{ marginLeft: 8, fontSize: 12, color: "#64748b", fontWeight: 400 }}>
+                                        <span style={{ marginLeft: 8, fontSize: 12, color: "var(--text-secondary)", fontWeight: 400 }}>
                                             {availableBuses.length} buses available
                                         </span>
                                     </label>
@@ -189,9 +189,9 @@ const ConductorManagement = () => {
                                                 width: "100%",
                                                 padding: "10px 12px",
                                                 borderRadius: 6,
-                                                border: "1px solid #e2e8f0",
+                                                border: "1px solid var(--border-primary)",
                                                 outline: "none",
-                                                backgroundColor: "white",
+                                                backgroundColor: "var(--bg-card)",
                                                 appearance: "none",
                                                 cursor: "pointer",
                                                 fontSize: 14
@@ -204,7 +204,7 @@ const ConductorManagement = () => {
                                                 </option>
                                             ))}
                                         </select>
-                                        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#94a3b8" }}>
+                                        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-muted)" }}>
                                             <Bus size={16} />
                                         </div>
                                     </div>
@@ -233,16 +233,16 @@ const ConductorManagement = () => {
                         <h2 style={{ fontSize: 20, fontWeight: 600, color: "#1e293b", display: "flex", alignItems: "center", gap: 8 }}>
                             <User size={20} />
                             Registered Conductors
-                            <span style={{ fontSize: 14, background: "#e2e8f0", padding: "2px 8px", borderRadius: 12, color: "#475569" }}>
+                            <span style={{ fontSize: 14, background: "var(--border-primary)", padding: "2px 8px", borderRadius: 12, color: "var(--text-label)" }}>
                                 {conductors.length}
                             </span>
                         </h2>
                     </div>
 
                     <Card style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                        <div style={{ padding: 16, borderBottom: "1px solid #f1f5f9" }}>
+                        <div style={{ padding: 16, borderBottom: "1px solid var(--bg-muted)" }}>
                             <div style={{ position: "relative" }}>
-                                <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+                                <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                                 <Input
                                     placeholder="Search by name or bus number..."
                                     value={searchTerm}
@@ -252,11 +252,11 @@ const ConductorManagement = () => {
                             </div>
                         </div>
 
-                        <div style={{ flex: 1, overflowY: "auto", padding: 16, background: "#f8fafc" }}>
+                        <div style={{ flex: 1, overflowY: "auto", padding: 16, background: "var(--bg-primary)" }}>
                             {loadingConductors ? (
-                                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>Loading conductors...</div>
+                                <div style={{ textAlign: "center", padding: 40, color: "var(--text-secondary)" }}>Loading conductors...</div>
                             ) : filteredConductors.length === 0 ? (
-                                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
+                                <div style={{ textAlign: "center", padding: 40, color: "var(--text-secondary)" }}>
                                     {searchTerm ? "No matching conductors found." : "No conductors registered yet."}
                                 </div>
                             ) : (
@@ -265,10 +265,10 @@ const ConductorManagement = () => {
                                         <div
                                             key={conductor._id}
                                             style={{
-                                                background: "white",
+                                                background: "var(--bg-card)",
                                                 padding: 16,
                                                 borderRadius: 8,
-                                                border: "1px solid #e2e8f0",
+                                                border: "1px solid var(--border-primary)",
                                                 display: "flex",
                                                 justifyContent: "space-between",
                                                 alignItems: "center",
@@ -280,25 +280,25 @@ const ConductorManagement = () => {
                                                     width: 40,
                                                     height: 40,
                                                     borderRadius: "50%",
-                                                    background: "#f1f5f9",
+                                                    background: "var(--bg-muted)",
                                                     display: "flex",
                                                     alignItems: "center",
                                                     justifyContent: "center",
-                                                    color: "#64748b",
+                                                    color: "var(--text-secondary)",
                                                     fontWeight: 600
                                                 }}>
                                                     {conductor.username.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                                                    <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
                                                         {conductor.username}
                                                     </p>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>
                                                         {conductor.assignedBus ? (
                                                             <>
                                                                 <Bus size={14} />
                                                                 <span>
-                                                                    <span style={{ fontWeight: 500, color: "#334155" }}>{conductor.assignedBus.licensePlate}</span>
+                                                                    <span style={{ fontWeight: 500, color: "var(--text-body)" }}>{conductor.assignedBus.licensePlate}</span>
                                                                     <span style={{ opacity: 0.7 }}> • Route {conductor.assignedBus.routeId}</span>
                                                                 </span>
                                                             </>

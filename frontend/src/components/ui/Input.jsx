@@ -5,14 +5,14 @@ const inputBaseStyle = {
   height: 40,
   width: "100%",
   borderRadius: 8,
-  border: "1px solid #d1d5db",
-  background: "#fff",
+  border: "1px solid var(--border-input)",
+  background: "var(--bg-input)",
   padding: "8px 12px",
   fontSize: 14,
-  color: "#0f172a",
+  color: "var(--text-primary)",
   outline: "none",
   boxSizing: "border-box",
-  transition: "border 0.2s, box-shadow 0.2s",
+  transition: "border 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s",
 };
 
 const Input = forwardRef(({ style, type, ...props }, ref) => {
