@@ -367,8 +367,12 @@ export const getPrediction = async (req, res, next) => {
 export const predictBusSafety = async (req, res, next) => {
   // ML-based safety prediction
   try {
+<<<<<<< HEAD
     const { n_seated, n_standing, speed_kmh, radius_m, is_wet, gradient_deg } = req.body;
 
+=======
+    const { n_seated, n_standing, speed_kmh, radius_m, is_wet, gradient_deg, dist_to_curve_m } = req.body;
+>>>>>>> 8b682f727fece76bde1b32a4259a80370f2cb6bf
     // Call ML Service
     const result = await getSafetyPrediction({
       n_seated,
@@ -377,6 +381,10 @@ export const predictBusSafety = async (req, res, next) => {
       radius_m,
       is_wet,
       gradient_deg,
+<<<<<<< HEAD
+=======
+      dist_to_curve_m
+>>>>>>> 8b682f727fece76bde1b32a4259a80370f2cb6bf
     });
 
     res.json(result);

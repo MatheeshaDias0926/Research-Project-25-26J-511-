@@ -15,6 +15,10 @@ const busDataLogSchema = new mongoose.Schema({
   footboardStatus: { type: Boolean, default: false },
   speed: { type: Number, default: 0 }, // Speed in km/h
   riskScore: { type: Number, default: 0 }, // ML Calculated Risk (0-1)
+<<<<<<< HEAD
+=======
+  distToCurve: { type: Number, default: 0 }, // Distance to upcoming sharp curve (meters)
+>>>>>>> 8b682f727fece76bde1b32a4259a80370f2cb6bf
 });
 
 // Index for efficient queries

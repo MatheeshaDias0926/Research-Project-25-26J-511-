@@ -99,6 +99,7 @@ export const isConductorOrAuthority = (req, res, next) => {
       });
   }
 };
+<<<<<<< HEAD
 
 /**
  * @desc    Check if user has one of the required roles
@@ -117,3 +118,5 @@ export const authorize = (...roles) => {
     next();
   };
 };
+=======
+>>>>>>> 8b682f727fece76bde1b32a4259a80370f2cb6bf

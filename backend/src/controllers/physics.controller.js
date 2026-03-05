@@ -45,6 +45,10 @@ export const getPhysicsModel = async (req, res, next) => {
                 lat, 
                 lon,
                 radius_m: parseFloat(result["Sharpest curve radius ahead"]?.replace("m","")) || 0,
+<<<<<<< HEAD
+=======
+                dist_to_curve_m: parseFloat(result["Distance to sharpest curve"]?.replace("m","")) || 0,
+>>>>>>> 8b682f727fece76bde1b32a4259a80370f2cb6bf
                 gradient: parseFloat(result["Road slope"]?.replace("°","")) || 0
             },
             outputs: {

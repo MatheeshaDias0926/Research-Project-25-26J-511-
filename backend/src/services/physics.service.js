@@ -87,6 +87,11 @@ export const getPhysicsModelResult = async ({
           result["Rollover threshold"] = line.split(":")[1].trim();
         } else if (line.startsWith("Sharpest curve radius ahead:")) {
           result["Sharpest curve radius ahead"] = line.split(":")[1].trim();
+<<<<<<< HEAD
+=======
+        } else if (line.startsWith("Distance to sharpest curve:")) {
+          result["Distance to sharpest curve"] = line.split(":")[1].trim();
+>>>>>>> 8b682f727fece76bde1b32a4259a80370f2cb6bf
         } else if (line.startsWith("Road slope:")) {
           result["Road slope"] = line.split(":")[1].trim();
         } else if (line.startsWith("Lateral accel:")) {
