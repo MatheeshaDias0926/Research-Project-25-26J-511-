@@ -1,0 +1,12 @@
+# Python virtual env
+bus1NewServer/.venv/
+
+# Python cache
+**/__pycache__/
+*.pyc
+
+# Logs / uploads (optional)
+bus1NewServer/uploads/
+
+# PyTorch model files (optional if you don't want to track them)
+bus1NewServer/models/*.pt
