@@ -10,3 +10,6 @@ bus1NewServer/uploads/
 
 # PyTorch model files (optional if you don't want to track them)
 bus1NewServer/models/*.pt
+
+
+frontend (1)/.vite/
