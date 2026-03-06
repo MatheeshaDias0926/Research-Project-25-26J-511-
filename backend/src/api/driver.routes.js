@@ -15,7 +15,7 @@ const router = express.Router();
 router.post(
     "/register",
     protect,
-    authorize("authority"),
+    authorize("authority", "admin"),
     upload.single("photo"),
     async (req, res) => {
         try {
@@ -99,11 +99,12 @@ router.post("/verify", protect, localUpload.single("image"), async (req, res) =>
             const result = mlResponse.data;
 
             if (result.verified) {
-                // fetch full driver details from DB if needed, but result.driver has the name
                 res.json({
                     verified: true,
                     driverName: result.driver,
-                    confidence: 100, // Face Mesh binary match usually, or we can get score
+                    driverId: result.driver_id || null,
+                    confidence: result.confidence || 100,
+                    distance: result.distance || 0,
                     message: "Driver verified successfully"
                 });
             } else {
@@ -131,7 +132,7 @@ router.post("/verify", protect, localUpload.single("image"), async (req, res) =>
 // @desc    Get all drivers
 // @route   GET /api/driver
 // @access  Private (Authority)
-router.get("/", protect, authorize("authority"), async (req, res) => {
+router.get("/", protect, authorize("authority", "admin"), async (req, res) => {
     try {
         const drivers = await Driver.find({});
         res.json(drivers);
@@ -146,7 +147,7 @@ router.get("/", protect, authorize("authority"), async (req, res) => {
 router.post(
     "/reupload-photo",
     protect,
-    authorize("authority"),
+    authorize("authority", "admin"),
     upload.single("photo"),
     async (req, res) => {
         try {
@@ -194,7 +195,7 @@ router.post(
 // @desc    Update driver details (excluding photo/encoding re-calc for simplicity, unless photo provided)
 // @route   PUT /api/driver/:id
 // @access  Private (Authority)
-router.put("/:id", protect, authorize("authority"), upload.single("photo"), async (req, res) => {
+router.put("/:id", protect, authorize("authority", "admin"), upload.single("photo"), async (req, res) => {
     try {
         const { name, licenseNumber, contactNumber } = req.body;
         const driver = await Driver.findById(req.params.id);
@@ -255,7 +256,7 @@ router.put("/:id", protect, authorize("authority"), upload.single("photo"), asyn
 // @desc    Delete driver
 // @route   DELETE /api/driver/:id
 // @access  Private (Authority)
-router.delete("/:id", protect, authorize("authority"), async (req, res) => {
+router.delete("/:id", protect, authorize("authority", "admin"), async (req, res) => {
     try {
         const driver = await Driver.findById(req.params.id);
         if (!driver) {

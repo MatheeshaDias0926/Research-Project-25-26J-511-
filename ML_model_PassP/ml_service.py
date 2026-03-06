@@ -19,6 +19,7 @@ from flask_cors import CORS
 import joblib
 import pandas as pd
 from driver_monitor import DriverMonitor
+from face_recognition_service import FaceRecognitionService
 try:
     from FaceLandmarkRecognition import FaceLandmarkRecognition
 except ImportError:
@@ -37,7 +38,11 @@ CORS(app)
 # 1. Driver Monitor
 driver_monitor = DriverMonitor()
 
-# 2. Face Recognition
+# 2. Face Recognition — pickle-based (face_recognition library, 128-d dlib encodings)
+face_rec_service = FaceRecognitionService()   # loads Face_Recognition.pickle
+print(f"[OK] FaceRecognitionService ready — {len(face_rec_service.encodings)} encodings loaded")
+
+# 3. Face Landmark Recognition (MediaPipe) — used for drowsiness/yawning detection
 face_config = {
     "max_faces": 1, 
     "min_detection_confidence": 0.5,
@@ -50,46 +55,42 @@ face_config = {
 face_recognizer = None
 if FaceLandmarkRecognition:
     try:
-        # Model path relative to this script
         model_path = os.path.join(os.path.dirname(__file__), '..', 'Face_Mesh', 'face_landmarker.task')
-        
-        # Get MongoDB URI from env
         mongo_uri = os.getenv('MONGO_URI', "mongodb://localhost:27017/")
-        
         face_recognizer = FaceLandmarkRecognition(
             model_path=model_path,
             mongo_uri=mongo_uri,
             **face_config
         )
-        print(f"✓ FaceLandmarkRecognition System initialized with DB: {mongo_uri.split('@')[-1] if '@' in mongo_uri else 'Local'}")
+        print(f"[OK] FaceLandmarkRecognition (drowsiness) initialized with DB: {mongo_uri.split('@')[-1] if '@' in mongo_uri else 'Local'}")
     except Exception as e:
-        print(f"⚠️ Failed to init FaceLandmarkRecognition: {e}")
+        print(f"[WARN] Failed to init FaceLandmarkRecognition: {e}")
 else:
-    print("⚠️ FaceLandmarkRecognition class not loaded.")
+    print("[WARN] FaceLandmarkRecognition class not loaded — drowsiness stream unavailable.")
 
-# 3. Occupancy Model
+# 4. Occupancy Model
 MODEL_PATH = 'xgb_bus_model.joblib'
 occupancy_model = None
 if os.path.exists(MODEL_PATH):
     try:
         occupancy_model = joblib.load(MODEL_PATH)
-        print("✓ Occupancy Model loaded successfully!")
+        print("[OK] Occupancy Model loaded successfully!")
     except Exception as e:
-         print(f"⚠️ Failed to load Occupancy Model: {e}")
+         print(f"[WARN] Failed to load Occupancy Model: {e}")
 else:
-    print(f"ℹ️ Occupancy Model not found ({MODEL_PATH}). Service will run in Safety-Only mode.")
+    print(f"[INFO] Occupancy Model not found ({MODEL_PATH}). Service will run in Safety-Only mode.")
 
-# 4. Safety Model
+# 5. Safety Model
 SAFETY_MODEL_PATH = 'safety_model.joblib'
 safety_model = None
 if os.path.exists(SAFETY_MODEL_PATH):
     try:
         safety_model = joblib.load(SAFETY_MODEL_PATH)
-        print("✓ Safety Model loaded successfully!")
+        print("[OK] Safety Model loaded successfully!")
     except Exception as e:
-        print(f"⚠️ Failed to load Safety Model: {e}")
+        print(f"[WARN] Failed to load Safety Model: {e}")
 else:
-    print(f"⚠️ Safety model not found ({SAFETY_MODEL_PATH}). /predict-safety endpoint will fail.")
+    print(f"[WARN] Safety model not found ({SAFETY_MODEL_PATH}). /predict-safety endpoint will fail.")
 
 
 # ---------------------------------------------------------------------
@@ -140,77 +141,75 @@ def prepare_features(route_id, stop_id, day_of_week, time_of_day, weather):
 
 
 # ---------------------------------------------------------------------
-# ROUTES: FACE RECOGNITION
+# ROUTES: FACE RECOGNITION  (pickle-based, face_recognition library)
 # ---------------------------------------------------------------------
 
 @app.route('/api/face/settings', methods=['POST'])
 def update_face_settings():
-    """Update Face Mesh Settings Dynamically"""
+    """Update Face Mesh Settings Dynamically (drowsiness stream only)"""
     global face_recognizer, face_config
     try:
         data = request.get_json()
-        
-        # Update config dict
         for key in face_config.keys():
             if key in data:
                 face_config[key] = data[key]
-                
-        # Update existing instance dynamically
         if face_recognizer:
             face_recognizer.update_settings(face_config)
             return jsonify({'message': 'Face settings updated dynamically', 'config': face_config}), 200
         else:
-             return jsonify({'error': 'Face module not available'}), 503
-
+            return jsonify({'error': 'Face mesh module not available'}), 503
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/face/feed')
 def video_feed():
-    """Video streaming route. Put this in the src attribute of an img tag."""
+    """Video streaming route (MediaPipe drowsiness stream)."""
     if not face_recognizer:
-        return jsonify({'error': 'Face service not ready'}), 503
-        
+        return jsonify({'error': 'Face mesh service not ready'}), 503
     return Response(face_recognizer.generate_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/api/face/status')
 def get_face_status():
-    """Get current recognition status (for UI polling)"""
-    if not face_recognizer:
-         return jsonify({'status': 'service_unavailable'}), 503
-    
+    """Get current recognition + drowsiness status (for UI polling)"""
+    drowsy_info = {}
+    if face_recognizer:
+        drowsy_info = {
+            'drowsy': face_recognizer.status_drowsy,
+            'yawning': face_recognizer.status_yawning,
+            'ear': face_recognizer.last_ear,
+            'mar': face_recognizer.last_mar,
+        }
+    else:
+        drowsy_info = {'drowsy': False, 'yawning': False, 'ear': 0, 'mar': 0}
+
     return jsonify({
-        'match_name': face_recognizer.last_match,
-        'confidence_dist': face_recognizer.last_match_confidence,
-        'drowsy': face_recognizer.status_drowsy,
-        'yawning': face_recognizer.status_yawning,
-        'ear': face_recognizer.last_ear,
-        'mar': face_recognizer.last_mar
+        'match_name': face_recognizer.last_match if face_recognizer else None,
+        'confidence_dist': face_recognizer.last_match_confidence if face_recognizer else 0,
+        'face_rec_ready': True,
+        'total_encodings': len(face_rec_service.encodings),
+        **drowsy_info
     })
 
 @app.route('/api/face/register', methods=['POST'])
 def register_driver_face():
-    """Register a driver's face from a Cloudinary URL"""
-    if not face_recognizer:
-        return jsonify({'error': 'Face recognition service unavailable'}), 503
-        
+    """Register a driver's face from image URL / path using face_recognition library."""
     try:
         data = request.get_json()
         image_url = data.get('imageUrl')
         name = data.get('name')
-        driver_id = data.get('driverId')
-        
+        driver_id = data.get('driverId', '')
+
         if not image_url or not name:
             return jsonify({'error': 'imageUrl and name are required'}), 400
-            
-        success = face_recognizer.register_person(name, image_url, driver_id)
-        
-        if success:
-            return jsonify({'message': f'Successfully registered {name}'}), 200
+
+        result = face_rec_service.register(name=name, image_source=image_url, driver_id=driver_id)
+
+        if result['success']:
+            return jsonify({'message': result['message']}), 200
         else:
-            return jsonify({'error': 'Failed to detect face in image'}), 400
-            
+            return jsonify({'error': result['message']}), 400
+
     except Exception as e:
         print(f"Error registering face: {e}")
         return jsonify({'error': str(e)}), 500
@@ -218,99 +217,75 @@ def register_driver_face():
 @app.route('/api/face/sync-driver', methods=['POST'])
 def sync_driver_data():
     """Sync driver name or ID updates from Backend"""
-    if not face_recognizer:
-        return jsonify({'error': 'Face recognition service unavailable'}), 503
     try:
         data = request.get_json()
         old_id = data.get('oldDriverId')
         new_name = data.get('newName')
         new_id = data.get('newDriverId')
-        
+
         if not old_id:
             return jsonify({'error': 'oldDriverId is required'}), 400
-            
-        success = face_recognizer.sync_driver_info(old_id, new_name, new_id)
-        if success:
-            return jsonify({'message': 'Driver info synced successfully'}), 200
+
+        result = face_rec_service.sync_driver_info(old_id, new_name, new_id)
+        if result['success']:
+            return jsonify({'message': result['message']}), 200
         else:
-            return jsonify({'error': 'Driver not found in face database'}), 404
+            return jsonify({'error': result['message']}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/face/delete', methods=['POST'])
 def delete_driver_face():
-    """Remove driver face data"""
-    if not face_recognizer:
-        return jsonify({'error': 'Face recognition service unavailable'}), 503
+    """Remove driver face data from pickle"""
     try:
         data = request.get_json()
         driver_id = data.get('driverId')
         if not driver_id:
             return jsonify({'error': 'driverId required'}), 400
-            
-        success = face_recognizer.delete_person(driver_id)
-        return jsonify({'message': 'Deleted' if success else 'Not found'}), 200
+
+        result = face_rec_service.delete(driver_id=driver_id)
+        return jsonify({'message': result['message']}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/face/verify', methods=['POST'])
 def verify_driver_face():
-    """Verify a driver from a live image"""
-    
-    if not face_recognizer:
-        return jsonify({'error': 'Face recognition service unavailable'}), 503
-        
+    """Verify a driver from a live image using face_recognition library (128-d encoding match)."""
     try:
         data = request.get_json()
         image_url = data.get('imageUrl')
-        
+        driver_id = data.get('driverId')  # optional: restrict match to specific driver
+
         if not image_url:
             return jsonify({'error': 'imageUrl required'}), 400
-        
-        img = face_recognizer._load_image(image_url)
-        if img is None:
-             return jsonify({'error': 'Could not load image'}), 400
-             
-        import mediapipe as mp
-        import cv2
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB,
-                            data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-                            
-        result = face_recognizer.face_landmarker.detect(mp_image)
-        
-        if result.face_landmarks:
-            landmarks = [(lm.x, lm.y, lm.z) for lm in result.face_landmarks[0]]
-            matched_name = face_recognizer.match_face(landmarks)
-            
-            if matched_name:
-                 return jsonify({'verified': True, 'driver': matched_name}), 200
-            else:
-                 return jsonify({'verified': False, 'message': 'No match found'}), 200
-        else:
-             return jsonify({'error': 'No face detected'}), 400
+
+        result = face_rec_service.verify(image_source=image_url, driver_id=driver_id)
+
+        return jsonify(result), 200
 
     except Exception as e:
+        print(f"Error verifying face: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/face/drivers', methods=['GET'])
+def list_registered_drivers():
+    """List all drivers registered in the face_recognition pickle database."""
+    return jsonify(face_rec_service.list_drivers()), 200
 
 @app.route('/api/face/preview', methods=['POST'])
 def launch_preview():
     """Launch local OpenCV preview window (Server-side)"""
     if not face_recognizer:
         return jsonify({'error': 'Service not ready'}), 503
-        
     try:
         import threading
-        # Run video loop in background thread to not block Flask
         def run_preview():
             print("Launching Live Preview...")
-            # Use 0 for default webcam
             face_recognizer.recognize_from_video(0)
             print("Live Preview Closed.")
-
         thread = threading.Thread(target=run_preview)
         thread.daemon = True
         thread.start()
-        
         return jsonify({'message': 'Live preview window launched on server.'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -327,7 +302,9 @@ def health_check():
         'status': 'healthy',
         'model_loaded': occupancy_model is not None,
         'safety_loaded': safety_model is not None,
-        'face_loaded': face_recognizer is not None,
+        'face_rec_loaded': True,
+        'face_rec_encodings': len(face_rec_service.encodings),
+        'drowsiness_loaded': face_recognizer is not None,
         'service': 'ML Prediction Service'
     }), 200
 
@@ -442,11 +419,14 @@ PORT = 5001
 
 if __name__ == '__main__':
     print(f"\n{'='*60}")
-    print("🚀 Starting ML Prediction Service")
+    print("Starting ML Prediction Service")
     print(f"{'='*60}")
     print(f"Port: {PORT}")
-    print(f"Health check: http://localhost:{PORT}/health")
-    print(f"Face Feed:    http://localhost:{PORT}/api/face/feed")
+    print(f"Health check:    http://localhost:{PORT}/health")
+    print(f"Face Register:   POST http://localhost:{PORT}/api/face/register")
+    print(f"Face Verify:     POST http://localhost:{PORT}/api/face/verify")
+    print(f"Face Drivers:    GET  http://localhost:{PORT}/api/face/drivers")
+    print(f"Drowsiness Feed: http://localhost:{PORT}/api/face/feed")
     print(f"{'='*60}\n")
     
     app.run(host='0.0.0.0', port=PORT, debug=True)

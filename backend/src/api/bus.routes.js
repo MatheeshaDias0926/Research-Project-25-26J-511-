@@ -20,6 +20,7 @@ import {
   isPassenger,
   isAuthority,
   isConductorOrAuthority,
+  isDriverConductorOrAdmin,
 } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -113,7 +114,7 @@ router.get("/:busId/status", protect, getBusStatus);
  * @desc    Get violation history for a bus (Authority App)
  * @access  Private (Authority only)
  */
-router.get("/:busId/violations", protect, isConductorOrAuthority, getBusViolations);
+router.get("/:busId/violations", protect, isDriverConductorOrAdmin, getBusViolations);
 
 /**
  * @route   GET /api/bus/:busId/logs

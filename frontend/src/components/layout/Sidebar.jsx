@@ -4,18 +4,15 @@ import { useAuth } from "../../context/AuthContext";
 import {
   LayoutDashboard,
   Bus,
-  AlertTriangle,
-  Wrench,
   Activity,
   User,
   LogOut,
-  Map,
-  ShieldAlert,
-  BookOpen,
-  Navigation,
-  UserPlus,
-  Camera,
-  Settings as SettingsIcon,
+  Link2,
+  Users,
+  Cpu,
+  Siren,
+  Wrench,
+  FileWarning,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -41,12 +38,11 @@ const Sidebar = () => {
       roles: ["passenger"],
     },
 
-
     // Conductor Links
     {
-      name: "My Bus",
+      name: "Overview",
       href: "/conductor",
-      icon: Bus,
+      icon: LayoutDashboard,
       roles: ["conductor"],
     },
     {
@@ -56,78 +52,62 @@ const Sidebar = () => {
       roles: ["conductor"],
     },
 
-    // Authority Links
+    // Driver Links
     {
       name: "Overview",
-      href: "/authority",
+      href: "/driver",
       icon: LayoutDashboard,
-      roles: ["authority"],
+      roles: ["driver"],
     },
     {
-      name: "Fleet",
-      href: "/authority/fleet",
-      icon: Bus,
-      roles: ["authority"],
-    },
-    {
-      name: "Violations",
-      href: "/authority/violations",
-      icon: AlertTriangle,
-      roles: ["authority"],
-    },
-    {
-      name: "Conductors",
-      href: "/authority/conductors",
-      icon: User,
-      roles: ["authority"],
-    },
-    {
-      name: "Drivers",
-      href: "/authority/drivers",
-      icon: UserPlus,
-      roles: ["authority"],
-    },
-    {
-      name: "Face ID Live",
-      href: "/authority/face-live",
-      icon: Camera,
-      roles: ["authority"],
-    },
-    {
-      name: "Maintenance Logs",
-      href: "/authority/maintenance",
+      name: "Maintenance",
+      href: "/driver/maintenance",
       icon: Wrench,
-      roles: ["authority"],
+      roles: ["driver"],
     },
     {
-      name: "IoT Simulator",
-      href: "/authority/iot",
-      icon: Activity,
-      roles: ["authority"],
+      name: "Alert Log",
+      href: "/driver/alerts",
+      icon: FileWarning,
+      roles: ["driver"],
+    },
+
+    // Admin Links
+    {
+      name: "Overview",
+      href: "/admin",
+      icon: LayoutDashboard,
+      roles: ["authority", "admin"],
     },
     {
-      name: "Safety Check",
-      href: "/authority/safety",
-      icon: ShieldAlert,
-      roles: ["authority"],
+      name: "Fleet Management",
+      href: "/admin/fleet",
+      icon: Bus,
+      roles: ["authority", "admin"],
     },
     {
-      name: "Safety Logic",
-      href: "/authority/theories",
-      icon: BookOpen,
-      roles: ["authority"],
+      name: "Bus Assignments",
+      href: "/admin/assignments",
+      icon: Link2,
+      roles: ["authority", "admin"],
     },
     {
-      name: "Scenario Simulator",
-      href: "/authority/simulator",
-      icon: Navigation,
-      roles: ["authority"],
+      name: "Employee Management",
+      href: "/admin/employees",
+      icon: Users,
+      roles: ["authority", "admin"],
     },
     {
-      name: "Settings",
-      href: "/authority/settings",
-      icon: SettingsIcon,
-      roles: ["authority"],
+      name: "Edge Devices",
+      href: "/admin/edge-devices",
+      icon: Cpu,
+      roles: ["authority", "admin"],
+    },
+    {
+      name: "SOS Alerts",
+      href: "/admin/sos",
+      icon: Siren,
+      roles: ["authority", "admin"],
     },
   ];
 

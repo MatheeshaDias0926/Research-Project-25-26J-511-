@@ -12,6 +12,16 @@ const driverSchema = new mongoose.Schema(
             default: "active",
         },
         contactNumber: { type: String },
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        assignedBus: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Bus",
+            default: null,
+        },
     },
     { timestamps: true }
 );

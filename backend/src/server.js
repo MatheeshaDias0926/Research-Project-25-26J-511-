@@ -10,6 +10,10 @@ import iotRoutes from "./api/iot.routes.js";
 import busRoutes from "./api/bus.routes.js";
 import maintenanceRoutes from "./api/maintenance.routes.js";
 import driverRoutes from "./api/driver.routes.js";
+import edgeDeviceRoutes from "./api/edgeDevice.routes.js";
+import sosRoutes from "./api/sos.routes.js";
+import attendanceRoutes from "./api/attendance.routes.js";
+import assignmentRoutes from "./api/assignment.routes.js";
 
 // Load environment variables
 dotenv.config();
@@ -30,25 +34,44 @@ app.use("/api/iot", iotRoutes);
 app.use("/api/bus", busRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/driver", driverRoutes);
+app.use("/api/edge-devices", edgeDeviceRoutes);
+app.use("/api/sos", sosRoutes);
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/assignments", assignmentRoutes);
 
 // Root route
 app.get("/", (req, res) => {
   res.json({
     message: "Smart Bus API is running...",
-    version: "1.0.0",
+    version: "2.0.0",
     endpoints: {
       auth: "/api/auth",
       iot: "/api/iot",
       bus: "/api/bus",
       maintenance: "/api/maintenance",
+      driver: "/api/driver",
+      edgeDevices: "/api/edge-devices",
+      sos: "/api/sos",
+      attendance: "/api/attendance",
+      assignments: "/api/assignments",
     },
   });
 });
 
 // Health check endpoint
 app.get("/health", (req, res) => {
+  const dbStatus =
+    mongoose.connection.readyState === 1
+      ? "Connected"
+      : mongoose.connection.readyState === 2
+      ? "Connecting"
+      : mongoose.connection.readyState === 0
+      ? "Disconnected"
+      : "Disconnecting";
+
   res.json({
     status: "OK",
+    mongodb: dbStatus,
     timestamp: new Date().toISOString(),
   });
 });
