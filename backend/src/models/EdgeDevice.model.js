@@ -21,6 +21,24 @@ const edgeDeviceSchema = new mongoose.Schema(
     },
     lastPing: { type: Date, default: null },
     firmwareVersion: { type: String, default: "1.0.0" },
+
+    // Raspberry Pi remote configuration (admin-editable)
+    config: {
+      verifyInterval: { type: Number, default: 300 },       // seconds between face re-verification
+      earThreshold: { type: Number, default: 0.25 },        // EAR threshold for drowsiness
+      marThreshold: { type: Number, default: 0.50 },        // MAR threshold for yawning
+      noFaceTimeout: { type: Number, default: 30 },         // seconds without face before alert
+      drowsyFrames: { type: Number, default: 15 },          // consecutive frames for drowsiness
+      yawnFrames: { type: Number, default: 10 },            // consecutive frames for yawning
+    },
+
+    // Pending commands queue (admin → device)
+    pendingCommands: [
+      {
+        command: { type: String, enum: ["verify_now", "sync_cache"] },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

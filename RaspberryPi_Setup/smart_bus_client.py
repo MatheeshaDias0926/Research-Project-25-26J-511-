@@ -369,7 +369,15 @@ class SmartBusPiClient:
                  no_face_alert_timeout=30):
         self.backend_url = backend_url.rstrip("/")
         self.device_id = device_id
-        self.camera_index = camera_index
+        # --- FIX: Handle both Int (local) and Str (URL) ---
+        try:
+            # If the input is a digit (e.g., "0"), convert to int
+            if str(camera_index).isdigit():
+                self.camera_index = int(camera_index)
+            else:
+                self.camera_index = camera_index
+        except (ValueError, TypeError):
+            self.camera_index = camera_index
         self.headers = {"x-device-id": device_id, "Content-Type": "application/json"}
 
         # Thresholds
@@ -395,6 +403,7 @@ class SmartBusPiClient:
         self.last_cache_sync = 0
         self.last_face_seen = time.time()
         self.no_face_alerted = False
+        self._force_verify = False
 
         # Sub-systems
         self.alarm = LocalAlarm(gpio_pin=gpio_pin)
@@ -420,11 +429,37 @@ class SmartBusPiClient:
             "verifiedDriver": self.verified_driver,
         }
         try:
-            requests.post(
+            resp = requests.post(
                 f"{self.backend_url}/api/edge-devices/heartbeat",
                 headers=self.headers, json=payload, timeout=5,
             )
             self.last_heartbeat_time = time.time()
+
+            # Apply remote config if provided
+            data = resp.json()
+            cfg = data.get("config", {})
+            if cfg:
+                if "verifyInterval" in cfg:
+                    self.verify_interval = cfg["verifyInterval"]
+                if "earThreshold" in cfg:
+                    self.ear_threshold = cfg["earThreshold"]
+                if "marThreshold" in cfg:
+                    self.mar_threshold = cfg["marThreshold"]
+                if "noFaceTimeout" in cfg:
+                    self.no_face_alert_timeout = cfg["noFaceTimeout"]
+                if "drowsyFrames" in cfg:
+                    self.drowsy_frames = cfg["drowsyFrames"]
+                if "yawnFrames" in cfg:
+                    self.yawn_frames = cfg["yawnFrames"]
+
+            # Handle pending commands from admin
+            for cmd in data.get("commands", []):
+                if cmd == "verify_now":
+                    log.info("[CMD] Admin requested immediate verification")
+                    self._force_verify = True
+                elif cmd == "sync_cache":
+                    log.info("[CMD] Admin requested cache sync")
+                    self.sync_face_cache()
         except Exception as e:
             log.debug(f"Heartbeat failed: {e}")
 
@@ -542,7 +577,16 @@ class SmartBusPiClient:
         log.info(f"  Audio alarm: {'YES' if PYGAME_AVAILABLE else 'NO'}")
         log.info("")
 
-        cap = cv2.VideoCapture(self.camera_index)
+        camera_source = self.camera_index 
+
+        # Check if it's a string (URL) or can be converted to an int (Local ID)
+        try:
+            if str(camera_source).isdigit():
+                camera_source = int(camera_source)
+        except ValueError:
+            pass
+
+        cap = cv2.VideoCapture(camera_source)
         if not cap.isOpened():
             log.error("Cannot open camera")
             return
@@ -578,8 +622,11 @@ class SmartBusPiClient:
                 results = face_mesh.process(rgb)
                 now = time.time()
 
-                # ── Driver verification (periodic, local-first) ──
-                if now - self.last_verify_time >= self.verify_interval:
+                # ── Driver verification (periodic, local-first, or forced by admin) ──
+                force = self._force_verify
+                if force:
+                    self._force_verify = False
+                if force or (now - self.last_verify_time >= self.verify_interval):
                     if results.multi_face_landmarks:
                         self.verify_driver_local(frame)
                     else:
@@ -701,7 +748,7 @@ def main():
     parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2 - Offline)")
     parser.add_argument("--backend", required=True, help="Backend URL (e.g. http://192.168.1.100:3000)")
     parser.add_argument("--device-id", required=True, help="Device ID registered in admin panel")
-    parser.add_argument("--camera", type=int, default=0, help="Camera index (default: 0)")
+    parser.add_argument("--camera", type=str, default="0", help="Camera index or IP URL")
     parser.add_argument("--ear-threshold", type=float, default=0.25, help="EAR threshold for drowsiness")
     parser.add_argument("--mar-threshold", type=float, default=0.50, help="MAR threshold for yawning")
     parser.add_argument("--verify-interval", type=int, default=300, help="Driver re-verification interval (seconds)")

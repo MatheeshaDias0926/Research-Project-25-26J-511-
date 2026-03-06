@@ -9,6 +9,7 @@ import Badge from "../../components/ui/Badge";
 import {
   Bus, MapPin, Wrench, AlertTriangle, RefreshCw,
   LayoutDashboard, User, Clock, Timer, Siren, FileWarning, Eye,
+  Shield, Activity,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -83,6 +84,7 @@ const OverviewTab = ({ user }) => {
   const [violations, setViolations] = useState([]);
   const [conductorInfo, setConductorInfo] = useState(null);
   const [locationName, setLocationName] = useState("");
+  const [piSession, setPiSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
@@ -134,6 +136,14 @@ const OverviewTab = ({ user }) => {
         } catch (err) {
           console.error("Attendance fetch error:", err);
         }
+      }
+
+      // Fetch Pi verification session data
+      try {
+        const sessionRes = await api.get("/edge-devices/driver-sessions");
+        setPiSession(sessionRes.data);
+      } catch (err) {
+        console.error("Pi session fetch error:", err);
       }
 
       setLastUpdated(new Date());
@@ -224,6 +234,108 @@ const OverviewTab = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {/* Pi Verification & Session Info */}
+      {piSession && (
+        <Card>
+          <CardContent style={{ padding: 24 }}>
+            <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+              <Shield size={20} color="#2563eb" /> Face Verification Status
+            </h3>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 20 }}>
+              <div style={{ ...cardBoxStyle, borderLeft: "4px solid #0284c7", padding: 16 }}>
+                <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Verified Driving</p>
+                <p style={{ fontSize: 24, fontWeight: 700 }}>{formatMinutes(piSession.todayDrivingMinutes)}</p>
+              </div>
+              <div style={{ ...cardBoxStyle, borderLeft: "4px solid #22c55e", padding: 16 }}>
+                <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Resting Time</p>
+                <p style={{ fontSize: 24, fontWeight: 700 }}>{formatMinutes(piSession.todayRestingMinutes)}</p>
+              </div>
+              <div style={{ ...cardBoxStyle, borderLeft: "4px solid #8b5cf6", padding: 16 }}>
+                <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Sessions Today</p>
+                <p style={{ fontSize: 24, fontWeight: 700 }}>{piSession.todaySessionCount || 0}</p>
+              </div>
+              <div style={{ ...cardBoxStyle, borderLeft: piSession.todayDrowsinessEvents > 0 ? "4px solid #ef4444" : "4px solid #94a3b8", padding: 16 }}>
+                <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Drowsiness Alerts</p>
+                <p style={{ fontSize: 24, fontWeight: 700, color: piSession.todayDrowsinessEvents > 0 ? "#ef4444" : "inherit" }}>
+                  {piSession.todayDrowsinessEvents || 0}
+                </p>
+              </div>
+            </div>
+
+            {/* Current Session */}
+            {piSession.currentSession ? (
+              <div style={{ background: piSession.currentSession.verified ? "#f0fdf4" : "#fffbeb", borderRadius: 8, padding: 16, marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
+                    <Activity size={16} color="#22c55e" /> Active Session
+                  </span>
+                  <Badge variant={piSession.currentSession.verified ? "success" : "error"}>
+                    {piSession.currentSession.verified ? "Face Verified" : "Unverified"}
+                  </Badge>
+                </div>
+                {piSession.currentSession.confidence != null && (
+                  <p style={{ fontSize: 13, color: "#64748b" }}>
+                    Confidence: <strong>{(piSession.currentSession.confidence * 100).toFixed(0)}%</strong>
+                    {piSession.currentSession.local ? " (On-device)" : " (Remote)"}
+                  </p>
+                )}
+                {piSession.currentSession.alertnessLevel && (
+                  <p style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                    Alertness: <Badge variant={piSession.currentSession.alertnessLevel === "ALERT" ? "success" : piSession.currentSession.alertnessLevel === "TIRED" ? "warning" : "error"}>
+                      {piSession.currentSession.alertnessLevel} {piSession.currentSession.alertnessScore != null ? `(${piSession.currentSession.alertnessScore})` : ""}
+                    </Badge>
+                  </p>
+                )}
+                <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
+                  Since: {new Date(piSession.currentSession.sessionStart).toLocaleTimeString()}
+                </p>
+              </div>
+            ) : (
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: 16, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
+                No active Pi verification session
+              </div>
+            )}
+
+            {/* Today's Sessions List */}
+            {piSession.todaySessions?.length > 0 && (
+              <div>
+                <h4 style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: "#64748b" }}>Today's Sessions</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {piSession.todaySessions.map(s => (
+                    <div key={s._id} style={{
+                      padding: 12, borderRadius: 8, background: "#f8fafc",
+                      borderLeft: `3px solid ${s.verified ? "#22c55e" : "#f59e0b"}`,
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                    }}>
+                      <div>
+                        <span style={{ fontSize: 13, fontWeight: 500 }}>
+                          {new Date(s.sessionStart).toLocaleTimeString()}
+                          {s.sessionEnd && ` — ${new Date(s.sessionEnd).toLocaleTimeString()}`}
+                        </span>
+                        {s.confidence != null && (
+                          <span style={{ fontSize: 12, color: "#64748b", marginLeft: 12 }}>
+                            {(s.confidence * 100).toFixed(0)}% confidence
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {s.drowsinessEvents?.length > 0 && (
+                          <span style={{ fontSize: 12, color: "#ef4444" }}>{s.drowsinessEvents.length} alerts</span>
+                        )}
+                        <Badge variant={s.verified ? "success" : "error"} style={{ fontSize: 11 }}>
+                          {s.verified ? "Verified" : "Unverified"}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
         {/* Assigned Bus */}
@@ -457,17 +569,27 @@ const MaintenanceTab = ({ user }) => {
 // ═══════════════════════════════════════════════════════════════
 const AlertLogTab = ({ user }) => {
   const [violations, setViolations] = useState([]);
+  const [drowsinessEvents, setDrowsinessEvents] = useState([]);
+  const [alertFilter, setAlertFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
-  const fetchViolations = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const profile = await api.get("/auth/profile");
       const busId = profile.data.assignedBus?._id || profile.data.assignedBus;
+
+      const promises = [];
       if (busId) {
-        const res = await api.get(`/bus/${busId}/violations?limit=100`);
-        setViolations(res.data.violations || []);
+        promises.push(api.get(`/bus/${busId}/violations?limit=100`).catch(() => ({ data: { violations: [] } })));
+      } else {
+        promises.push(Promise.resolve({ data: { violations: [] } }));
       }
+      promises.push(api.get("/edge-devices/drowsiness-log").catch(() => ({ data: [] })));
+
+      const [violRes, drowsyRes] = await Promise.all(promises);
+      setViolations(violRes.data.violations || []);
+      setDrowsinessEvents(drowsyRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -475,12 +597,14 @@ const AlertLogTab = ({ user }) => {
     }
   }, []);
 
-  useEffect(() => { fetchViolations(); }, [fetchViolations]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const getViolationIcon = (type) => {
     switch (type) {
       case "drowsiness": return { icon: "😴", label: "Drowsiness Detection", color: "#f59e0b" };
+      case "yawning": return { icon: "🥱", label: "Yawning Detection", color: "#f97316" };
       case "sleepiness": return { icon: "💤", label: "Sleepiness Alert", color: "#ef4444" };
+      case "no_face": return { icon: "👤", label: "Driver Not Visible", color: "#94a3b8" };
       case "mobile_phone": return { icon: "📱", label: "Mobile Phone Usage", color: "#dc2626" };
       case "footboard": return { icon: "🚪", label: "Footboard Violation", color: "#ef4444" };
       case "overcrowding": return { icon: "👥", label: "Overcrowding", color: "#f97316" };
@@ -488,48 +612,107 @@ const AlertLogTab = ({ user }) => {
     }
   };
 
+  // Merge violations + drowsiness events into a unified timeline
+  const allAlerts = [
+    ...violations.map(v => ({
+      _id: v._id,
+      type: v.violationType,
+      timestamp: v.createdAt,
+      source: "violation",
+      speed: v.speed,
+      gps: v.gps,
+      occupancy: v.occupancyAtViolation,
+    })),
+    ...drowsinessEvents.map(e => ({
+      _id: e._id,
+      type: e.type,
+      timestamp: e.timestamp,
+      source: "pi",
+      ear: e.ear,
+      mar: e.mar,
+      alertnessScore: e.alertnessScore,
+      deviceId: e.deviceId,
+    })),
+  ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  const filteredAlerts = alertFilter === "all" ? allAlerts
+    : alertFilter === "pi" ? allAlerts.filter(a => a.source === "pi")
+    : allAlerts.filter(a => a.source === "violation");
+
+  const piCount = allAlerts.filter(a => a.source === "pi").length;
+  const violCount = allAlerts.filter(a => a.source === "violation").length;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ color: "#64748b" }}>Violations including drowsiness, sleepiness, mobile phone usage while driving.</p>
-        <button onClick={fetchViolations} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+        <p style={{ color: "#64748b" }}>Violations, drowsiness, and yawning events from Pi monitoring.</p>
+        <button onClick={fetchData} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
           <RefreshCw size={18} />
         </button>
       </div>
 
+      {/* Filter tabs */}
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0" }}>
+        {[
+          { key: "all", label: `All (${allAlerts.length})` },
+          { key: "pi", label: `Pi Alerts (${piCount})` },
+          { key: "violation", label: `Violations (${violCount})` },
+        ].map(t => (
+          <button key={t.key} onClick={() => setAlertFilter(t.key)} style={{
+            padding: "8px 16px", fontSize: 13, fontWeight: alertFilter === t.key ? 600 : 400,
+            color: alertFilter === t.key ? "#0284c7" : "#64748b",
+            borderBottom: alertFilter === t.key ? "2px solid #0284c7" : "2px solid transparent",
+            background: "none", border: "none", cursor: "pointer",
+          }}>{t.label}</button>
+        ))}
+      </div>
+
       {loading ? (
         <div style={{ textAlign: "center", padding: 32 }}>Loading alert log...</div>
-      ) : violations.length === 0 ? (
+      ) : filteredAlerts.length === 0 ? (
         <Card>
           <CardContent style={{ padding: 48, textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-            <h3 style={{ fontSize: 18, fontWeight: 600, color: "#166534" }}>No Violations</h3>
-            <p style={{ color: "#64748b" }}>Great driving! No violations recorded.</p>
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: "#166534" }}>No Alerts</h3>
+            <p style={{ color: "#64748b" }}>Great driving! No alerts recorded.</p>
           </CardContent>
         </Card>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {violations.map(v => {
-            const info = getViolationIcon(v.violationType);
+          {filteredAlerts.map(a => {
+            const info = getViolationIcon(a.type);
             return (
-              <Card key={v._id} style={{
-                borderLeft: `4px solid ${info.color}`,
-              }}>
+              <Card key={a._id} style={{ borderLeft: `4px solid ${info.color}` }}>
                 <CardContent style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                     <span style={{ fontSize: 28 }}>{info.icon}</span>
                     <div>
-                      <p style={{ fontWeight: 600, fontSize: 15, color: info.color }}>{info.label}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                        <p style={{ fontWeight: 600, fontSize: 15, color: info.color }}>{info.label}</p>
+                        <Badge variant={a.source === "pi" ? "secondary" : "warning"} style={{ fontSize: 10 }}>
+                          {a.source === "pi" ? "Pi Device" : "System"}
+                        </Badge>
+                      </div>
                       <p style={{ fontSize: 13, color: "#64748b" }}>
-                        Speed: {v.speed || 0} km/h
-                        {v.gps && ` | GPS: ${v.gps.lat?.toFixed(4)}, ${v.gps.lon?.toFixed(4)}`}
-                        {v.occupancyAtViolation && ` | Occupancy: ${v.occupancyAtViolation}`}
+                        {a.source === "pi" ? (
+                          <>
+                            {a.ear != null && `EAR: ${a.ear.toFixed(3)}`}
+                            {a.mar != null && ` | MAR: ${a.mar.toFixed(3)}`}
+                            {a.alertnessScore != null && ` | Alertness: ${a.alertnessScore}`}
+                          </>
+                        ) : (
+                          <>
+                            Speed: {a.speed || 0} km/h
+                            {a.gps && a.gps.lat ? ` | GPS: ${a.gps.lat.toFixed(4)}, ${a.gps.lon.toFixed(4)}` : ""}
+                            {a.occupancy ? ` | Occupancy: ${a.occupancy}` : ""}
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <p style={{ fontSize: 13, color: "#64748b" }}>{new Date(v.createdAt).toLocaleDateString()}</p>
-                    <p style={{ fontSize: 12, color: "#94a3b8" }}>{new Date(v.createdAt).toLocaleTimeString()}</p>
+                    <p style={{ fontSize: 13, color: "#64748b" }}>{new Date(a.timestamp).toLocaleDateString()}</p>
+                    <p style={{ fontSize: 12, color: "#94a3b8" }}>{new Date(a.timestamp).toLocaleTimeString()}</p>
                   </div>
                 </CardContent>
               </Card>

@@ -14,6 +14,7 @@ import {
   Bus, AlertTriangle, CheckCircle, Wrench, UserPlus, Users, Cpu,
   Plus, RefreshCw, Link2, ArrowRight, Edit, Trash2, Eye, Siren,
   LayoutDashboard, Shield, User, X, Camera, Scan, Upload, XCircle, VideoOff,
+  Settings, Wifi, WifiOff, Play,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -910,10 +911,16 @@ const EmployeeTab = () => {
 // ═══════════════════════════════════════════════════════════════
 const EdgeDeviceTab = () => {
   const [devices, setDevices] = useState([]);
+  const [monitoring, setMonitoring] = useState([]);
+  const [sessionHistory, setSessionHistory] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [subTab, setSubTab] = useState("monitoring");
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [form, setForm] = useState({ deviceId: "", name: "", type: "multi_sensor" });
   const [message, setMessage] = useState("");
+  const [configDevice, setConfigDevice] = useState(null);
+  const [configForm, setConfigForm] = useState({});
 
   const fetchDevices = useCallback(async () => {
     setLoading(true);
@@ -927,7 +934,66 @@ const EdgeDeviceTab = () => {
     }
   }, []);
 
-  useEffect(() => { fetchDevices(); }, [fetchDevices]);
+  const fetchMonitoring = useCallback(async () => {
+    try {
+      const res = await api.get("/edge-devices/monitoring");
+      setMonitoring(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const fetchSessions = async (deviceId) => {
+    try {
+      const res = await api.get(`/edge-devices/sessions/${deviceId}`);
+      setSessionHistory(res.data);
+      setSelectedDevice(deviceId);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleManualVerify = async (deviceId) => {
+    try {
+      await api.post(`/edge-devices/manual-verify/${deviceId}`);
+      setMessage("Verify command sent to device");
+      setTimeout(() => setMessage(""), 3000);
+    } catch (err) {
+      alert("Failed: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const openConfigModal = (dev) => {
+    setConfigDevice(dev);
+    setConfigForm({
+      verifyInterval: dev.config?.verifyInterval ?? 300,
+      earThreshold: dev.config?.earThreshold ?? 0.25,
+      marThreshold: dev.config?.marThreshold ?? 0.50,
+      noFaceTimeout: dev.config?.noFaceTimeout ?? 30,
+      drowsyFrames: dev.config?.drowsyFrames ?? 15,
+      yawnFrames: dev.config?.yawnFrames ?? 10,
+    });
+  };
+
+  const handleConfigSave = async () => {
+    try {
+      await api.put(`/edge-devices/config/${configDevice.deviceId}`, configForm);
+      setMessage("Device configuration updated");
+      setTimeout(() => setMessage(""), 3000);
+      setConfigDevice(null);
+      fetchDevices();
+      fetchMonitoring();
+    } catch (err) {
+      alert("Failed: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  useEffect(() => {
+    fetchDevices();
+    fetchMonitoring();
+    const interval = setInterval(fetchMonitoring, 15000);
+    return () => clearInterval(interval);
+  }, [fetchDevices, fetchMonitoring]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -962,6 +1028,18 @@ const EdgeDeviceTab = () => {
         </Button>
       </div>
 
+      {/* Sub-tabs: Monitoring | All Devices */}
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0" }}>
+        {[
+          { key: "monitoring", label: "Driver Monitoring" },
+          { key: "devices", label: "All Devices" },
+        ].map(t => (
+          <button key={t.key} onClick={() => { setSubTab(t.key); setSelectedDevice(null); }} style={{
+            ...tabStyle(subTab === t.key), fontSize: 13, padding: "8px 16px",
+          }}>{t.label}</button>
+        ))}
+      </div>
+
       {message && <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8 }}>{message}</div>}
 
       {isAdding && (
@@ -992,52 +1070,305 @@ const EdgeDeviceTab = () => {
         </Card>
       )}
 
-      <Card>
-        <CardContent style={{ padding: 0 }}>
-          {loading ? (
-            <div style={{ textAlign: "center", padding: 32 }}>Loading devices...</div>
+      {/* ─── Driver Monitoring Sub-Tab ─── */}
+      {subTab === "monitoring" && (
+        <>
+          {selectedDevice ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <button onClick={() => setSelectedDevice(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: 14, textAlign: "left" }}>
+                ← Back to Monitoring
+              </button>
+              <h3 style={{ fontSize: 18, fontWeight: 600 }}>Session History — {selectedDevice}</h3>
+              <Card>
+                <CardContent style={{ padding: 0 }}>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
+                      <thead style={{ background: "#f8fafc" }}>
+                        <tr>
+                          <th style={thStyle}>Driver</th>
+                          <th style={thStyle}>Verified</th>
+                          <th style={thStyle}>Confidence</th>
+                          <th style={thStyle}>Start</th>
+                          <th style={thStyle}>End</th>
+                          <th style={thStyle}>Duration</th>
+                          <th style={thStyle}>Alertness</th>
+                          <th style={thStyle}>Drowsiness Events</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sessionHistory.length === 0 ? (
+                          <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No sessions recorded.</td></tr>
+                        ) : sessionHistory.map(s => (
+                          <tr key={s._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                            <td style={{ ...tdStyle, fontWeight: 600 }}>{s.driverName || "Unknown"}</td>
+                            <td style={tdStyle}>
+                              <Badge variant={s.verified ? "success" : "error"}>
+                                {s.verified ? "Verified" : "Unverified"}
+                              </Badge>
+                            </td>
+                            <td style={tdStyle}>{s.confidence ? `${(s.confidence * 100).toFixed(0)}%` : "—"}</td>
+                            <td style={tdStyle}>{new Date(s.sessionStart).toLocaleTimeString()}</td>
+                            <td style={tdStyle}>{s.sessionEnd ? new Date(s.sessionEnd).toLocaleTimeString() : "Active"}</td>
+                            <td style={tdStyle}>{s.drivingMinutes ? `${s.drivingMinutes}m` : "—"}</td>
+                            <td style={tdStyle}>
+                              {s.alertnessLevel && (
+                                <Badge variant={s.alertnessLevel === "ALERT" ? "success" : s.alertnessLevel === "TIRED" ? "warning" : "error"}>
+                                  {s.alertnessLevel} {s.alertnessScore != null ? `(${s.alertnessScore})` : ""}
+                                </Badge>
+                              )}
+                            </td>
+                            <td style={tdStyle}>{s.drowsinessEvents?.length || 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
-                <thead style={{ background: "#f8fafc" }}>
-                  <tr>
-                    <th style={thStyle}>Device ID</th>
-                    <th style={thStyle}>Name</th>
-                    <th style={thStyle}>Type</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Firmware</th>
-                    <th style={thStyle}>Assigned Bus</th>
-                    <th style={thStyle}>Last Ping</th>
-                    <th style={thStyle}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {devices.length === 0 ? (
-                    <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No edge devices registered.</td></tr>
-                  ) : devices.map(d => (
-                    <tr key={d._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 12 }}>{d.deviceId}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{d.name}</td>
-                      <td style={tdStyle}><Badge variant="secondary">{d.type}</Badge></td>
-                      <td style={tdStyle}>
-                        <Badge variant={d.status === "active" ? "success" : d.status === "maintenance" ? "warning" : "secondary"}>
-                          {d.status}
-                        </Badge>
-                      </td>
-                      <td style={tdStyle}>{d.firmwareVersion}</td>
-                      <td style={tdStyle}>{d.assignedBus?.licensePlate || "—"}</td>
-                      <td style={tdStyle}>{d.lastPing ? new Date(d.lastPing).toLocaleString() : "Never"}</td>
-                      <td style={tdStyle}>
-                        <button onClick={() => handleDelete(d._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}><Trash2 size={16} /></button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={fetchMonitoring} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
+                  <RefreshCw size={16} /> Refresh
+                </button>
+              </div>
+              {monitoring.length === 0 ? (
+                <Card>
+                  <CardContent style={{ padding: 48, textAlign: "center" }}>
+                    <Cpu size={48} color="#94a3b8" style={{ marginBottom: 16 }} />
+                    <h3 style={{ fontSize: 18, fontWeight: 600, color: "#64748b" }}>No Raspberry Pi Devices</h3>
+                    <p style={{ color: "#94a3b8" }}>Register a Raspberry Pi device to enable driver monitoring.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
+                  {monitoring.map(dev => {
+                    const cs = dev.currentSession;
+                    const isOnline = dev.status === "active" && dev.lastPing && (Date.now() - new Date(dev.lastPing).getTime()) < 120000;
+                    return (
+                      <Card key={dev._id} style={{
+                        borderLeft: `4px solid ${cs?.verified ? "#22c55e" : cs ? "#f59e0b" : "#94a3b8"}`,
+                        cursor: "pointer",
+                      }} onClick={() => fetchSessions(dev.deviceId)}>
+                        <CardContent style={{ padding: 20 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                            <div>
+                              <h4 style={{ fontWeight: 600, fontSize: 16 }}>{dev.name}</h4>
+                              <p style={{ fontSize: 12, color: "#94a3b8", fontFamily: "monospace" }}>{dev.deviceId}</p>
+                            </div>
+                            <Badge variant={isOnline ? "success" : "secondary"}>
+                              {isOnline ? "Online" : "Offline"}
+                            </Badge>
+                          </div>
+
+                          {dev.assignedBus && (
+                            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>
+                              Bus: <strong>{dev.assignedBus.licensePlate}</strong> — Route: {dev.assignedBus.routeId || "N/A"}
+                            </div>
+                          )}
+
+                          {cs ? (
+                            <div style={{ background: cs.verified ? "#f0fdf4" : "#fffbeb", borderRadius: 8, padding: 12, marginBottom: 8 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                <span style={{ fontWeight: 600, fontSize: 15 }}>{cs.driverName || "Unknown Driver"}</span>
+                                <Badge variant={cs.verified ? "success" : "error"}>
+                                  {cs.verified ? "Verified" : "Unverified"}
+                                </Badge>
+                              </div>
+                              {cs.driverId && <p style={{ fontSize: 12, color: "#64748b" }}>License: {cs.driverId}</p>}
+                              {cs.confidence != null && (
+                                <p style={{ fontSize: 12, color: "#64748b" }}>
+                                  Face Confidence: <strong>{(cs.confidence * 100).toFixed(0)}%</strong>
+                                  {cs.local ? " (On-device)" : " (Remote)"}
+                                </p>
+                              )}
+                              {cs.alertnessLevel && (
+                                <div style={{ marginTop: 6 }}>
+                                  <Badge variant={cs.alertnessLevel === "ALERT" ? "success" : cs.alertnessLevel === "TIRED" ? "warning" : "error"}>
+                                    Alertness: {cs.alertnessLevel} {cs.alertnessScore != null ? `(${cs.alertnessScore})` : ""}
+                                  </Badge>
+                                </div>
+                              )}
+                              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
+                                Since: {new Date(cs.sessionStart).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          ) : (
+                            <div style={{ background: "#f8fafc", borderRadius: 8, padding: 12, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
+                              No active driver session
+                            </div>
+                          )}
+
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#64748b", marginTop: 8 }}>
+                            <span>Sessions today: {dev.todaySessionCount || 0}</span>
+                            <span>Drowsiness alerts: {dev.todayDrowsinessEvents || 0}</span>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div style={{ display: "flex", gap: 8, marginTop: 12, borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
+                            <button onClick={(e) => { e.stopPropagation(); handleManualVerify(dev.deviceId); }} style={{
+                              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                              padding: "6px 10px", borderRadius: 6, border: "1px solid #bfdbfe", background: "#eff6ff",
+                              color: "#2563eb", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                            }}>
+                              <Play size={12} /> Verify Now
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); openConfigModal(dev); }} style={{
+                              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                              padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#f8fafc",
+                              color: "#64748b", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                            }}>
+                              <Settings size={12} /> Configure
+                            </button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
+
+      {/* ─── All Devices Sub-Tab ─── */}
+      {subTab === "devices" && (
+        <Card>
+          <CardContent style={{ padding: 0 }}>
+            {loading ? (
+              <div style={{ textAlign: "center", padding: 32 }}>Loading devices...</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
+                  <thead style={{ background: "#f8fafc" }}>
+                    <tr>
+                      <th style={thStyle}>Device ID</th>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Type</th>
+                      <th style={thStyle}>Connection</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Firmware</th>
+                      <th style={thStyle}>Assigned Bus</th>
+                      <th style={thStyle}>Last Ping</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {devices.length === 0 ? (
+                      <tr><td colSpan="9" style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No edge devices registered.</td></tr>
+                    ) : devices.map(d => {
+                      const isOnline = d.status === "active" && d.lastPing && (Date.now() - new Date(d.lastPing).getTime()) < 120000;
+                      return (
+                        <tr key={d._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 12 }}>{d.deviceId}</td>
+                          <td style={{ ...tdStyle, fontWeight: 600 }}>{d.name}</td>
+                          <td style={tdStyle}><Badge variant="secondary">{d.type}</Badge></td>
+                          <td style={tdStyle}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              {isOnline ? <Wifi size={14} color="#22c55e" /> : <WifiOff size={14} color="#94a3b8" />}
+                              <Badge variant={isOnline ? "success" : "secondary"}>
+                                {isOnline ? "Online" : "Offline"}
+                              </Badge>
+                            </span>
+                          </td>
+                          <td style={tdStyle}>
+                            <Badge variant={d.status === "active" ? "success" : d.status === "maintenance" ? "warning" : "secondary"}>
+                              {d.status}
+                            </Badge>
+                          </td>
+                          <td style={tdStyle}>{d.firmwareVersion}</td>
+                          <td style={tdStyle}>{d.assignedBus?.licensePlate || "—"}</td>
+                          <td style={tdStyle}>{d.lastPing ? new Date(d.lastPing).toLocaleString() : "Never"}</td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              {d.type === "raspberry_pi" && (
+                                <button onClick={() => openConfigModal(d)} title="Configure" style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb" }}><Settings size={16} /></button>
+                              )}
+                              <button onClick={() => handleDelete(d._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}><Trash2 size={16} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ─── Config Modal ─── */}
+      {configDevice && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex",
+          alignItems: "center", justifyContent: "center", zIndex: 9999,
+        }} onClick={() => setConfigDevice(null)}>
+          <div style={{
+            background: "#fff", borderRadius: 12, padding: 28, width: 480, maxWidth: "90vw",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700 }}>
+                <Settings size={18} style={{ marginRight: 8, verticalAlign: "middle" }} />
+                Configure — {configDevice.name}
+              </h3>
+              <button onClick={() => setConfigDevice(null)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+                <X size={20} color="#64748b" />
+              </button>
+            </div>
+
+            <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+              Changes will be applied on the device's next heartbeat (within ~60s).
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Face Verification Interval (seconds)</label>
+                <input type="number" style={inputStyle} value={configForm.verifyInterval}
+                  onChange={e => setConfigForm(p => ({ ...p, verifyInterval: Number(e.target.value) }))} />
+                <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>How often the Pi re-verifies the driver (default: 300s = 5min)</p>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>EAR Threshold</label>
+                  <input type="number" step="0.01" style={inputStyle} value={configForm.earThreshold}
+                    onChange={e => setConfigForm(p => ({ ...p, earThreshold: Number(e.target.value) }))} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>MAR Threshold</label>
+                  <input type="number" step="0.01" style={inputStyle} value={configForm.marThreshold}
+                    onChange={e => setConfigForm(p => ({ ...p, marThreshold: Number(e.target.value) }))} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>No-Face Timeout (s)</label>
+                  <input type="number" style={inputStyle} value={configForm.noFaceTimeout}
+                    onChange={e => setConfigForm(p => ({ ...p, noFaceTimeout: Number(e.target.value) }))} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Drowsy Frames</label>
+                  <input type="number" style={inputStyle} value={configForm.drowsyFrames}
+                    onChange={e => setConfigForm(p => ({ ...p, drowsyFrames: Number(e.target.value) }))} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Yawn Frames</label>
+                <input type="number" style={inputStyle} value={configForm.yawnFrames}
+                  onChange={e => setConfigForm(p => ({ ...p, yawnFrames: Number(e.target.value) }))} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+              <Button variant="outline" onClick={() => setConfigDevice(null)}>Cancel</Button>
+              <Button onClick={handleConfigSave}>Save Configuration</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
