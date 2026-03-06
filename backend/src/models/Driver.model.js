@@ -4,7 +4,7 @@ const driverSchema = new mongoose.Schema(
     {
         name: { type: String, required: true },
         licenseNumber: { type: String, required: true, unique: true },
-        photoUrl: { type: String, required: true }, // Cloudinary URL
+        photoUrl: { type: String, default: "" }, // Cloudinary URL (set during face registration)
         faceEncoding: { type: [Number], default: [] }, // 128-d vector from ML service
         status: {
             type: String,

@@ -2,12 +2,17 @@
 Face Recognition Service using the face_recognition library (dlib-based 128-d encodings).
 
 Manages the Face_Recognition.pickle database for:
-  - Driver Registration   (extract encoding → store in pickle)
-  - Driver Verification   (extract encoding → compare against stored encodings)
+  - Driver Registration   (extract encoding -> store in pickle)
+  - Driver Verification   (extract encoding -> compare against stored encodings)
   - Driver Deletion       (remove entries from pickle)
   - Driver Info Sync      (update name / driverId)
 
-Pickle format: {"encodings": [np.ndarray(128,), ...], "names": [str, ...], "driver_ids": [str, ...]}
+Pickle format:
+  Colab training:   {"encodings": [np.ndarray(128,), ...], "names": [str, ...]}
+  Extended format:  {"encodings": [...], "names": [...], "driver_ids": [str, ...]}
+
+Both formats are supported. When loading a Colab pickle without driver_ids,
+driver_ids will be auto-filled with empty strings.
 """
 
 import os
@@ -38,11 +43,13 @@ class FaceRecognitionService:
                 data = pickle.load(f)
             self.encodings: list = data.get("encodings", [])
             self.names: list = data.get("names", [])
-            self.driver_ids: list = data.get("driver_ids", [""] * len(self.names))
-            # Ensure driver_ids list is same length as names
+            self.driver_ids: list = data.get("driver_ids", [])
+            # Ensure driver_ids list is same length as names (Colab pickles won't have driver_ids)
             while len(self.driver_ids) < len(self.names):
                 self.driver_ids.append("")
-            print(f"[FaceRecService] Loaded {len(self.encodings)} encodings from {self.pickle_path}")
+            has_driver_ids = "driver_ids" in data
+            fmt = "extended" if has_driver_ids else "Colab (names only)"
+            print(f"[FaceRecService] Loaded {len(self.encodings)} encodings from {self.pickle_path} (format: {fmt})")
         else:
             self.encodings = []
             self.names = []
@@ -67,7 +74,7 @@ class FaceRecognitionService:
     # ------------------------------------------------------------------
     @staticmethod
     def _load_image(source) -> "np.ndarray | None":
-        """Load an image from a URL, local path, or numpy array → BGR numpy array."""
+        """Load an image from a URL, local path, or numpy array as BGR numpy array."""
         if isinstance(source, np.ndarray):
             return source
         if isinstance(source, str):
@@ -133,6 +140,59 @@ class FaceRecognitionService:
               f"Total DB size: {len(self.encodings)}")
         return {"success": True, "message": f"Registered {name} with {count} face encoding(s)"}
 
+    def register_batch(self, name: str, image_sources: list, driver_id: str = "") -> dict:
+        """
+        Register a driver face from multiple images (face scan).
+
+        1. Load each image, extract 128-d encoding(s)
+        2. Remove any previous entries for this driver
+        3. Store all encodings from all images
+        4. Save pickle
+
+        Returns: {"success": bool, "message": str, "total_encodings": int, "failed_images": int}
+        """
+        all_encodings = []
+        failed = 0
+
+        for source in image_sources:
+            img_bgr = self._load_image(source)
+            if img_bgr is None:
+                failed += 1
+                continue
+
+            img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+            face_locations = face_recognition.face_locations(img_rgb, model="hog")
+            if len(face_locations) == 0:
+                failed += 1
+                continue
+
+            encs = face_recognition.face_encodings(img_rgb, face_locations)
+            if len(encs) == 0:
+                failed += 1
+                continue
+
+            # Take only the first face per image (avoid picking up bystanders)
+            all_encodings.append(encs[0])
+
+        if len(all_encodings) == 0:
+            return {"success": False, "message": "No face detected in any of the provided images",
+                    "total_encodings": 0, "failed_images": failed}
+
+        with self._lock:
+            self._remove_entries(name=name, driver_id=driver_id)
+            for enc in all_encodings:
+                self.encodings.append(enc)
+                self.names.append(name)
+                self.driver_ids.append(driver_id)
+            self._save()
+
+        count = len(all_encodings)
+        print(f"[FaceRecService] Batch registered '{name}' (ID: {driver_id}) with {count} encoding(s) "
+              f"from {len(image_sources)} images ({failed} failed). Total DB: {len(self.encodings)}")
+        return {"success": True,
+                "message": f"Registered {name} with {count} face encoding(s) from {len(image_sources)} images",
+                "total_encodings": count, "failed_images": failed}
+
     def verify(self, image_source, driver_id: str = None) -> dict:
         """
         Verify a face against the stored database.
@@ -188,7 +248,7 @@ class FaceRecognitionService:
             else:
                 return {"verified": False, "message": f"No encodings for driver_id={driver_id}", "driver": None}
 
-        # Confidence: map distance [0, 1] → percentage [100, 0]
+        # Confidence: map distance [0, 1] -> percentage [100, 0]
         confidence = round(max(0.0, (1.0 - best_distance / 1.0)) * 100, 1)
         is_match = best_distance <= MATCH_TOLERANCE
 
@@ -201,7 +261,7 @@ class FaceRecognitionService:
             "message": f"Match: {best_name} (dist={best_distance:.4f})" if is_match
                        else f"No match (closest: {best_name}, dist={best_distance:.4f})"
         }
-        print(f"[FaceRecService] Verify → {result['message']}")
+        print(f"[FaceRecService] Verify -> {result['message']}")
         return result
 
     def delete(self, driver_id: str = None, name: str = None) -> dict:
@@ -210,7 +270,7 @@ class FaceRecognitionService:
             removed = self._remove_entries(name=name, driver_id=driver_id)
             self._save()
         msg = f"Removed {removed} encoding(s)" if removed > 0 else "Driver not found"
-        print(f"[FaceRecService] Delete(id={driver_id}, name={name}) → {msg}")
+        print(f"[FaceRecService] Delete(id={driver_id}, name={name}) -> {msg}")
         return {"success": removed > 0, "message": msg, "removed_count": removed}
 
     def sync_driver_info(self, old_driver_id: str, new_name: str = None, new_driver_id: str = None) -> dict:
@@ -227,7 +287,7 @@ class FaceRecognitionService:
             if updated:
                 self._save()
         msg = f"Updated {updated} encoding(s)" if updated else "No entries found for that driver_id"
-        print(f"[FaceRecService] Sync({old_driver_id}) → {msg}")
+        print(f"[FaceRecService] Sync({old_driver_id}) -> {msg}")
         return {"success": updated > 0, "message": msg}
 
     def list_drivers(self) -> dict:
@@ -240,6 +300,22 @@ class FaceRecognitionService:
                     unique[key] = {"name": name, "driver_id": did, "encoding_count": 0}
                 unique[key]["encoding_count"] += 1
         return {"drivers": list(unique.values()), "total_encodings": len(self.encodings)}
+
+    def reload_pickle(self) -> dict:
+        """Reload the pickle file from disk (e.g. after replacing it with a freshly trained one)."""
+        if not os.path.exists(self.pickle_path):
+            return {"success": False, "message": "Pickle file not found"}
+        with self._lock:
+            with open(self.pickle_path, "rb") as f:
+                data = pickle.load(f)
+            self.encodings = data.get("encodings", [])
+            self.names = data.get("names", [])
+            self.driver_ids = data.get("driver_ids", [])
+            while len(self.driver_ids) < len(self.names):
+                self.driver_ids.append("")
+        msg = f"Reloaded {len(self.encodings)} encodings from {self.pickle_path}"
+        print(f"[FaceRecService] {msg}")
+        return {"success": True, "message": msg, "total_encodings": len(self.encodings)}
 
     # ------------------------------------------------------------------
     # Internal Helpers

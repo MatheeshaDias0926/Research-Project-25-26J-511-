@@ -76,6 +76,7 @@ function App() {
               <Route path="/admin/employees" element={<AdminPanel />} />
               <Route path="/admin/edge-devices" element={<AdminPanel />} />
               <Route path="/admin/sos" element={<AdminPanel />} />
+              <Route path="/admin/face-recognition" element={<AdminPanel />} />
             </Route>
 
             {/* Legacy authority routes redirect to admin */}

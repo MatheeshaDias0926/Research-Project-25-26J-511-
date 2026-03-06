@@ -13,6 +13,7 @@ import {
   Siren,
   Wrench,
   FileWarning,
+  Scan,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -107,6 +108,12 @@ const Sidebar = () => {
       name: "SOS Alerts",
       href: "/admin/sos",
       icon: Siren,
+      roles: ["authority", "admin"],
+    },
+    {
+      name: "Face Recognition",
+      href: "/admin/face-recognition",
+      icon: Scan,
       roles: ["authority", "admin"],
     },
   ];

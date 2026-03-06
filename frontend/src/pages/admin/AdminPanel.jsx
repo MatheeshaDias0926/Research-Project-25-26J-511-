@@ -13,7 +13,7 @@ import Badge from "../../components/ui/Badge";
 import {
   Bus, AlertTriangle, CheckCircle, Wrench, UserPlus, Users, Cpu,
   Plus, RefreshCw, Link2, ArrowRight, Edit, Trash2, Eye, Siren,
-  LayoutDashboard, Shield, User, X,
+  LayoutDashboard, Shield, User, X, Camera, Scan, Upload, XCircle, VideoOff,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -1159,6 +1159,221 @@ const SOSTab = () => {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// FACE RECOGNITION TAB  (uses FaceMesh-overlay components)
+// ═══════════════════════════════════════════════════════════════
+import FaceRegistration from "../../components/face/FaceRegistration";
+import FaceVerification from "../../components/face/FaceVerification";
+import ReRegisterScan from "../../components/face/ReRegisterScan";
+
+const FaceRecognitionTab = () => {
+  const [drivers, setDrivers] = useState([]);
+  const [mlStatus, setMlStatus] = useState(null);
+  const [reloadingPickle, setReloadingPickle] = useState(false);
+
+  // Re-register modal state
+  const [reuploadDriver, setReuploadDriver] = useState(null);
+
+  const fetchDrivers = useCallback(async () => {
+    try { const res = await api.get("/driver"); setDrivers(res.data); } catch {}
+  }, []);
+
+  const fetchMlStatus = useCallback(async () => {
+    try { const res = await api.get("/driver/face-db"); setMlStatus(res.data); } catch { setMlStatus(null); }
+  }, []);
+
+  useEffect(() => { fetchDrivers(); fetchMlStatus(); }, [fetchDrivers, fetchMlStatus]);
+
+  const refreshAll = () => { fetchDrivers(); fetchMlStatus(); };
+
+  const handleReloadPickle = async () => {
+    setReloadingPickle(true);
+    try { await api.post("/driver/face-reload"); await fetchMlStatus(); } catch {}
+    setReloadingPickle(false);
+  };
+
+  const handleDeleteFaceData = async (driver) => {
+    if (!confirm(`Remove all face encodings for "${driver.name}" from the pickle database?`)) return;
+    try {
+      const payload = {};
+      if (driver.driver_id) payload.driverId = driver.driver_id;
+      else payload.name = driver.name;
+      await api.post("/driver/face-delete", payload);
+      refreshAll();
+    } catch {
+      alert("Failed to delete face data");
+    }
+  };
+
+  const registeredCount = drivers.filter(d => d.faceEncoding?.length > 0).length;
+  const failedCount = drivers.filter(d => !d.faceEncoding || d.faceEncoding.length === 0).length;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <h2 style={sectionTitle}><Camera size={22} /> Driver Face Recognition</h2>
+
+      {/* Status Summary */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+        <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12 }}>
+          <Users size={20} color="#0284c7" />
+          <div><div style={{ fontSize: 24, fontWeight: 700 }}>{drivers.length}</div><div style={{ fontSize: 12, color: "#64748b" }}>Total Drivers</div></div>
+        </div>
+        <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12 }}>
+          <CheckCircle size={20} color="#16a34a" />
+          <div><div style={{ fontSize: 24, fontWeight: 700, color: "#16a34a" }}>{registeredCount}</div><div style={{ fontSize: 12, color: "#64748b" }}>Face ID Active</div></div>
+        </div>
+        <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12 }}>
+          <XCircle size={20} color="#dc2626" />
+          <div><div style={{ fontSize: 24, fontWeight: 700, color: "#dc2626" }}>{failedCount}</div><div style={{ fontSize: 12, color: "#64748b" }}>Face ID Failed</div></div>
+        </div>
+        <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12 }}>
+          <Scan size={20} color="#7c3aed" />
+          <div><div style={{ fontSize: 24, fontWeight: 700, color: "#7c3aed" }}>{mlStatus?.total_encodings ?? "—"}</div><div style={{ fontSize: 12, color: "#64748b" }}>ML Encodings</div></div>
+        </div>
+      </div>
+
+      {/* ═══ Register + Verify (side by side) ═══ */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <FaceRegistration
+          drivers={drivers}
+          onComplete={refreshAll}
+          cardStyle={cardStyle}
+          inputStyle={inputStyle}
+        />
+        <FaceVerification cardStyle={cardStyle} />
+      </div>
+
+      {/* ═══ Registered Drivers Table ═══ */}
+      <div style={cardStyle}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+            <Users size={18} /> Registered Drivers — Face ID Status
+          </h3>
+          <button onClick={refreshAll}
+            style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <RefreshCw size={14} /> Refresh
+          </button>
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead style={{ borderBottom: "2px solid #e2e8f0" }}>
+            <tr>
+              <th style={thStyle}>Photo</th>
+              <th style={thStyle}>Name</th>
+              <th style={thStyle}>License No.</th>
+              <th style={thStyle}>Contact</th>
+              <th style={thStyle}>Face ID</th>
+              <th style={thStyle}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {drivers.map(d => (
+              <tr key={d._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                <td style={tdStyle}>
+                  {d.photoUrl ? (
+                    <img src={d.photoUrl} alt={d.name} style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover" }} />
+                  ) : (
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <User size={18} color="#94a3b8" />
+                    </div>
+                  )}
+                </td>
+                <td style={{ ...tdStyle, fontWeight: 600 }}>{d.name}</td>
+                <td style={tdStyle}>{d.licenseNumber}</td>
+                <td style={tdStyle}>{d.contactNumber || "—"}</td>
+                <td style={tdStyle}>
+                  {d.faceEncoding?.length > 0
+                    ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#16a34a", fontWeight: 600, fontSize: 13 }}><CheckCircle size={14} /> Active</span>
+                    : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#dc2626", fontWeight: 600, fontSize: 13 }}><XCircle size={14} /> Failed</span>}
+                </td>
+                <td style={tdStyle}>
+                  <button onClick={() => setReuploadDriver(d)}
+                    style={{ background: "#f1f5f9", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                    <Camera size={12} /> Re-register Face
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {drivers.length === 0 && (
+              <tr><td colSpan={6} style={{ ...tdStyle, textAlign: "center", color: "#94a3b8" }}>No drivers registered yet</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ═══ Face Recognition Pickle Database ═══ */}
+      <div style={cardStyle}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+            <Scan size={18} /> Face Recognition Model Database
+          </h3>
+          <button onClick={handleReloadPickle} disabled={reloadingPickle}
+            style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "6px 14px", cursor: reloadingPickle ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, opacity: reloadingPickle ? 0.6 : 1 }}>
+            <RefreshCw size={14} /> {reloadingPickle ? "Reloading..." : "Reload Pickle"}
+          </button>
+        </div>
+        <p style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>
+          Showing face encodings loaded from <strong>Face_Recognition.pickle</strong> (trained in Google Colab). Use "Reload Pickle" after replacing the file with a newly trained model.
+        </p>
+        {mlStatus ? (
+          <>
+            <div style={{ marginBottom: 12, padding: 10, background: "#f0f9ff", borderRadius: 8, fontSize: 14 }}>
+              Total encodings in pickle: <strong>{mlStatus.total_encodings}</strong> | Unique identities: <strong>{mlStatus.drivers?.length ?? 0}</strong>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead style={{ borderBottom: "2px solid #e2e8f0" }}>
+                <tr>
+                  <th style={thStyle}>#</th>
+                  <th style={thStyle}>Name</th>
+                  <th style={thStyle}>Driver ID</th>
+                  <th style={thStyle}>Encodings</th>
+                  <th style={thStyle}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(mlStatus.drivers || []).map((d, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={tdStyle}>{i + 1}</td>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>{d.name}</td>
+                    <td style={tdStyle}>{d.driver_id || <span style={{ color: "#94a3b8", fontStyle: "italic" }}>from Colab training</span>}</td>
+                    <td style={tdStyle}>{d.encoding_count}</td>
+                    <td style={tdStyle}>
+                      <button onClick={() => handleDeleteFaceData(d)}
+                        style={{ background: "none", border: "1px solid #fecaca", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#dc2626", display: "flex", alignItems: "center", gap: 4 }}>
+                        <Trash2 size={12} /> Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {(!mlStatus.drivers || mlStatus.drivers.length === 0) && (
+                  <tr><td colSpan={5} style={{ ...tdStyle, textAlign: "center", color: "#94a3b8" }}>No faces in pickle database</td></tr>
+                )}
+              </tbody>
+            </table>
+          </>
+        ) : (
+          <div style={{ padding: 20, textAlign: "center", color: "#94a3b8" }}>
+            ML face recognition service unavailable — make sure it is running on port 5001
+          </div>
+        )}
+      </div>
+
+      {/* ═══ Re-register Face Scan Modal ═══ */}
+      {reuploadDriver && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+          onClick={() => setReuploadDriver(null)}>
+          <div style={{ background: "white", borderRadius: 16, padding: 28, maxWidth: 540, width: "100%" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontSize: 17, fontWeight: 700 }}>Re-register Face — {reuploadDriver.name}</h3>
+              <button onClick={() => setReuploadDriver(null)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={20} /></button>
+            </div>
+            <ReRegisterScan driver={reuploadDriver} onComplete={() => { setReuploadDriver(null); refreshAll(); }} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN ADMIN PANEL
 // ═══════════════════════════════════════════════════════════════
 const AdminPanel = () => {
@@ -1171,6 +1386,7 @@ const AdminPanel = () => {
     if (path === "/admin/employees") return "employees";
     if (path === "/admin/edge-devices") return "edge-devices";
     if (path === "/admin/sos") return "sos";
+    if (path === "/admin/face-recognition") return "face-recognition";
     return "overview";
   };
 
@@ -1184,6 +1400,7 @@ const AdminPanel = () => {
       case "employees": return <EmployeeTab />;
       case "edge-devices": return <EdgeDeviceTab />;
       case "sos": return <SOSTab />;
+      case "face-recognition": return <FaceRecognitionTab />;
       default: return <OverviewTab />;
     }
   };

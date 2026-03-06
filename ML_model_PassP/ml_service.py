@@ -38,11 +38,11 @@ CORS(app)
 # 1. Driver Monitor
 driver_monitor = DriverMonitor()
 
-# 2. Face Recognition — pickle-based (face_recognition library, 128-d dlib encodings)
+# 2. Face Recognition -- pickle-based (face_recognition library, 128-d dlib encodings)
 face_rec_service = FaceRecognitionService()   # loads Face_Recognition.pickle
-print(f"[OK] FaceRecognitionService ready — {len(face_rec_service.encodings)} encodings loaded")
+print(f"[OK] FaceRecognitionService ready -- {len(face_rec_service.encodings)} encodings loaded")
 
-# 3. Face Landmark Recognition (MediaPipe) — used for drowsiness/yawning detection
+# 3. Face Landmark Recognition (MediaPipe) -- used for drowsiness/yawning detection
 face_config = {
     "max_faces": 1, 
     "min_detection_confidence": 0.5,
@@ -66,7 +66,7 @@ if FaceLandmarkRecognition:
     except Exception as e:
         print(f"[WARN] Failed to init FaceLandmarkRecognition: {e}")
 else:
-    print("[WARN] FaceLandmarkRecognition class not loaded — drowsiness stream unavailable.")
+    print("[WARN] FaceLandmarkRecognition class not loaded -- drowsiness stream unavailable.")
 
 # 4. Occupancy Model
 MODEL_PATH = 'xgb_bus_model.joblib'
@@ -214,6 +214,31 @@ def register_driver_face():
         print(f"Error registering face: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/face/register-scan', methods=['POST'])
+def register_driver_face_scan():
+    """Register a driver's face from multiple images (face scan with different angles)."""
+    try:
+        data = request.get_json()
+        image_urls = data.get('imageUrls', [])
+        name = data.get('name')
+        driver_id = data.get('driverId', '')
+
+        if not image_urls or not name:
+            return jsonify({'error': 'imageUrls (array) and name are required'}), 400
+
+        result = face_rec_service.register_batch(
+            name=name, image_sources=image_urls, driver_id=driver_id
+        )
+
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify({'error': result['message'], **result}), 400
+
+    except Exception as e:
+        print(f"Error registering face scan: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/face/sync-driver', methods=['POST'])
 def sync_driver_data():
     """Sync driver name or ID updates from Backend"""
@@ -240,11 +265,12 @@ def delete_driver_face():
     try:
         data = request.get_json()
         driver_id = data.get('driverId')
-        if not driver_id:
-            return jsonify({'error': 'driverId required'}), 400
+        name = data.get('name')
+        if not driver_id and not name:
+            return jsonify({'error': 'driverId or name required'}), 400
 
-        result = face_rec_service.delete(driver_id=driver_id)
-        return jsonify({'message': result['message']}), 200
+        result = face_rec_service.delete(driver_id=driver_id, name=name)
+        return jsonify({'message': result['message'], 'removed_count': result.get('removed_count', 0)}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -271,6 +297,14 @@ def verify_driver_face():
 def list_registered_drivers():
     """List all drivers registered in the face_recognition pickle database."""
     return jsonify(face_rec_service.list_drivers()), 200
+
+@app.route('/api/face/reload', methods=['POST'])
+def reload_pickle():
+    """Reload the Face_Recognition.pickle from disk (after replacing with a freshly trained one)."""
+    result = face_rec_service.reload_pickle()
+    if result['success']:
+        return jsonify(result), 200
+    return jsonify(result), 400
 
 @app.route('/api/face/preview', methods=['POST'])
 def launch_preview():

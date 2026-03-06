@@ -317,6 +317,21 @@ export const adminCreateUser = async (req, res, next) => {
 
     const user = await User.create(userPayload);
 
+    // Auto-create a Driver model record when role is "driver"
+    if (role === "driver") {
+      const Driver = (await import("../models/Driver.model.js")).default;
+      const driverData = {
+        name: fullName || username,
+        licenseNumber: licenceNumber || username,
+        contactNumber: contactNumber || "",
+        photoUrl: profileImage || "",
+        userId: user._id,
+      };
+      const driver = await Driver.create(driverData);
+      user.driverProfile = driver._id;
+      await user.save();
+    }
+
     res.status(201).json({
       _id: user._id,
       username: user.username,
@@ -387,6 +402,28 @@ export const deleteUser = async (req, res, next) => {
     if (user.role === "admin" || user.role === "authority") {
       res.status(400);
       throw new Error("Cannot delete admin accounts");
+    }
+
+    // If this is a driver, also delete Driver model record and ML face data
+    if (user.role === "driver") {
+      const Driver = (await import("../models/Driver.model.js")).default;
+      const axios = (await import("axios")).default;
+      const driver = user.driverProfile
+        ? await Driver.findById(user.driverProfile)
+        : await Driver.findOne({ userId: user._id });
+
+      if (driver) {
+        // Delete face data from ML service
+        try {
+          await axios.post(`${process.env.ML_SERVICE_URL}/api/face/delete`, {
+            driverId: driver.licenseNumber,
+          });
+          console.log(`ML face data deleted for driver: ${driver.name}`);
+        } catch (mlErr) {
+          console.error("ML face delete failed:", mlErr.message);
+        }
+        await driver.deleteOne();
+      }
     }
 
     await user.deleteOne();
