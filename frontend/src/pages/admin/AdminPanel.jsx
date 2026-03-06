@@ -983,6 +983,7 @@ const EdgeDeviceTab = () => {
                   <option value="passenger_counter">Passenger Counter</option>
                   <option value="gps_tracker">GPS Tracker</option>
                   <option value="camera">Camera</option>
+                  <option value="raspberry_pi">Raspberry Pi 5</option>
                 </select>
               </div>
               <Button type="submit">Register Device</Button>

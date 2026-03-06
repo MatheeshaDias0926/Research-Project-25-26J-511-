@@ -298,6 +298,23 @@ def list_registered_drivers():
     """List all drivers registered in the face_recognition pickle database."""
     return jsonify(face_rec_service.list_drivers()), 200
 
+@app.route('/api/face/encodings', methods=['GET'])
+def get_face_encodings():
+    """Export face encodings for edge device local caching.
+    Returns encodings, names, and driver_ids as JSON-serialisable lists.
+    Edge devices call this periodically to keep their local face DB in sync."""
+    try:
+        with face_rec_service._lock:
+            data = {
+                "encodings": [enc.tolist() for enc in face_rec_service.encodings],
+                "names": list(face_rec_service.names),
+                "driver_ids": list(face_rec_service.driver_ids),
+                "count": len(face_rec_service.encodings),
+            }
+        return jsonify(data), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/face/reload', methods=['POST'])
 def reload_pickle():
     """Reload the Face_Recognition.pickle from disk (after replacing with a freshly trained one)."""

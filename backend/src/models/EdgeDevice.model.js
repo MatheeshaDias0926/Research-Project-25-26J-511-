@@ -6,7 +6,7 @@ const edgeDeviceSchema = new mongoose.Schema(
     name: { type: String, required: true },
     type: {
       type: String,
-      enum: ["passenger_counter", "gps_tracker", "camera", "multi_sensor"],
+      enum: ["passenger_counter", "gps_tracker", "camera", "multi_sensor", "raspberry_pi"],
       default: "multi_sensor",
     },
     status: {
