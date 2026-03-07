@@ -498,17 +498,21 @@ class SmartBusPiClient:
     def sync_face_cache(self):
         """Download latest face encodings from backend."""
         try:
+            log.info(f"[CACHE SYNC] Downloading face encodings from {self.backend_url}...")
             resp = requests.get(
                 f"{self.backend_url}/api/edge-devices/face-cache",
                 headers=self.headers, timeout=15,
             )
             if resp.status_code == 200:
-                self.face_verifier.update_cache(resp.json())
+                data = resp.json()
+                count = data.get("count", len(data.get("encodings", [])))
+                self.face_verifier.update_cache(data)
                 self.last_cache_sync = time.time()
+                log.info(f"[CACHE SYNC] Success — {count} encodings cached locally")
             else:
-                log.warning(f"Face cache sync returned {resp.status_code}")
+                log.warning(f"[CACHE SYNC] Failed — HTTP {resp.status_code}: {resp.text[:200]}")
         except Exception as e:
-            log.debug(f"Face cache sync failed (offline?): {e}")
+            log.warning(f"[CACHE SYNC] Failed (offline?): {e}")
 
     def verify_driver_local(self, frame):
         """Verify the driver using local cached encodings."""

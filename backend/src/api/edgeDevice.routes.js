@@ -478,25 +478,16 @@ router.post("/verify-face", authenticateDevice, async (req, res) => {
             return res.status(400).json({ message: "imageBase64 required" });
         }
 
-        // Save temp file for ML service
-        const fs = await import("fs");
-        const path = await import("path");
-        const tmpDir = path.default.join(process.cwd(), "uploads");
-        if (!fs.default.existsSync(tmpDir)) fs.default.mkdirSync(tmpDir, { recursive: true });
-        const tmpFile = path.default.join(tmpDir, `pi_${req.edgeDevice.deviceId}_${Date.now()}.jpg`);
-        fs.default.writeFileSync(tmpFile, Buffer.from(imageBase64, "base64"));
-
         try {
+            // Send base64 directly to ML service — no temp file needed
             const mlResponse = await axios.post(
                 `${process.env.ML_SERVICE_URL}/api/face/verify`,
-                { imageUrl: tmpFile }
+                { imageBase64 },
+                { timeout: 15000, maxContentLength: 10 * 1024 * 1024 }
             );
-            // Cleanup
-            if (fs.default.existsSync(tmpFile)) fs.default.unlinkSync(tmpFile);
-
             res.json(mlResponse.data);
         } catch (mlErr) {
-            if (fs.default.existsSync(tmpFile)) fs.default.unlinkSync(tmpFile);
+            console.error("ML verify-face error:", mlErr.message);
             res.status(502).json({ message: "ML service error", error: mlErr.message });
         }
     } catch (error) {

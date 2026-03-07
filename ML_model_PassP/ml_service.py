@@ -17,6 +17,9 @@ load_dotenv(env_path)
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import joblib
+import numpy as np
+import cv2
+import base64
 import pandas as pd
 from driver_monitor import DriverMonitor
 from face_recognition_service import FaceRecognitionService
@@ -276,16 +279,26 @@ def delete_driver_face():
 
 @app.route('/api/face/verify', methods=['POST'])
 def verify_driver_face():
-    """Verify a driver from a live image using face_recognition library (128-d encoding match)."""
+    """Verify a driver from a live image using face_recognition library (128-d encoding match).
+    Accepts either imageUrl (path/URL) or imageBase64 (base64 JPEG)."""
     try:
         data = request.get_json()
         image_url = data.get('imageUrl')
+        image_base64 = data.get('imageBase64')
         driver_id = data.get('driverId')  # optional: restrict match to specific driver
 
-        if not image_url:
-            return jsonify({'error': 'imageUrl required'}), 400
-
-        result = face_rec_service.verify(image_source=image_url, driver_id=driver_id)
+        if image_base64:
+            # Decode base64 image directly — no temp file needed
+            img_bytes = base64.b64decode(image_base64)
+            nparr = np.frombuffer(img_bytes, np.uint8)
+            img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if img_bgr is None:
+                return jsonify({'error': 'Failed to decode base64 image'}), 400
+            result = face_rec_service.verify(image_source=img_bgr, driver_id=driver_id)
+        elif image_url:
+            result = face_rec_service.verify(image_source=image_url, driver_id=driver_id)
+        else:
+            return jsonify({'error': 'imageUrl or imageBase64 required'}), 400
 
         return jsonify(result), 200
 
