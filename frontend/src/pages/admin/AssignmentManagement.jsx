@@ -105,17 +105,25 @@ const AssignmentManagement = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, display: "flex", alignItems: "center", gap: 8 }}>
-        <Link2 size={28} /> Bus Assignments
-      </h1>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: 24 }}>
+        <div style={{
+          padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+          background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+        }}>
+          <Link2 size={24} color="#fff" />
+        </div>
+        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700 }}>
+          Bus Assignments
+        </h1>
+      </div>
 
       {message && <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8, marginBottom: 16 }}>{message}</div>}
-      {error && <div style={{ padding: 12, background: "#fee2e2", color: "#991b1b", borderRadius: 8, marginBottom: 16 }}>{error}</div>}
+      {error && <div style={{ padding: 12, background: "var(--color-danger-100)", color: "#991b1b", borderRadius: 8, marginBottom: 16 }}>{error}</div>}
 
       {/* Assignment Forms */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, marginBottom: 32 }}>
         {/* Assign Driver */}
-        <form onSubmit={handleAssignDriver} style={{ background: "#f8fafc", padding: 20, borderRadius: 12, border: "1px solid #e2e8f0" }}>
+        <form onSubmit={handleAssignDriver} style={{ background: "var(--bg-muted)", padding: 20, borderRadius: "var(--radius-lg)", border: "1px solid var(--border-light)" }}>
           <h3 style={{ fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
             <UserPlus size={18} /> Assign Driver
           </h3>
@@ -133,7 +141,7 @@ const AssignmentManagement = () => {
         </form>
 
         {/* Assign Conductor */}
-        <form onSubmit={handleAssignConductor} style={{ background: "#f8fafc", padding: 20, borderRadius: 12, border: "1px solid #e2e8f0" }}>
+        <form onSubmit={handleAssignConductor} style={{ background: "var(--bg-muted)", padding: 20, borderRadius: "var(--radius-lg)", border: "1px solid var(--border-light)" }}>
           <h3 style={{ fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
             <User size={18} /> Assign Conductor
           </h3>
@@ -151,7 +159,7 @@ const AssignmentManagement = () => {
         </form>
 
         {/* Assign Edge Device */}
-        <form onSubmit={handleAssignDevice} style={{ background: "#f8fafc", padding: 20, borderRadius: 12, border: "1px solid #e2e8f0" }}>
+        <form onSubmit={handleAssignDevice} style={{ background: "var(--bg-muted)", padding: 20, borderRadius: "var(--radius-lg)", border: "1px solid var(--border-light)" }}>
           <h3 style={{ fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
             <Cpu size={18} /> Assign Edge Device
           </h3>
@@ -174,7 +182,7 @@ const AssignmentManagement = () => {
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <thead>
-            <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
+            <tr style={{ background: "var(--bg-subtle)", textAlign: "left" }}>
               <th style={{ padding: "12px 16px", fontWeight: 600 }}>Bus</th>
               <th style={{ padding: "12px 16px", fontWeight: 600 }}>Route</th>
               <th style={{ padding: "12px 16px", fontWeight: 600 }}>Driver</th>
@@ -194,7 +202,7 @@ const AssignmentManagement = () => {
                       {bus.assignedDriver.name}
                       <button onClick={() => handleUnassign(bus._id, "driver")} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 12, marginLeft: 4 }}>✕</button>
                     </span>
-                  ) : <span style={{ color: "#94a3b8" }}>Not assigned</span>}
+                  ) : <span style={{ color: "var(--text-muted)" }}>Not assigned</span>}
                 </td>
                 <td style={{ padding: "12px 16px" }}>
                   {bus.assignedConductor ? (
@@ -202,7 +210,7 @@ const AssignmentManagement = () => {
                       {bus.assignedConductor.username}
                       <button onClick={() => handleUnassign(bus._id, "conductor")} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 12, marginLeft: 4 }}>✕</button>
                     </span>
-                  ) : <span style={{ color: "#94a3b8" }}>Not assigned</span>}
+                  ) : <span style={{ color: "var(--text-muted)" }}>Not assigned</span>}
                 </td>
                 <td style={{ padding: "12px 16px" }}>
                   {bus.assignedEdgeDevice ? (
@@ -210,10 +218,10 @@ const AssignmentManagement = () => {
                       {bus.assignedEdgeDevice.name}
                       <button onClick={() => handleUnassign(bus._id, "edge-device")} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 12, marginLeft: 4 }}>✕</button>
                     </span>
-                  ) : <span style={{ color: "#94a3b8" }}>Not assigned</span>}
+                  ) : <span style={{ color: "var(--text-muted)" }}>Not assigned</span>}
                 </td>
                 <td style={{ padding: "12px 16px" }}>
-                  <span style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, fontWeight: 500, background: bus.status === "active" ? "#dcfce7" : bus.status === "maintenance" ? "#fef9c3" : "#fee2e2", color: bus.status === "active" ? "#166534" : bus.status === "maintenance" ? "#854d0e" : "#991b1b" }}>
+                  <span style={{ padding: "4px 10px", borderRadius: "var(--radius-lg)", fontSize: 12, fontWeight: 500, background: bus.status === "active" ? "#dcfce7" : bus.status === "maintenance" ? "#fef9c3" : "#fee2e2", color: bus.status === "active" ? "#166534" : bus.status === "maintenance" ? "#854d0e" : "#991b1b" }}>
                     {bus.status || "active"}
                   </span>
                 </td>

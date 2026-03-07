@@ -84,6 +84,7 @@ FACE_CACHE_PATH = os.path.join(SCRIPT_DIR, "face_cache.json")
 ALERT_QUEUE_PATH = os.path.join(SCRIPT_DIR, "alert_queue.json")
 ALARM_SOUND_PATH = os.path.join(SCRIPT_DIR, "alarm.wav")
 VERIFIED_DRIVER_CACHE_PATH = os.path.join(SCRIPT_DIR, "verified_driver_cache.json")
+DRIVING_STATE_PATH = os.path.join(SCRIPT_DIR, "driving_state.json")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -362,47 +363,175 @@ class AlertnessTracker:
 class DrivingTimeTracker:
     """Tracks driving vs resting state based on face detection.
 
-    - Face detected → DRIVING state
-    - Face absent for rest_timeout seconds → RESTING state
-    - Tracks continuous driving time and total daily driving time
-    - Triggers warnings when configurable limits are exceeded
+    Cross-day aware design
+    ----------------------
+    * Driving periods are stored as absolute timestamps, NOT as counters that
+      reset at midnight.  This prevents the exploit where a driver drives
+      6 h before midnight, resets, and drives 6 h after midnight → 12 h
+      continuous without a valid rest break.
+    * A "valid rest" is defined by ``required_rest_minutes`` (per-driver,
+      admin-configurable).  Only gaps ≥ required_rest break the continuous
+      driving chain.
+    * State is persisted to disk (``driving_state.json``) so it survives
+      reboots and network outages.
+    * The server also computes driving history from DriverSession records and
+      the edge applies the stricter of local vs server values.
     """
 
     STATE_DRIVING = "driving"
     STATE_RESTING = "resting"
 
-    def __init__(self, rest_timeout=60, max_continuous_minutes=240,
-                 max_daily_minutes=480, min_rest_minutes=15):
+    def __init__(self, rest_timeout=60, max_continuous_minutes=360,
+                 max_daily_minutes=480, required_rest_minutes=360,
+                 cooldown_minutes=0, state_path=DRIVING_STATE_PATH):
         self.rest_timeout = rest_timeout
         self.max_continuous_minutes = max_continuous_minutes
         self.max_daily_minutes = max_daily_minutes
-        self.min_rest_minutes = min_rest_minutes
+        self.required_rest_minutes = required_rest_minutes
+        self.cooldown_minutes = cooldown_minutes
 
         # State
         self.state = self.STATE_RESTING
-        self._driving_start = None
-        self._last_face_time = 0
-        self._daily_driving_seconds = 0
-        self._day_date = time.strftime("%Y-%m-%d")
+        self._last_face_time = 0.0
         self._rest_start = time.time()
+        self._state_path = state_path
 
-        # Limit alerts (avoid repeated alarms)
+        # Driving periods: list of (start_ts, end_ts|None)
+        # Only the last entry may have end_ts=None (currently driving)
+        self._periods: list[list] = []
+
+        # Limit alerts (avoid repeated alarms within one run)
         self._continuous_limit_alerted = False
         self._daily_limit_alerted = False
+        self._cooldown_alerted = False
         self._last_status_report = 0
+
+        # Server-side overrides (from heartbeat/driving-status responses)
+        self._server_continuous_minutes = 0
+        self._server_daily_minutes = 0
+
+        self._load_state()
+
+    # ── Persistence ──
+
+    def _load_state(self):
+        if not os.path.exists(self._state_path):
+            return
+        try:
+            with open(self._state_path, "r") as f:
+                data = json.load(f)
+            self.state = data.get("state", self.STATE_RESTING)
+            self._last_face_time = data.get("last_face_time", 0)
+            self._rest_start = data.get("rest_start", time.time())
+            self._periods = data.get("periods", [])
+            # Prune periods older than 48h
+            cutoff = time.time() - 48 * 3600
+            self._periods = [p for p in self._periods if p[0] >= cutoff]
+            log.info(f"[DRIVING] Loaded state from disk: {self.state}, "
+                     f"{len(self._periods)} driving periods")
+        except Exception as e:
+            log.warning(f"[DRIVING] Failed to load state: {e}")
+
+    def _save_state(self):
+        data = {
+            "state": self.state,
+            "last_face_time": self._last_face_time,
+            "rest_start": self._rest_start,
+            "periods": self._periods,
+            "saved_at": time.time(),
+        }
+        try:
+            with open(self._state_path, "w") as f:
+                json.dump(data, f)
+        except Exception as e:
+            log.error(f"[DRIVING] Failed to save state: {e}")
+
+    def apply_server_history(self, server_data: dict):
+        """Apply server-computed driving history (from heartbeat or driving-status)."""
+        if not server_data:
+            return
+        self._server_continuous_minutes = server_data.get("continuousDrivingMinutes", 0)
+        self._server_daily_minutes = server_data.get("totalDailyDrivingMinutes", 0)
+
+    def apply_driver_rules(self, rules: dict):
+        """Apply per-driver rules from backend."""
+        if not rules:
+            return
+        if "maxContinuousDrivingMinutes" in rules:
+            self.max_continuous_minutes = rules["maxContinuousDrivingMinutes"]
+        if "maxDailyDrivingMinutes" in rules:
+            self.max_daily_minutes = rules["maxDailyDrivingMinutes"]
+        if "requiredRestMinutes" in rules:
+            self.required_rest_minutes = rules["requiredRestMinutes"]
+        if "cooldownMinutes" in rules:
+            self.cooldown_minutes = rules["cooldownMinutes"]
+        log.info(f"[DRIVING] Applied driver rules: max_cont={self.max_continuous_minutes}m, "
+                 f"max_daily={self.max_daily_minutes}m, rest={self.required_rest_minutes}m, "
+                 f"cooldown={self.cooldown_minutes}m")
+
+    # ── Computation helpers ──
+
+    def _current_driving_start(self) -> float | None:
+        """Start time of current (open) driving period, or None."""
+        if self._periods and self._periods[-1][1] is None:
+            return self._periods[-1][0]
+        return None
+
+    def _continuous_driving_seconds(self, now: float) -> float:
+        """Compute continuous driving time by walking backwards through periods.
+        Gaps shorter than required_rest_minutes do NOT break the chain."""
+        if not self._periods:
+            return 0
+        required_rest_sec = self.required_rest_minutes * 60
+
+        total = 0
+        i = len(self._periods) - 1
+        while i >= 0:
+            start = self._periods[i][0]
+            end = self._periods[i][1] if self._periods[i][1] is not None else now
+            total += end - start
+
+            if i > 0:
+                prev_end = self._periods[i - 1][1]
+                if prev_end is None:
+                    # Shouldn't happen (only last period can be open), but guard
+                    break
+                gap = start - prev_end
+                if gap >= required_rest_sec:
+                    # Valid rest found → stop accumulating
+                    break
+            i -= 1
+        return total
+
+    def _daily_driving_seconds(self, now: float) -> float:
+        """Total driving seconds since midnight today."""
+        midnight = time.mktime(time.strptime(time.strftime("%Y-%m-%d"), "%Y-%m-%d"))
+        total = 0
+        for start, end in self._periods:
+            effective_start = max(start, midnight)
+            effective_end = end if end is not None else now
+            if effective_end > midnight:
+                total += max(0, effective_end - effective_start)
+        return total
+
+    def _last_rest_duration(self, now: float) -> float:
+        """Duration of the most recent rest period in seconds."""
+        if self.state == self.STATE_RESTING:
+            return now - self._rest_start
+        # If driving, check the gap before the current period
+        if len(self._periods) >= 2:
+            current_start = self._periods[-1][0]
+            prev_end = self._periods[-2][1]
+            if prev_end is not None:
+                return current_start - prev_end
+        return 0
+
+    # ── Main update (called every frame) ──
 
     def update(self, face_detected: bool, now: float = None):
         """Call every frame. Returns list of warning strings (empty = no warnings)."""
         if now is None:
             now = time.time()
-
-        # Reset daily counters at midnight
-        today = time.strftime("%Y-%m-%d")
-        if today != self._day_date:
-            log.info("[DRIVING] New day — resetting daily driving counter")
-            self._daily_driving_seconds = 0
-            self._day_date = today
-            self._daily_limit_alerted = False
 
         warnings = []
 
@@ -411,62 +540,94 @@ class DrivingTimeTracker:
 
             if self.state == self.STATE_RESTING:
                 rest_duration = now - self._rest_start if self._rest_start else 0
-                if self._driving_start is not None and rest_duration < self.min_rest_minutes * 60:
-                    log.info(f"[DRIVING] Short break ({rest_duration:.0f}s) — resuming driving")
-                else:
+                required_rest_sec = self.required_rest_minutes * 60
+
+                if rest_duration >= required_rest_sec:
+                    # Valid rest completed → fresh driving period
                     self._continuous_limit_alerted = False
-                    self._driving_start = now
-                    log.info("[DRIVING] Started driving (fresh)")
+                    self._cooldown_alerted = False
+                    log.info(f"[DRIVING] Valid rest completed ({rest_duration / 60:.0f}m >= "
+                             f"{self.required_rest_minutes}m) — starting fresh period")
+                else:
+                    if self._periods:
+                        log.info(f"[DRIVING] Short break ({rest_duration / 60:.1f}m < "
+                                 f"{self.required_rest_minutes}m) — resuming driving chain")
 
-                if self._driving_start is None:
-                    self._driving_start = now
-
+                # Start new driving period
+                self._periods.append([now, None])
                 self.state = self.STATE_DRIVING
                 self._rest_start = None
+                self._save_state()
                 log.info("[DRIVING] State → DRIVING")
 
         else:
             if self.state == self.STATE_DRIVING:
                 elapsed_no_face = now - self._last_face_time
                 if elapsed_no_face >= self.rest_timeout:
-                    if self._driving_start:
-                        driven = self._last_face_time - self._driving_start
-                        self._daily_driving_seconds += driven
+                    # Close current driving period
+                    if self._periods and self._periods[-1][1] is None:
+                        self._periods[-1][1] = self._last_face_time
                     self.state = self.STATE_RESTING
                     self._rest_start = now
+                    self._save_state()
                     log.info(f"[DRIVING] State → RESTING (no face for {elapsed_no_face:.0f}s)")
 
-        # Check limits while driving
-        if self.state == self.STATE_DRIVING and self._driving_start:
-            continuous_minutes = (now - self._driving_start) / 60
-            daily_minutes = (self._daily_driving_seconds + (now - self._driving_start)) / 60
+        # ── Check limits ──
+        if self.state == self.STATE_DRIVING:
+            local_continuous_sec = self._continuous_driving_seconds(now)
+            local_continuous_min = local_continuous_sec / 60
+            # Use stricter of local vs server
+            effective_continuous = max(local_continuous_min, self._server_continuous_minutes)
 
-            if self.max_continuous_minutes > 0 and continuous_minutes >= self.max_continuous_minutes:
+            local_daily_sec = self._daily_driving_seconds(now)
+            local_daily_min = local_daily_sec / 60
+            effective_daily = max(local_daily_min, self._server_daily_minutes)
+
+            if self.max_continuous_minutes > 0 and effective_continuous >= self.max_continuous_minutes:
                 if not self._continuous_limit_alerted:
                     self._continuous_limit_alerted = True
-                    warnings.append(f"Continuous driving limit reached ({self.max_continuous_minutes} min)")
-                    log.warning(f"[DRIVING] LIMIT: Continuous driving {continuous_minutes:.0f} min >= {self.max_continuous_minutes} min")
+                    warnings.append(f"Continuous driving limit reached "
+                                    f"({self.max_continuous_minutes} min, actual: {effective_continuous:.0f} min)")
+                    log.warning(f"[DRIVING] LIMIT: Continuous {effective_continuous:.0f}m >= "
+                                f"{self.max_continuous_minutes}m")
 
-            if self.max_daily_minutes > 0 and daily_minutes >= self.max_daily_minutes:
+            if self.max_daily_minutes > 0 and effective_daily >= self.max_daily_minutes:
                 if not self._daily_limit_alerted:
                     self._daily_limit_alerted = True
-                    warnings.append(f"Daily driving limit reached ({self.max_daily_minutes} min)")
-                    log.warning(f"[DRIVING] LIMIT: Daily driving {daily_minutes:.0f} min >= {self.max_daily_minutes} min")
+                    warnings.append(f"Daily driving limit reached "
+                                    f"({self.max_daily_minutes} min, actual: {effective_daily:.0f} min)")
+                    log.warning(f"[DRIVING] LIMIT: Daily {effective_daily:.0f}m >= "
+                                f"{self.max_daily_minutes}m")
+
+            # Cooldown check
+            if self.cooldown_minutes > 0:
+                last_rest_min = self._last_rest_duration(now) / 60
+                if (self._continuous_limit_alerted and
+                        last_rest_min < self.cooldown_minutes and
+                        not self._cooldown_alerted):
+                    self._cooldown_alerted = True
+                    warnings.append(f"Cooldown not met — need {self.cooldown_minutes}m rest, "
+                                    f"only had {last_rest_min:.0f}m")
+
+        # Periodic save
+        if int(now) % 30 == 0:
+            self._save_state()
 
         return warnings
 
+    # ── Properties ──
+
     @property
     def continuous_driving_minutes(self) -> float:
-        if self.state != self.STATE_DRIVING or not self._driving_start:
-            return 0
-        return (time.time() - self._driving_start) / 60
+        now = time.time()
+        local = self._continuous_driving_seconds(now) / 60
+        return max(local, self._server_continuous_minutes)
 
     @property
     def total_daily_driving_minutes(self) -> float:
-        total = self._daily_driving_seconds
-        if self.state == self.STATE_DRIVING and self._driving_start:
-            total += time.time() - self._driving_start
-        return total / 60
+        now = time.time()
+        local = self._daily_driving_seconds(now) / 60
+        return max(local, self._server_daily_minutes)
 
     @property
     def current_rest_minutes(self) -> float:
@@ -488,8 +649,9 @@ class SmartBusPiClient:
                  verify_interval=300, heartbeat_interval=60,
                  cache_sync_interval=1800, gpio_pin=18,
                  no_face_alert_timeout=30,
-                 rest_timeout=60, max_continuous_driving=240,
-                 max_daily_driving=480, min_rest_duration=15):
+                 rest_timeout=60, max_continuous_driving=360,
+                 max_daily_driving=480, required_rest=360,
+                 cooldown=0):
         self.backend_url = backend_url.rstrip("/")
         self.device_id = device_id
         # --- FIX: Handle both Int (local) and Str (URL) ---
@@ -541,7 +703,8 @@ class SmartBusPiClient:
             rest_timeout=rest_timeout,
             max_continuous_minutes=max_continuous_driving,
             max_daily_minutes=max_daily_driving,
-            min_rest_minutes=min_rest_duration,
+            required_rest_minutes=required_rest,
+            cooldown_minutes=cooldown,
         )
 
     # ── Verified driver cache (offline persistence) ──
@@ -601,11 +764,15 @@ class SmartBusPiClient:
 
     def send_heartbeat(self):
         payload = {
-            "firmwareVersion": "pi-2.0.0",
+            "firmwareVersion": "pi-2.1.0",
             "alertnessScore": round(self.alertness.score, 1),
             "alertnessLevel": self.alertness.level,
             "verifiedDriver": self.verified_driver,
             "verifiedDriverId": self.verified_driver_id,
+            "drivingState": self.driving_tracker.state,
+            "continuousDrivingMinutes": round(self.driving_tracker.continuous_driving_minutes, 1),
+            "totalDailyDrivingMinutes": round(self.driving_tracker.total_daily_driving_minutes, 1),
+            "currentRestMinutes": round(self.driving_tracker.current_rest_minutes, 1),
         }
         try:
             resp = requests.post(
@@ -630,18 +797,20 @@ class SmartBusPiClient:
                     self.drowsy_frames = cfg["drowsyFrames"]
                 if "yawnFrames" in cfg:
                     self.yawn_frames = cfg["yawnFrames"]
-                # Driving time rules
                 if "restTimeout" in cfg:
                     self.driving_tracker.rest_timeout = cfg["restTimeout"]
-                if "maxContinuousDriving" in cfg:
-                    self.driving_tracker.max_continuous_minutes = cfg["maxContinuousDriving"]
-                if "maxDailyDriving" in cfg:
-                    self.driving_tracker.max_daily_minutes = cfg["maxDailyDriving"]
-                if "minRestDuration" in cfg:
-                    self.driving_tracker.min_rest_minutes = cfg["minRestDuration"]
+
+            # Apply per-driver rules from backend
+            driver_rules = data.get("driverRules")
+            if driver_rules:
+                self.driving_tracker.apply_driver_rules(driver_rules)
+
+            # Apply server-side driving history (cross-day validation)
+            server_history = data.get("serverDrivingHistory")
+            if server_history:
+                self.driving_tracker.apply_server_history(server_history)
 
             # Handle pending commands from admin
-            # Process sync_cache first so face data is ready before verify_now
             commands = data.get("commands", [])
             if "sync_cache" in commands:
                 log.info("[CMD] Admin requested cache sync")
@@ -690,6 +859,7 @@ class SmartBusPiClient:
             "state": dt.state,
             "continuousDrivingMinutes": round(dt.continuous_driving_minutes, 1),
             "totalDailyDrivingMinutes": round(dt.total_daily_driving_minutes, 1),
+            "currentRestMinutes": round(dt.current_rest_minutes, 1),
             "driverName": self.verified_driver or "Unknown",
             "driverId": self.verified_driver_id,
         }
@@ -701,6 +871,23 @@ class SmartBusPiClient:
             data = resp.json()
             for w in data.get("warnings", []):
                 log.warning(f"[DRIVING STATUS] Server warning: {w}")
+
+            # Apply server-side driving history
+            server_history = data.get("serverDrivingHistory")
+            if server_history:
+                dt.apply_server_history(server_history)
+
+            # Apply updated limits from server
+            limits = data.get("limits", {})
+            if limits:
+                if "maxContinuousDriving" in limits:
+                    dt.max_continuous_minutes = limits["maxContinuousDriving"]
+                if "maxDailyDriving" in limits:
+                    dt.max_daily_minutes = limits["maxDailyDriving"]
+                if "requiredRest" in limits:
+                    dt.required_rest_minutes = limits["requiredRest"]
+                if "cooldown" in limits:
+                    dt.cooldown_minutes = limits["cooldown"]
         except Exception as e:
             log.debug(f"Driving status report failed: {e}")
 
@@ -808,7 +995,7 @@ class SmartBusPiClient:
     # ── Main loop ──
 
     def run(self):
-        log.info("Smart Bus Pi Client  v2.1 (offline-capable)")
+        log.info("Smart Bus Pi Client  v2.2 (offline-capable, cross-day tracking)")
         log.info(f"  Backend : {self.backend_url}")
         log.info(f"  Device  : {self.device_id}")
         log.info(f"  Camera  : {self.camera_index}")
@@ -817,7 +1004,8 @@ class SmartBusPiClient:
         log.info(f"  Driving : rest_timeout={self.driving_tracker.rest_timeout}s, "
                  f"max_cont={self.driving_tracker.max_continuous_minutes}min, "
                  f"max_daily={self.driving_tracker.max_daily_minutes}min, "
-                 f"min_rest={self.driving_tracker.min_rest_minutes}min")
+                 f"req_rest={self.driving_tracker.required_rest_minutes}min, "
+                 f"cooldown={self.driving_tracker.cooldown_minutes}min")
         log.info(f"  Local face_recognition: {'YES' if FACE_REC_AVAILABLE else 'NO'}")
         log.info(f"  GPIO buzzer: {'YES' if GPIO_AVAILABLE else 'NO'}")
         log.info(f"  Audio alarm: {'YES' if PYGAME_AVAILABLE else 'NO'}")
@@ -904,6 +1092,7 @@ class SmartBusPiClient:
                             self.send_alert("drowsiness", drowsy=True, yawning=False,
                                             ear=round(ear, 3), mar=round(mar, 3),
                                             driverName=self.verified_driver or "Unknown",
+                                            driverId=self.verified_driver_id or "",
                                             alertnessScore=round(self.alertness.score, 1))
                     else:
                         if self.is_drowsy:
@@ -924,6 +1113,7 @@ class SmartBusPiClient:
                             self.send_alert("drowsiness", drowsy=False, yawning=True,
                                             ear=round(ear, 3), mar=round(mar, 3),
                                             driverName=self.verified_driver or "Unknown",
+                                            driverId=self.verified_driver_id or "",
                                             alertnessScore=round(self.alertness.score, 1))
                     else:
                         if self.is_yawning:
@@ -974,7 +1164,8 @@ class SmartBusPiClient:
                         log.warning(f"No face detected for {elapsed_no_face:.0f}s")
                         self.alarm.trigger("DRIVER NOT VISIBLE")
                         self.send_alert("no_face", duration=round(elapsed_no_face, 1),
-                                        driverName=self.verified_driver or "Unknown")
+                                        driverName=self.verified_driver or "Unknown",
+                                        driverId=self.verified_driver_id or "")
 
                 # ── Driving time tracking ──
                 face_detected = results.multi_face_landmarks is not None
@@ -997,7 +1188,10 @@ class SmartBusPiClient:
                 state_label = "DRIVING" if drv.state == drv.STATE_DRIVING else "RESTING"
                 cont_min = drv.continuous_driving_minutes
                 daily_min = drv.total_daily_driving_minutes
+                rest_min = drv.current_rest_minutes
                 drive_text = f"{state_label} | Cont:{cont_min:.0f}m Daily:{daily_min:.0f}m"
+                if drv.state == drv.STATE_RESTING and rest_min > 0:
+                    drive_text += f" Rest:{rest_min:.0f}m"
                 cv2.putText(frame, drive_text, (10, h - 20),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, drive_color, 2)
 
@@ -1016,7 +1210,7 @@ class SmartBusPiClient:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2.1 - Offline)")
+    parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2.2 - Cross-day tracking)")
     parser.add_argument("--backend", required=True, help="Backend URL (e.g. http://192.168.1.100:3000)")
     parser.add_argument("--device-id", required=True, help="Device ID registered in admin panel")
     parser.add_argument("--camera", type=str, default="0", help="Camera index or IP URL")
@@ -1028,9 +1222,10 @@ def main():
     parser.add_argument("--gpio-pin", type=int, default=18, help="GPIO pin for buzzer (default: 18)")
     parser.add_argument("--no-face-timeout", type=int, default=30, help="Seconds without face before alert")
     parser.add_argument("--rest-timeout", type=int, default=60, help="Seconds without face to switch to resting")
-    parser.add_argument("--max-continuous-driving", type=int, default=240, help="Max continuous driving minutes")
-    parser.add_argument("--max-daily-driving", type=int, default=480, help="Max daily driving minutes")
-    parser.add_argument("--min-rest-duration", type=int, default=15, help="Minimum rest minutes between driving periods")
+    parser.add_argument("--max-continuous-driving", type=int, default=360, help="Max continuous driving minutes (default 6h)")
+    parser.add_argument("--max-daily-driving", type=int, default=480, help="Max daily driving minutes (default 8h)")
+    parser.add_argument("--required-rest", type=int, default=360, help="Required rest minutes after max continuous driving (default 6h)")
+    parser.add_argument("--cooldown", type=int, default=0, help="Extra cooldown minutes after rest before next drive (default 0)")
     args = parser.parse_args()
 
     client = SmartBusPiClient(
@@ -1047,7 +1242,8 @@ def main():
         rest_timeout=args.rest_timeout,
         max_continuous_driving=args.max_continuous_driving,
         max_daily_driving=args.max_daily_driving,
-        min_rest_duration=args.min_rest_duration,
+        required_rest=args.required_rest,
+        cooldown=args.cooldown,
     )
     client.run()
 

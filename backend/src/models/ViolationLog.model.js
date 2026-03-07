@@ -7,6 +7,12 @@ const violationLogSchema = new mongoose.Schema(
       required: true,
       ref: "Bus",
     },
+    driverRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Driver",
+      default: null,
+    },
+    driverName: { type: String, default: null },
     gps: {
       lat: { type: Number },
       lon: { type: Number },

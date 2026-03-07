@@ -62,9 +62,17 @@ const AuthorityDashboard = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-      <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
-        System Overview
-      </h1>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <div style={{
+          padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+          background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+        }}>
+          <Bus size={24} color="#fff" />
+        </div>
+        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+          System Overview
+        </h1>
+      </div>
 
       <div
         style={{
@@ -83,19 +91,19 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
                 Active Buses
               </p>
-              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
                 {stats.activeBuses}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
-                background: "#dbeafe",
-                borderRadius: 9999,
-                color: "#2563eb",
+                background: "var(--color-primary-100)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-primary-500)",
               }}
             >
               <Bus style={{ height: 24, width: 24 }} />
@@ -113,19 +121,19 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
                 Total Conductors
               </p>
-              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
                 {stats.conductors}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
-                background: "#f0f9ff",
-                borderRadius: 9999,
-                color: "#0284c7",
+                background: "var(--color-info-50)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-info-500)",
               }}
             >
               <UserPlus style={{ height: 24, width: 24 }} />
@@ -143,19 +151,19 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
                 Violations (24h)
               </p>
-              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
                 {stats.totalViolations}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
-                background: "#fee2e2",
-                borderRadius: 9999,
-                color: "#dc2626",
+                background: "var(--color-danger-100)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-danger-500)",
               }}
             >
               <AlertTriangle style={{ height: 24, width: 24 }} />
@@ -173,19 +181,19 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
                 Maintenance
               </p>
-              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
                 {stats.pendingMaintenance}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
-                background: "#ffedd5",
-                borderRadius: 9999,
-                color: "#ea580c",
+                background: "var(--color-warning-100)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-warning-600)",
               }}
             >
               <Wrench style={{ height: 24, width: 24 }} />
@@ -203,19 +211,19 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
                 Total Drivers
               </p>
-              <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
                 {stats.totalDrivers}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
-                background: "#f1f5f9",
-                borderRadius: 9999,
-                color: "#475569",
+                background: "var(--bg-subtle)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--text-secondary)",
               }}
             >
               <UserPlus style={{ height: 24, width: 24 }} />
@@ -233,19 +241,19 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
                 System Status
               </p>
-              <p style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>
+              <p style={{ fontSize: 20, fontWeight: 700, color: "var(--color-success-500)" }}>
                 {stats.systemStatus}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
-                background: "#bbf7d0",
-                borderRadius: 9999,
-                color: "#22c55e",
+                background: "var(--color-success-200)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-success-500)",
               }}
             >
               <CheckCircle style={{ height: 24, width: 24 }} />
@@ -255,7 +263,7 @@ const AuthorityDashboard = () => {
       </div>
 
       <div style={{ marginTop: 20 }}>
-        <h2 style={{ fontSize: 24, fontWeight: 700, color: "#1e293b", marginBottom: 20 }}>
+        <h2 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
           Quick Actions
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
@@ -270,19 +278,19 @@ const AuthorityDashboard = () => {
                 }}
               >
                 <div>
-                  <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                  <p style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text-primary)" }}>
                     Manage Conductors
                   </p>
-                  <p style={{ fontSize: 13, color: "#64748b" }}>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
                     Register & Assign Buses
                   </p>
                 </div>
                 <div
                   style={{
                     padding: 12,
-                    background: "#f1f5f9",
-                    borderRadius: 9999,
-                    color: "#475569",
+                    background: "var(--bg-subtle)",
+                    borderRadius: "var(--radius-full)",
+                    color: "var(--text-secondary)",
                   }}
                 >
                   <UserPlus style={{ height: 24, width: 24 }} />
@@ -301,19 +309,19 @@ const AuthorityDashboard = () => {
                 }}
               >
                 <div>
-                  <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                  <p style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text-primary)" }}>
                     Register Driver
                   </p>
-                  <p style={{ fontSize: 13, color: "#64748b" }}>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
                     Add New Driver & Face ID
                   </p>
                 </div>
                 <div
                   style={{
                     padding: 12,
-                    background: "#f1f5f9",
-                    borderRadius: 9999,
-                    color: "#475569",
+                    background: "var(--bg-subtle)",
+                    borderRadius: "var(--radius-full)",
+                    color: "var(--text-secondary)",
                   }}
                 >
                   <UserPlus style={{ height: 24, width: 24 }} />
@@ -332,19 +340,19 @@ const AuthorityDashboard = () => {
                 }}
               >
                 <div>
-                  <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                  <p style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text-primary)" }}>
                     Safety Check
                   </p>
-                  <p style={{ fontSize: 13, color: "#64748b" }}>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
                     Run Physics Simulation
                   </p>
                 </div>
                 <div
                   style={{
                     padding: 12,
-                    background: "#f1f5f9",
-                    borderRadius: 9999,
-                    color: "#475569",
+                    background: "var(--bg-subtle)",
+                    borderRadius: "var(--radius-full)",
+                    color: "var(--text-secondary)",
                   }}
                 >
                   <AlertTriangle style={{ height: 24, width: 24 }} />
@@ -357,7 +365,7 @@ const AuthorityDashboard = () => {
 
       {/* Violation Analytics Chart */}
       <div style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 24, fontWeight: 700, color: "#1e293b", marginBottom: 20 }}>
+        <h2 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
           Violation Analytics (Top Offenders)
         </h2>
         <Card>
@@ -381,7 +389,7 @@ const AuthorityDashboard = () => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
                 No significant violation data found for diagrams.
               </div>
             )}
@@ -414,7 +422,7 @@ const AuthorityDashboard = () => {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
                 No trend data available.
               </div>
             )}
@@ -469,7 +477,7 @@ const AuthorityDashboard = () => {
                 </ScatterChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
                 No active buses found.
               </div>
             )}

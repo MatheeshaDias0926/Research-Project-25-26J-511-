@@ -91,9 +91,15 @@ const FacialRecognitionLive = () => {
       <div style={headerStyle}>
         <div>
           <h1 style={titleStyle}>
-            <Scan size={30} /> Live Face Recognition
+            <div style={{
+              padding: 8, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+              background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+            }}>
+              <Scan size={24} color="#fff" />
+            </div>
+            Live Face Recognition
           </h1>
-          <p style={{ color: "#64748b", fontSize: 14 }}>
+          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
             Smart Bus Biometric Control Center
           </p>
         </div>
@@ -178,7 +184,7 @@ const FacialRecognitionLive = () => {
             <User size={18} />
             <div>
               <div style={{ fontWeight: 700 }}>{driverName}</div>
-              <div style={{ fontSize: 13, color: accessGranted ? "#16a34a" : "#dc2626" }}>
+              <div style={{ fontSize: "var(--text-sm)", color: accessGranted ? "#16a34a" : "#dc2626" }}>
                 {accessGranted ? "ACCESS GRANTED" : "NOT VERIFIED"}
               </div>
             </div>
@@ -242,9 +248,9 @@ const titleStyle = {
 
 const switchStyle = {
   display: "flex",
-  borderRadius: 12,
+  borderRadius: "var(--radius-lg)",
   overflow: "hidden",
-  border: "1px solid #e2e8f0"
+  border: "1px solid var(--border-light)"
 };
 
 const btn = {
@@ -267,7 +273,7 @@ const liveBadge = {
   top: 12,
   left: 12,
   background: "rgba(0,0,0,0.6)",
-  color: "#22c55e",
+  color: "var(--color-success-500)",
   padding: "4px 10px",
   borderRadius: 20,
   fontSize: 12
@@ -280,7 +286,7 @@ const resultBox = {
   transform: "translateX(-50%)",
   background: "white",
   padding: 16,
-  borderRadius: 16,
+  borderRadius: "var(--radius-xl)",
   display: "flex",
   gap: 12
 };
@@ -347,7 +353,7 @@ const terminalBody = {
 
 const verifyBtn = {
   padding: 16,
-  borderRadius: 16,
+  borderRadius: "var(--radius-xl)",
   background: "#4f46e5",
   color: "white",
   fontWeight: 800,

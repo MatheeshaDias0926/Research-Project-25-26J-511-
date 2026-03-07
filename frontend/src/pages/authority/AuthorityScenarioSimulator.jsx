@@ -416,8 +416,8 @@ const AuthorityScenarioSimulator = () => {
 
     // Risk Level Helper
     const getRiskLevel = (score) => {
-        if (!score) return { label: "Unknown", color: "#64748b" };
-        if (score > 0.7) return { label: "CRITICAL", color: "#dc2626" }; // Red
+        if (!score) return { label: "Unknown", color: "var(--text-muted)" };
+        if (score > 0.7) return { label: "CRITICAL", color: "var(--color-danger-500)" }; // Red
         if (score > 0.5) return { label: "WARNING", color: "#d97706" }; // Orange
         return { label: "SAFE", color: "#16a34a" }; // Green
     };
@@ -427,19 +427,24 @@ const AuthorityScenarioSimulator = () => {
             {/* Header */}
             <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                    <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: 12 }}>
-                        <Navigation className="text-blue-600" size={32} />
+                    <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{
+                          padding: 8, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+                          background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+                        }}>
+                          <Navigation size={24} color="#fff" />
+                        </div>
                         Live Scenario Simulator
                     </h1>
-                    <p style={{ color: "#64748b" }}>
+                    <p style={{ color: "var(--text-muted)" }}>
                         Digital Twin Simulation powered by ML & Real-time Telemetry.
                     </p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                    <div style={{ padding: "8px 16px", background: "#f1f5f9", borderRadius: 8, fontSize: 13, color: "#475569" }}>
+                    <div style={{ padding: "8px 16px", background: "var(--bg-subtle)", borderRadius: 8, fontSize: "var(--text-sm)", color: "var(--text-secondary)" }}>
                          Model: <strong>XGBoost-Hybrid</strong>
                     </div>
-                    <div style={{ padding: "8px 16px", background: "#e0e7ff", borderRadius: 8, fontSize: 13, color: "#3730a3" }}>
+                    <div style={{ padding: "8px 16px", background: "#e0e7ff", borderRadius: 8, fontSize: "var(--text-sm)", color: "#3730a3" }}>
                          Latency: <strong>~20ms</strong>
                     </div>
                 </div>
@@ -455,22 +460,22 @@ const AuthorityScenarioSimulator = () => {
                         <CardContent>
                              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                                 <div>
-                                    <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Speed (km/h)</label>
+                                    <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>Speed (km/h)</label>
                                     <Input type="number" {...register("speed")} />
                                 </div>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                                     <div>
-                                        <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Seated</label>
+                                        <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>Seated</label>
                                         <Input type="number" {...register("seated")} />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Standing</label>
+                                        <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>Standing</label>
                                         <Input type="number" {...register("standing")} />
                                     </div>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Road Condition</label>
-                                    <select {...register("weather")} style={{ width: "100%", height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+                                    <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>Road Condition</label>
+                                    <select {...register("weather")} style={{ width: "100%", height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid var(--border-light)" }}>
                                         <option value="dry">Dry Asphalt (Safe)</option>
                                         <option value="wet">Wet / Raining (Risk)</option>
                                     </select>
@@ -485,14 +490,14 @@ const AuthorityScenarioSimulator = () => {
                         <CardContent>
                              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                                 <div>
-                                    <label style={{ fontSize: 13, fontWeight: 500, color: "#64748b" }}>Select Real Bus</label>
+                                    <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>Select Real Bus</label>
                                     <select 
                                         value={selectedBus}
                                         onChange={(e) => {
                                             setSelectedBus(e.target.value);
                                             setValue("licensePlate", e.target.value);
                                         }}
-                                        style={{ width: "100%", height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid #e2e8f0" }}
+                                        style={{ width: "100%", height: 38, padding: "0 10px", borderRadius: 6, border: "1px solid var(--border-light)" }}
                                     >
                                         {buses.map(bus => (
                                             <option key={bus._id} value={bus.licensePlate}>
@@ -500,7 +505,7 @@ const AuthorityScenarioSimulator = () => {
                                             </option>
                                         ))}
                                     </select>
-                                    <p style={{fontSize: 11, color: "#94a3b8", marginTop: 4}}>
+                                    <p style={{fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 4}}>
                                         Safety data will be sent to this bus ID in the backend.
                                     </p>
                                 </div>
@@ -560,7 +565,7 @@ const AuthorityScenarioSimulator = () => {
                                          return (
                                              <div style={{ 
                                                  padding: 16, 
-                                                 borderRadius: 12, 
+                                                 borderRadius: "var(--radius-lg)", 
                                                  background: riskInfo.color, 
                                                  color: "#fff",
                                                  marginBottom: 16,
@@ -583,20 +588,20 @@ const AuthorityScenarioSimulator = () => {
                                      })()}
 
                                      {/* Stop Distance */}
-                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", border: "1px solid #e2e8f0", borderRadius: 8, marginBottom: 16 }}>
-                                         <span style={{ fontSize: 13, color: "#64748b" }}>Stopping Dist:</span>
+                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", border: "1px solid var(--border-light)", borderRadius: 8, marginBottom: 16 }}>
+                                         <span style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Stopping Dist:</span>
                                          <span style={{ fontWeight: 700, fontSize: 16 }}>{currentRisk.stopping_distance.toFixed(1)} m</span>
                                      </div>
 
                                      {/* PREDICTION LOOKAHEAD */}
                                      {futureRisk && (
-                                         <div style={{ background: "#f8fafc", padding: 12, borderRadius: 8, border: "1px dashed #94a3b8" }}>
+                                         <div style={{ background: "var(--bg-muted)", padding: 12, borderRadius: 8, border: "1px dashed #94a3b8" }}>
                                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                                                  <FastForward size={14} className="text-purple-600" />
-                                                 <span style={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>5-SEC FORECAST</span>
+                                                 <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>5-SEC FORECAST</span>
                                              </div>
                                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                                                 <span style={{ color: "#64748b" }}>Upcoming Risk:</span>
+                                                 <span style={{ color: "var(--text-muted)" }}>Upcoming Risk:</span>
                                                  <span style={{ 
                                                      fontWeight: 700, 
                                                      color: getRiskLevel(futureRisk.risk_score).color 
@@ -605,7 +610,7 @@ const AuthorityScenarioSimulator = () => {
                                                  </span>
                                              </div>
                                              {futureRisk.risk_score > currentRisk.risk_score && (
-                                                 <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4, fontStyle: "italic" }}>
+                                                 <div style={{ fontSize: "var(--text-xs)", color: "var(--color-danger-500)", marginTop: 4, fontStyle: "italic" }}>
                                                      ⚠️ Risk increasing ahead!
                                                  </div>
                                              )}
@@ -617,7 +622,7 @@ const AuthorityScenarioSimulator = () => {
                              {/* RISK CHART USAGE */}
                              {riskHistory.length > 0 && (
                                 <div style={{ marginTop: 20 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", mb: 8 }}>RISK TREND (Live)</div>
+                                    <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-muted)", mb: 8 }}>RISK TREND (Live)</div>
                                     <div style={{ height: 100, width: "100%" }}>
                                         <ResponsiveContainer>
                                             <AreaChart data={riskHistory}>
@@ -640,12 +645,12 @@ const AuthorityScenarioSimulator = () => {
                              {/* INCIDENT LOG */}
                              {incidentLog.length > 0 && (
                                  <div style={{ marginTop: 20, maxHeight: 150, overflowY: "auto", borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
-                                     <div style={{ fontSize: 12, fontWeight: 700, color: "#dc2626", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                                     <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-danger-500)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
                                          <AlertTriangle size={12} />
                                          INCIDENT LOG
                                      </div>
                                      {incidentLog.map((log, i) => (
-                                         <div key={i} style={{ fontSize: 11, padding: "6px", background: "#fef2f2", marginBottom: 4, borderRadius: 4, borderLeft: "3px solid #dc2626" }}>
+                                         <div key={i} style={{ fontSize: 11, padding: "6px", background: "var(--color-danger-50)", marginBottom: 4, borderRadius: 4, borderLeft: "3px solid #dc2626" }}>
                                              <div style={{ fontWeight: 600 }}>{log.time} - {log.message}</div>
                                              <div style={{ color: "#7f1d1d" }}>{log.details}</div>
                                          </div>
@@ -659,11 +664,11 @@ const AuthorityScenarioSimulator = () => {
 
                 {/* RIGHT: MAP */}
                 <Card style={{ height: "calc(100vh - 100px)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                     <CardHeader style={{ padding: "12px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                     <CardHeader style={{ padding: "12px 20px", background: "var(--bg-muted)", borderBottom: "1px solid #e2e8f0" }}>
                          <div style={{ display: "flex", gap: 12 }}>
                              <form onSubmit={handleSearch} style={{ flex: 1, display: "flex", gap: 8 }}>
                                  <div style={{ position: "relative", flex: 1 }}>
-                                     <Search size={16} style={{ position: "absolute", left: 10, top: 10, color: "#94a3b8" }} />
+                                     <Search size={16} style={{ position: "absolute", left: 10, top: 10, color: "var(--text-muted)" }} />
                                      <Input 
                                         placeholder="Search location (e.g. Kandy)" 
                                         value={searchQuery}

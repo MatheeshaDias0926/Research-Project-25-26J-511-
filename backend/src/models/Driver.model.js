@@ -22,6 +22,14 @@ const driverSchema = new mongoose.Schema(
             ref: "Bus",
             default: null,
         },
+
+        // ── Per-driver driving rules (admin-configurable) ──
+        drivingRules: {
+            maxContinuousDrivingMinutes: { type: Number, default: 360 },  // 6 hours
+            maxDailyDrivingMinutes: { type: Number, default: 480 },       // 8 hours
+            requiredRestMinutes: { type: Number, default: 360 },          // 6 hours rest after max continuous driving
+            cooldownMinutes: { type: Number, default: 0 },               // extra cooldown after rest before next drive (0 = none)
+        },
     },
     { timestamps: true }
 );

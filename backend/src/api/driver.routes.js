@@ -293,12 +293,41 @@ router.post("/face-delete", protect, authorize("authority", "admin"), async (req
     }
 });
 
+// @desc    Update driver driving rules (max continuous, daily, rest, cooldown)
+// @route   PUT /api/driver/:id/driving-rules
+// @access  Private (Admin/Authority)
+router.put("/:id/driving-rules", protect, authorize("authority", "admin"), async (req, res) => {
+    try {
+        const driver = await Driver.findById(req.params.id);
+        if (!driver) {
+            return res.status(404).json({ message: "Driver not found" });
+        }
+
+        const { maxContinuousDrivingMinutes, maxDailyDrivingMinutes, requiredRestMinutes, cooldownMinutes } = req.body;
+
+        if (!driver.drivingRules) {
+            driver.drivingRules = {};
+        }
+
+        if (maxContinuousDrivingMinutes != null) driver.drivingRules.maxContinuousDrivingMinutes = maxContinuousDrivingMinutes;
+        if (maxDailyDrivingMinutes != null) driver.drivingRules.maxDailyDrivingMinutes = maxDailyDrivingMinutes;
+        if (requiredRestMinutes != null) driver.drivingRules.requiredRestMinutes = requiredRestMinutes;
+        if (cooldownMinutes != null) driver.drivingRules.cooldownMinutes = cooldownMinutes;
+
+        await driver.save();
+        res.json({ ok: true, drivingRules: driver.drivingRules });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
 // @desc    Update driver details (excluding photo/encoding re-calc for simplicity, unless photo provided)
 // @route   PUT /api/driver/:id
 // @access  Private (Authority)
 router.put("/:id", protect, authorize("authority", "admin"), upload.single("photo"), async (req, res) => {
     try {
-        const { name, licenseNumber, contactNumber } = req.body;
+        const { name, licenseNumber, contactNumber, drivingRules } = req.body;
         const driver = await Driver.findById(req.params.id);
 
         if (!driver) {
@@ -308,6 +337,19 @@ router.put("/:id", protect, authorize("authority", "admin"), upload.single("phot
         const oldLicense = driver.licenseNumber;
         const nameChanged = name && name !== driver.name;
         const licenseChanged = licenseNumber && licenseNumber !== driver.licenseNumber;
+
+        driver.name = name || driver.name;
+        driver.licenseNumber = licenseNumber || driver.licenseNumber;
+        driver.contactNumber = contactNumber || driver.contactNumber;
+
+        // Update driving rules if provided
+        if (drivingRules && typeof drivingRules === "object") {
+            if (!driver.drivingRules) driver.drivingRules = {};
+            if (drivingRules.maxContinuousDrivingMinutes != null) driver.drivingRules.maxContinuousDrivingMinutes = drivingRules.maxContinuousDrivingMinutes;
+            if (drivingRules.maxDailyDrivingMinutes != null) driver.drivingRules.maxDailyDrivingMinutes = drivingRules.maxDailyDrivingMinutes;
+            if (drivingRules.requiredRestMinutes != null) driver.drivingRules.requiredRestMinutes = drivingRules.requiredRestMinutes;
+            if (drivingRules.cooldownMinutes != null) driver.drivingRules.cooldownMinutes = drivingRules.cooldownMinutes;
+        }
 
         driver.name = name || driver.name;
         driver.licenseNumber = licenseNumber || driver.licenseNumber;

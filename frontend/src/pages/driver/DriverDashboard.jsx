@@ -59,17 +59,25 @@ const DriverDashboard = () => {
 
   const cardStyle = {
     background: "#fff",
-    border: "1px solid #e2e8f0",
-    borderRadius: 12,
+    border: "1px solid var(--border-light)",
+    borderRadius: "var(--radius-lg)",
     padding: 20,
     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
   };
 
   return (
     <div style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, display: "flex", alignItems: "center", gap: 8 }}>
-        <LayoutDashboard size={28} /> Driver Dashboard
-      </h1>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: 24 }}>
+        <div style={{
+          padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+          background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+        }}>
+          <LayoutDashboard size={24} color="#fff" />
+        </div>
+        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700 }}>
+          Driver Dashboard
+        </h1>
+      </div>
 
       {/* Status Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 32 }}>
@@ -77,7 +85,7 @@ const DriverDashboard = () => {
         <div style={{ ...cardStyle, borderLeft: "4px solid #0284c7" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Today's Driving</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: 4 }}>Today's Driving</p>
               <p style={{ fontSize: 28, fontWeight: 700 }}>{formatMinutes(attendance?.totalDrivingMinutes)}</p>
             </div>
             <Clock size={32} color="#0284c7" />
@@ -88,14 +96,14 @@ const DriverDashboard = () => {
         <div style={{ ...cardStyle, borderLeft: "4px solid #f59e0b" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Continuous Driving</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: 4 }}>Continuous Driving</p>
               <p style={{ fontSize: 28, fontWeight: 700 }}>{formatMinutes(attendance?.continuousDrivingMinutes)}</p>
-              <p style={{ fontSize: 12, color: "#94a3b8" }}>Max: 5h before cooldown</p>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Max: 5h before cooldown</p>
             </div>
             <Timer size={32} color="#f59e0b" />
           </div>
           {/* Progress bar */}
-          <div style={{ marginTop: 12, background: "#f1f5f9", borderRadius: 4, height: 8, overflow: "hidden" }}>
+          <div style={{ marginTop: 12, background: "var(--bg-subtle)", borderRadius: 4, height: 8, overflow: "hidden" }}>
             <div style={{
               width: `${Math.min(100, ((attendance?.continuousDrivingMinutes || 0) / 300) * 100)}%`,
               height: "100%",
@@ -110,14 +118,14 @@ const DriverDashboard = () => {
         <div style={{ ...cardStyle, borderLeft: cooldown?.inCooldown ? "4px solid #ef4444" : "4px solid #22c55e" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Status</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: 4 }}>Status</p>
               {cooldown?.inCooldown ? (
                 <>
                   <p style={{ fontSize: 22, fontWeight: 700, color: "#ef4444" }}>COOLDOWN</p>
-                  <p style={{ fontSize: 13, color: "#64748b" }}>{cooldown.remainingMinutes} min remaining</p>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>{cooldown.remainingMinutes} min remaining</p>
                 </>
               ) : (
-                <p style={{ fontSize: 22, fontWeight: 700, color: "#22c55e" }}>ACTIVE</p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: "var(--color-success-500)" }}>ACTIVE</p>
               )}
             </div>
             <AlertTriangle size={32} color={cooldown?.inCooldown ? "#ef4444" : "#22c55e"} />
@@ -128,9 +136,9 @@ const DriverDashboard = () => {
         <div style={{ ...cardStyle, borderLeft: "4px solid #8b5cf6" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Face Check-ins</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: 4 }}>Face Check-ins</p>
               <p style={{ fontSize: 28, fontWeight: 700 }}>{attendance?.checkIns?.length || 0}</p>
-              <p style={{ fontSize: 12, color: "#94a3b8" }}>Verified every 5 min</p>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Verified every 5 min</p>
             </div>
             <Siren size={32} color="#8b5cf6" />
           </div>
@@ -145,25 +153,25 @@ const DriverDashboard = () => {
         <div style={cardStyle}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b" }}>License Plate</p>
-              <p style={{ fontSize: 16, fontWeight: 600 }}>{busInfo.licensePlate}</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>License Plate</p>
+              <p style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>{busInfo.licensePlate}</p>
             </div>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b" }}>Route</p>
-              <p style={{ fontSize: 16, fontWeight: 600 }}>{busInfo.routeId}</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Route</p>
+              <p style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>{busInfo.routeId}</p>
             </div>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b" }}>Conductor</p>
-              <p style={{ fontSize: 16, fontWeight: 600 }}>{busInfo.assignedConductor?.username || "Not assigned"}</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Conductor</p>
+              <p style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>{busInfo.assignedConductor?.username || "Not assigned"}</p>
             </div>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b" }}>Edge Device</p>
-              <p style={{ fontSize: 16, fontWeight: 600 }}>{busInfo.assignedEdgeDevice?.name || "Not assigned"}</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Edge Device</p>
+              <p style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>{busInfo.assignedEdgeDevice?.name || "Not assigned"}</p>
             </div>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b" }}>Status</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Status</p>
               <span style={{
-                padding: "4px 12px", borderRadius: 12, fontSize: 13, fontWeight: 500,
+                padding: "4px 12px", borderRadius: "var(--radius-lg)", fontSize: "var(--text-sm)", fontWeight: 500,
                 background: busInfo.status === "active" ? "#dcfce7" : "#fee2e2",
                 color: busInfo.status === "active" ? "#166534" : "#991b1b",
               }}>
@@ -173,7 +181,7 @@ const DriverDashboard = () => {
           </div>
         </div>
       ) : (
-        <div style={{ ...cardStyle, textAlign: "center", color: "#94a3b8", padding: 32 }}>
+        <div style={{ ...cardStyle, textAlign: "center", color: "var(--text-muted)", padding: 32 }}>
           <Bus size={40} style={{ margin: "0 auto 12px" }} />
           <p>No bus assigned to you yet. Contact admin.</p>
         </div>

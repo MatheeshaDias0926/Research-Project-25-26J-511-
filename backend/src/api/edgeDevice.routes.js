@@ -174,16 +174,51 @@ router.get("/driver-sessions", protect, async (req, res) => {
                 drivingLimits = {
                     maxContinuousDriving: edgeDevice.config.maxContinuousDriving,
                     maxDailyDriving: edgeDevice.config.maxDailyDriving,
+                    requiredRest: edgeDevice.config.minRestDuration,
                     minRestDuration: edgeDevice.config.minRestDuration,
                     restTimeout: edgeDevice.config.restTimeout,
                 };
             }
         }
 
-        // Calculate current continuous driving time (from current session start)
+        // Per-driver rules override device defaults (also provides limits when no active session)
+        if (driver.drivingRules) {
+            if (!drivingLimits) drivingLimits = {};
+            drivingLimits.maxContinuousDriving = driver.drivingRules.maxContinuousDrivingMinutes ?? drivingLimits?.maxContinuousDriving;
+            drivingLimits.maxDailyDriving = driver.drivingRules.maxDailyDrivingMinutes ?? drivingLimits?.maxDailyDriving;
+            drivingLimits.requiredRest = driver.drivingRules.requiredRestMinutes ?? drivingLimits?.requiredRest;
+            drivingLimits.minRestDuration = driver.drivingRules.requiredRestMinutes ?? drivingLimits?.minRestDuration;
+            drivingLimits.cooldown = driver.drivingRules.cooldownMinutes;
+        }
+
+        // Calculate current continuous driving time (cross-day aware)
+        // Walk recent sessions backward to find true continuous block
         let continuousDrivingMinutes = 0;
         if (currentSession) {
-            continuousDrivingMinutes = Math.round((new Date() - new Date(currentSession.sessionStart)) / 60000);
+            const lookback = new Date(Date.now() - 48 * 60 * 60 * 1000);
+            const allRecent = await DriverSession.find({
+                $or: [
+                    { driverRef: driver._id },
+                    { driverId: driver.licenseNumber },
+                ],
+                verified: true,
+                sessionStart: { $gte: lookback },
+            }).sort({ sessionStart: -1 }).lean();
+
+            const requiredRestMs = (driver.drivingRules?.requiredRestMinutes || 360) * 60 * 1000;
+            let blockEnd = new Date();
+            let blockStart = new Date(allRecent[0]?.sessionStart || Date.now());
+
+            for (let i = 1; i < allRecent.length; i++) {
+                const prevEnd = allRecent[i].sessionEnd
+                    ? new Date(allRecent[i].sessionEnd)
+                    : new Date();
+                const gap = new Date(allRecent[i - 1].sessionStart) - prevEnd;
+                if (gap >= requiredRestMs) break;
+                blockStart = new Date(allRecent[i].sessionStart);
+            }
+
+            continuousDrivingMinutes = Math.round((blockEnd - blockStart) / 60000);
         }
 
         res.json({
@@ -338,13 +373,113 @@ router.post("/heartbeat", authenticateDevice, async (req, res) => {
         device.pendingCommands = [];
         await device.save();
 
+        // ── Build driver-specific rules if a verified driver is reported ──
+        let driverRules = null;
+        let serverDrivingHistory = null;
+        const { verifiedDriverId, verifiedDriver, alertnessScore, alertnessLevel } = req.body;
+
+        if (verifiedDriverId) {
+            const driverDoc = await Driver.findOne({ licenseNumber: verifiedDriverId });
+            if (driverDoc && driverDoc.drivingRules) {
+                driverRules = {
+                    maxContinuousDrivingMinutes: driverDoc.drivingRules.maxContinuousDrivingMinutes,
+                    maxDailyDrivingMinutes: driverDoc.drivingRules.maxDailyDrivingMinutes,
+                    requiredRestMinutes: driverDoc.drivingRules.requiredRestMinutes,
+                    cooldownMinutes: driverDoc.drivingRules.cooldownMinutes,
+                };
+            }
+
+            // ── Compute server-side driving history for this driver ──
+            // Look back 48 hours to cover cross-day scenarios
+            const lookback = new Date(Date.now() - 48 * 60 * 60 * 1000);
+            const recentSessions = await DriverSession.find({
+                $or: [
+                    { driverId: verifiedDriverId },
+                    { driverRef: driverDoc?._id },
+                ],
+                verified: true,
+                sessionStart: { $gte: lookback },
+            }).sort({ sessionStart: -1 }).lean();
+
+            // Calculate daily driving (since midnight)
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            let totalDailyDrivingMs = 0;
+            for (const s of recentSessions) {
+                const start = new Date(s.sessionStart);
+                if (start < todayStart) continue;
+                const end = s.sessionEnd ? new Date(s.sessionEnd) : new Date();
+                totalDailyDrivingMs += end - start;
+            }
+
+            // Find last rest period: gap between sessions
+            let lastRestEndTime = null;
+            let lastRestDurationMs = 0;
+            let continuousDrivingMs = 0;
+
+            if (recentSessions.length > 0) {
+                // Walk sessions newest→oldest to find continuous driving block
+                // A "rest" is a gap >= requiredRestMinutes between sessions
+                const requiredRestMs = (driverRules?.requiredRestMinutes || 360) * 60 * 1000;
+
+                let blockEnd = recentSessions[0].sessionEnd
+                    ? new Date(recentSessions[0].sessionEnd)
+                    : new Date();
+                let blockStart = new Date(recentSessions[0].sessionStart);
+
+                for (let i = 1; i < recentSessions.length; i++) {
+                    const prevEnd = recentSessions[i].sessionEnd
+                        ? new Date(recentSessions[i].sessionEnd)
+                        : new Date();
+                    const gap = new Date(recentSessions[i - 1].sessionStart) - prevEnd;
+
+                    if (gap >= requiredRestMs) {
+                        // Found a valid rest — stop accumulating
+                        lastRestEndTime = new Date(recentSessions[i - 1].sessionStart);
+                        lastRestDurationMs = gap;
+                        break;
+                    }
+                    // Gap is too short — still part of continuous driving block
+                    blockStart = new Date(recentSessions[i].sessionStart);
+                }
+
+                continuousDrivingMs = blockEnd - blockStart;
+            }
+
+            serverDrivingHistory = {
+                totalDailyDrivingMinutes: Math.round(totalDailyDrivingMs / 60000),
+                continuousDrivingMinutes: Math.round(continuousDrivingMs / 60000),
+                lastRestDurationMinutes: Math.round(lastRestDurationMs / 60000),
+                lastRestEndTime: lastRestEndTime?.toISOString() || null,
+                sessionCount: recentSessions.length,
+            };
+        }
+
+        // Update alertness on current open session
+        if (alertnessScore != null) {
+            const currentSession = await DriverSession.findOne({
+                deviceId: device.deviceId,
+                sessionEnd: null,
+            }).sort({ createdAt: -1 });
+            if (currentSession) {
+                currentSession.alertnessScore = alertnessScore;
+                if (alertnessScore >= 75) currentSession.alertnessLevel = "ALERT";
+                else if (alertnessScore >= 40) currentSession.alertnessLevel = "TIRED";
+                else currentSession.alertnessLevel = "DANGER";
+                await currentSession.save();
+            }
+        }
+
         res.json({
             ok: true,
             deviceId: device.deviceId,
             config: device.config,
             commands,
+            driverRules,
+            serverDrivingHistory,
         });
     } catch (error) {
+        console.error("heartbeat error:", error);
         res.status(500).json({ message: "Server Error" });
     }
 });
@@ -452,8 +587,15 @@ router.post("/driver-alert", authenticateDevice, async (req, res) => {
             // Also log as ViolationLog so it shows in violation analytics
             if (device.assignedBus) {
                 try {
+                    let vlDriverRef = null;
+                    if (driverId) {
+                        const driverDoc = await Driver.findOne({ licenseNumber: driverId });
+                        if (driverDoc) vlDriverRef = driverDoc._id;
+                    }
                     await ViolationLog.create({
                         busId: device.assignedBus,
+                        driverRef: vlDriverRef,
+                        driverName: driverName || currentSession?.driverName || null,
                         violationType: eventType,
                         speed: 0,
                         gps: { lat: 0, lon: 0 },
@@ -486,54 +628,137 @@ router.post("/driving-status", authenticateDevice, async (req, res) => {
 
         const warnings = [];
 
-        // Check continuous driving limit
-        if (continuousDrivingMinutes != null && cfg.maxContinuousDriving > 0) {
-            if (continuousDrivingMinutes >= cfg.maxContinuousDriving) {
-                warnings.push(`Continuous driving limit reached (${cfg.maxContinuousDriving} min)`);
-                if (device.assignedBus) {
-                    try {
-                        await ViolationLog.create({
-                            busId: device.assignedBus,
-                            violationType: "driving_limit",
-                            speed: 0,
-                            gps: { lat: 0, lon: 0 },
-                        });
-                    } catch (vlErr) {
-                        console.error("ViolationLog driving_limit error:", vlErr.message);
-                    }
+        // ── Resolve driver-specific rules (fall back to device config) ──
+        let maxContinuous = cfg.maxContinuousDriving; // device default (minutes)
+        let maxDaily = cfg.maxDailyDriving;
+        let requiredRest = cfg.minRestDuration; // device default (minutes)
+        let cooldown = 0;
+
+        let driverDoc = null;
+        if (driverId) {
+            driverDoc = await Driver.findOne({ licenseNumber: driverId });
+            if (driverDoc?.drivingRules) {
+                maxContinuous = driverDoc.drivingRules.maxContinuousDrivingMinutes;
+                maxDaily = driverDoc.drivingRules.maxDailyDrivingMinutes;
+                requiredRest = driverDoc.drivingRules.requiredRestMinutes;
+                cooldown = driverDoc.drivingRules.cooldownMinutes || 0;
+            }
+        }
+
+        // ── Server-side cross-day validation using DriverSession records ──
+        const lookback = new Date(Date.now() - 48 * 60 * 60 * 1000);
+        const recentSessions = await DriverSession.find({
+            $or: [
+                { driverId },
+                { driverRef: driverDoc?._id },
+            ].filter(Boolean),
+            verified: true,
+            sessionStart: { $gte: lookback },
+        }).sort({ sessionStart: -1 }).lean();
+
+        // Calculate server-side continuous driving across day boundary
+        const requiredRestMs = requiredRest * 60 * 1000;
+        let serverContinuousDrivingMs = 0;
+        let lastValidRestFound = false;
+
+        if (recentSessions.length > 0) {
+            let blockEnd = recentSessions[0].sessionEnd
+                ? new Date(recentSessions[0].sessionEnd)
+                : new Date();
+            let blockStart = new Date(recentSessions[0].sessionStart);
+
+            for (let i = 1; i < recentSessions.length; i++) {
+                const prevEnd = recentSessions[i].sessionEnd
+                    ? new Date(recentSessions[i].sessionEnd)
+                    : new Date();
+                const gap = new Date(recentSessions[i - 1].sessionStart) - prevEnd;
+
+                if (gap >= requiredRestMs) {
+                    lastValidRestFound = true;
+                    break;
+                }
+                blockStart = new Date(recentSessions[i].sessionStart);
+            }
+
+            serverContinuousDrivingMs = blockEnd - blockStart;
+        }
+
+        const serverContinuousMin = Math.round(serverContinuousDrivingMs / 60000);
+
+        // Use the larger of client-reported and server-computed continuous driving
+        const effectiveContinuous = Math.max(continuousDrivingMinutes || 0, serverContinuousMin);
+
+        // Check continuous driving limit (cross-day aware)
+        if (maxContinuous > 0 && effectiveContinuous >= maxContinuous) {
+            warnings.push(`Continuous driving limit reached (${maxContinuous} min, actual: ${effectiveContinuous} min — cross-day tracked)`);
+            if (device.assignedBus) {
+                try {
+                    await ViolationLog.create({
+                        busId: device.assignedBus,
+                        driverRef: driverDoc?._id || null,
+                        driverName: driverName || null,
+                        violationType: "driving_limit",
+                        speed: 0,
+                        gps: { lat: 0, lon: 0 },
+                    });
+                } catch (vlErr) {
+                    console.error("ViolationLog driving_limit error:", vlErr.message);
                 }
             }
         }
 
         // Check daily driving limit
-        if (totalDailyDrivingMinutes != null && cfg.maxDailyDriving > 0) {
-            if (totalDailyDrivingMinutes >= cfg.maxDailyDriving) {
-                warnings.push(`Daily driving limit reached (${cfg.maxDailyDriving} min)`);
-                if (device.assignedBus) {
-                    try {
-                        await ViolationLog.create({
-                            busId: device.assignedBus,
-                            violationType: "driving_limit",
-                            speed: 0,
-                            gps: { lat: 0, lon: 0 },
-                        });
-                    } catch (vlErr) {
-                        console.error("ViolationLog daily_limit error:", vlErr.message);
-                    }
+        // Calculate server-side daily total
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        let serverDailyMs = 0;
+        for (const s of recentSessions) {
+            const start = new Date(s.sessionStart);
+            if (start < todayStart) continue;
+            const end = s.sessionEnd ? new Date(s.sessionEnd) : new Date();
+            serverDailyMs += end - start;
+        }
+        const serverDailyMin = Math.round(serverDailyMs / 60000);
+        const effectiveDaily = Math.max(totalDailyDrivingMinutes || 0, serverDailyMin);
+
+        if (maxDaily > 0 && effectiveDaily >= maxDaily) {
+            warnings.push(`Daily driving limit reached (${maxDaily} min, actual: ${effectiveDaily} min)`);
+            if (device.assignedBus) {
+                try {
+                    await ViolationLog.create({
+                        busId: device.assignedBus,
+                        driverRef: driverDoc?._id || null,
+                        driverName: driverName || null,
+                        violationType: "driving_limit",
+                        speed: 0,
+                        gps: { lat: 0, lon: 0 },
+                    });
+                } catch (vlErr) {
+                    console.error("ViolationLog daily_limit error:", vlErr.message);
                 }
             }
         }
 
-        console.log(`[EdgeDevice ${device.deviceId}] Driving status: state=${state}, continuous=${continuousDrivingMinutes}min, daily=${totalDailyDrivingMinutes}min, warnings=${warnings.length}`);
+        // Check cooldown: if driver just finished max continuous, did they rest enough?
+        if (cooldown > 0 && lastValidRestFound === false && serverContinuousMin >= maxContinuous) {
+            warnings.push(`Cooldown period not met — driver needs ${cooldown} min rest before next drive`);
+        }
+
+        console.log(`[EdgeDevice ${device.deviceId}] Driving status: state=${state}, continuous=${effectiveContinuous}min(server:${serverContinuousMin}), daily=${effectiveDaily}min(server:${serverDailyMin}), warnings=${warnings.length}`);
 
         res.json({
             ok: true,
             warnings,
             limits: {
-                maxContinuousDriving: cfg.maxContinuousDriving,
-                maxDailyDriving: cfg.maxDailyDriving,
-                minRestDuration: cfg.minRestDuration,
+                maxContinuousDriving: maxContinuous,
+                maxDailyDriving: maxDaily,
+                requiredRest,
+                cooldown,
                 restTimeout: cfg.restTimeout,
+            },
+            serverDrivingHistory: {
+                continuousDrivingMinutes: serverContinuousMin,
+                totalDailyDrivingMinutes: serverDailyMin,
             },
         });
     } catch (error) {

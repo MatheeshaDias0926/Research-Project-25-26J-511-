@@ -35,30 +35,28 @@ const TABS = [
 ];
 
 const tabStyle = (active) => ({
-  padding: "10px 20px",
-  fontSize: 14,
+  padding: "var(--space-3) var(--space-5)",
+  fontSize: "var(--text-sm)",
   fontWeight: active ? 600 : 500,
-  color: active ? "#0284c7" : "#64748b",
-  borderBottom: active ? "2px solid #0284c7" : "2px solid transparent",
-  background: "none",
+  color: active ? "var(--color-primary-600)" : "var(--text-muted)",
+  background: active ? "var(--color-primary-50)" : "transparent",
   border: "none",
-  borderBottomWidth: 2,
-  borderBottomStyle: "solid",
-  borderBottomColor: active ? "#0284c7" : "transparent",
+  borderRadius: "var(--radius-md)",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   gap: 8,
+  transition: "var(--transition-fast)",
 });
 
 const inputStyle = {
-  padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 14, outline: "none", width: "100%",
+  padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-light)", fontSize: "var(--text-sm)", outline: "none", width: "100%",
 };
 const selectStyle = {
-  padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 14, outline: "none", width: "100%",
+  padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-light)", fontSize: "var(--text-sm)", outline: "none", width: "100%",
 };
-const thStyle = { padding: 12, fontSize: 12, color: "#64748b", textTransform: "uppercase", fontWeight: 600 };
-const tdStyle = { padding: 12, fontSize: 14 };
+const thStyle = { padding: "var(--space-3)", fontSize: "var(--text-xs)", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em" };
+const tdStyle = { padding: "var(--space-3)", fontSize: "var(--text-sm)" };
 
 // ═══════════════════════════════════════════════════════════════
 // OVERVIEW TAB
@@ -130,9 +128,9 @@ const OverviewTab = ({ user }) => {
   if (!user?.assignedBus) {
     return (
       <div style={{ textAlign: "center", padding: 48 }}>
-        <Bus style={{ height: 48, width: 48, margin: "0 auto 16px", color: "#94a3b8" }} />
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#334155" }}>No Bus Assigned</h2>
-        <p style={{ color: "#64748b" }}>Please contact the authority to assign a bus to your account.</p>
+        <Bus style={{ height: 48, width: 48, margin: "0 auto 16px", color: "var(--text-muted)" }} />
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-secondary)" }}>No Bus Assigned</h2>
+        <p style={{ color: "var(--text-muted)" }}>Please contact the authority to assign a bus to your account.</p>
       </div>
     );
   }
@@ -142,8 +140,8 @@ const OverviewTab = ({ user }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ color: "#64748b" }}>Real-time overview of your assigned bus.</p>
-        <Button variant="outline" onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: 6, color: "#2563eb", borderColor: "#bfdbfe", background: "#eff6ff" }}>
+        <p style={{ color: "var(--text-muted)" }}>Real-time overview of your assigned bus.</p>
+        <Button variant="outline" onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--color-primary-600)", borderColor: "var(--color-primary-100)", background: "var(--color-primary-50)" }}>
           <RefreshCw size={16} /> Refresh
         </Button>
       </div>
@@ -159,27 +157,27 @@ const OverviewTab = ({ user }) => {
               <h2 style={{ fontSize: 32, fontWeight: 700, display: "flex", alignItems: "baseline", gap: 12 }}>
                 {myBus?.licensePlate || user.assignedBus.licensePlate}
                 {locationName && (
-                  <span style={{ fontSize: 18, fontWeight: 400, color: "#94a3b8", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 18, fontWeight: 400, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
                     <MapPin size={16} /> {locationName}
                   </span>
                 )}
               </h2>
-              <p style={{ color: "#94a3b8", fontSize: 18 }}>Route {myBus?.routeId || user.assignedBus.routeId}</p>
+              <p style={{ color: "var(--text-muted)", fontSize: 18 }}>Route {myBus?.routeId || user.assignedBus.routeId}</p>
             </div>
           </div>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
-              <p style={{ fontSize: 14, color: "#94a3b8" }}>Speed</p>
+            <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: "var(--radius-lg)" }}>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Speed</p>
               <p style={{ fontSize: 20, fontWeight: 700 }}>{myBus?.currentStatus?.speed || 0} km/h</p>
             </div>
-            <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
-              <p style={{ fontSize: 14, color: "#94a3b8" }}>Passengers</p>
+            <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: "var(--radius-lg)" }}>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Passengers</p>
               <p style={{ fontSize: 20, fontWeight: 700 }}>
-                {myBus?.currentStatus?.currentOccupancy || 0} <span style={{ fontSize: 14, color: "#94a3b8" }}>/ {myBus?.capacity || 55}</span>
+                {myBus?.currentStatus?.currentOccupancy || 0} <span style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>/ {myBus?.capacity || 55}</span>
               </p>
             </div>
-            <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
-              <p style={{ fontSize: 14, color: "#94a3b8" }}>Status</p>
+            <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: "var(--radius-lg)" }}>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Status</p>
               <Badge variant={myBus?.currentStatus ? "success" : "secondary"}>
                 {myBus?.currentStatus ? "Active" : "Inactive"}
               </Badge>
@@ -192,30 +190,30 @@ const OverviewTab = ({ user }) => {
         {/* Assigned Driver Details */}
         <Card>
           <CardContent style={{ padding: 24 }}>
-            <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-              <User size={20} color="#2563eb" /> Assigned Driver
+            <h3 style={{ fontWeight: 600, fontSize: "var(--text-lg)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
+              <User size={20} color="var(--color-primary-500)" /> Assigned Driver
             </h3>
             {driverInfo ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748b" }}>Name</span>
+                  <span style={{ color: "var(--text-muted)" }}>Name</span>
                   <span style={{ fontWeight: 600 }}>{driverInfo.name}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748b" }}>License</span>
+                  <span style={{ color: "var(--text-muted)" }}>License</span>
                   <span>{driverInfo.licenseNumber}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748b" }}>Contact</span>
+                  <span style={{ color: "var(--text-muted)" }}>Contact</span>
                   <span>{driverInfo.contactNumber || "—"}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748b" }}>Status</span>
+                  <span style={{ color: "var(--text-muted)" }}>Status</span>
                   <Badge variant={driverInfo.status === "active" ? "success" : "secondary"}>{driverInfo.status}</Badge>
                 </div>
               </div>
             ) : (
-              <p style={{ color: "#94a3b8" }}>No driver assigned to this bus.</p>
+              <p style={{ color: "var(--text-muted)" }}>No driver assigned to this bus.</p>
             )}
           </CardContent>
         </Card>
@@ -223,22 +221,22 @@ const OverviewTab = ({ user }) => {
         {/* Recent Alerts */}
         <Card>
           <CardContent style={{ padding: 24 }}>
-            <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-              <AlertTriangle size={20} color="#f59e42" /> Recent Alerts
+            <h3 style={{ fontWeight: 600, fontSize: "var(--text-lg)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
+              <AlertTriangle size={20} color="var(--color-warning-500)" /> Recent Alerts
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {violations.length === 0 ? (
-                <div style={{ padding: 12, background: "#f0fdf4", color: "#15803d", borderRadius: 8, fontSize: 14, fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ height: 8, width: 8, borderRadius: 9999, background: "#22c55e" }} />
+                <div style={{ padding: 12, background: "var(--color-success-50)", color: "#15803d", borderRadius: 8, fontSize: "var(--text-sm)", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ height: 8, width: 8, borderRadius: "var(--radius-full)", background: "#22c55e" }} />
                   No active violations or alerts.
                 </div>
               ) : violations.map(v => (
-                <div key={v._id} style={{ padding: 12, background: "#fef2f2", borderRadius: 8, border: "1px solid #fee2e2" }}>
+                <div key={v._id} style={{ padding: 12, background: "var(--color-danger-50)", borderRadius: 8, border: "1px solid #fee2e2" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ color: "#dc2626", fontWeight: 600, fontSize: 14 }}>{v.violationType}</span>
-                    <span style={{ fontSize: 12, color: "#94a3b8" }}>{new Date(v.createdAt).toLocaleTimeString()}</span>
+                    <span style={{ color: "var(--color-danger-500)", fontWeight: 600, fontSize: 14 }}>{v.violationType}</span>
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{new Date(v.createdAt).toLocaleTimeString()}</span>
                   </div>
-                  <p style={{ fontSize: 13, color: "#64748b" }}>Speed: {v.speed || 0} km/h</p>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Speed: {v.speed || 0} km/h</p>
                 </div>
               ))}
             </div>
@@ -249,8 +247,8 @@ const OverviewTab = ({ user }) => {
       {/* Map */}
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 24px" }}>
-          <h3 style={{ fontWeight: 600, fontSize: 18, display: "flex", alignItems: "center", gap: 8 }}>
-            <MapPin size={20} color="#2563eb" /> Live Location
+            <h3 style={{ fontWeight: 600, fontSize: "var(--text-lg)", display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
+              <MapPin size={20} color="var(--color-primary-500)" /> Live Location
           </h3>
         </div>
         <div style={{ height: 350 }}>
@@ -260,8 +258,8 @@ const OverviewTab = ({ user }) => {
             <RecenterMap position={busLocation} />
           </MapContainer>
         </div>
-        <div style={{ padding: 12, background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-          <span style={{ color: "#64748b" }}>Updated: {lastUpdated.toLocaleTimeString()}</span>
+        <div style={{ padding: 12, background: "var(--bg-muted)", borderTop: "1px solid var(--border-light)", display: "flex", justifyContent: "space-between", fontSize: "var(--text-xs)" }}>
+          <span style={{ color: "var(--text-muted)" }}>Updated: {lastUpdated.toLocaleTimeString()}</span>
           <Badge variant="success">Signal: Strong</Badge>
         </div>
       </Card>
@@ -322,7 +320,7 @@ const MaintenanceTab = ({ user }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ color: "#64748b" }}>Request maintenance and track status.</p>
+        <p style={{ color: "var(--text-muted)" }}>Request maintenance and track status.</p>
         <Button onClick={() => setIsAdding(!isAdding)} style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <Wrench size={16} /> {isAdding ? "Cancel" : "Request Maintenance"}
         </Button>
@@ -331,19 +329,19 @@ const MaintenanceTab = ({ user }) => {
       {message && <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8 }}>{message}</div>}
 
       {isAdding && (
-        <Card style={{ border: "1px solid #bae6fd", background: "#f0f9ff" }}>
+        <Card style={{ border: "1px solid #bae6fd", background: "var(--color-info-50)" }}>
           <CardContent style={{ padding: 20 }}>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Issue *</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Issue *</label>
                 <input style={inputStyle} value={form.issue} onChange={e => setForm(p => ({ ...p, issue: e.target.value }))} placeholder="e.g. Engine overheating" required />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Description</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Description</label>
                 <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Additional details..." />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Priority</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Priority</label>
                 <select style={selectStyle} value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}>
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -362,11 +360,11 @@ const MaintenanceTab = ({ user }) => {
           {loading ? (
             <div style={{ textAlign: "center", padding: 32 }}>Loading history...</div>
           ) : logs.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 32, color: "#94a3b8" }}>No maintenance requests yet.</div>
+            <div style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>No maintenance requests yet.</div>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
-                <thead style={{ background: "#f8fafc" }}>
+                <thead style={{ background: "var(--bg-muted)" }}>
                   <tr>
                     <th style={thStyle}>Date</th>
                     <th style={thStyle}>Bus</th>
@@ -408,8 +406,16 @@ const ConductorPanel = () => {
   const activeTab = location.pathname === "/conductor/maintenance" ? "maintenance" : "overview";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b" }}>Conductor Panel</h1>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)", maxWidth: 1200, margin: "0 auto", animation: "fadeIn 0.3s ease-out" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <div style={{
+          padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+          background: "linear-gradient(135deg, var(--color-warning-500), #f59e0b)",
+        }}>
+          <Bus size={24} color="#fff" />
+        </div>
+        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>Conductor Panel</h1>
+      </div>
 
       <div>
         {activeTab === "overview" ? <OverviewTab user={user} /> : <MaintenanceTab user={user} />}

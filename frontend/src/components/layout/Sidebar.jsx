@@ -1,5 +1,4 @@
 import { Link, useLocation } from "react-router-dom";
-import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 import {
   LayoutDashboard,
@@ -14,6 +13,7 @@ import {
   Wrench,
   FileWarning,
   Scan,
+  ChevronRight,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -26,99 +26,44 @@ const Sidebar = () => {
 
   const links = [
     // Passenger Links
-    {
-      name: "Dashboard",
-      href: "/passenger",
-      icon: LayoutDashboard,
-      roles: ["passenger"],
-    },
-    {
-      name: "Prediction",
-      href: "/passenger/prediction",
-      icon: Activity,
-      roles: ["passenger"],
-    },
-
+    { name: "Dashboard", href: "/passenger", icon: LayoutDashboard, roles: ["passenger"] },
+    { name: "Prediction", href: "/passenger/prediction", icon: Activity, roles: ["passenger"] },
     // Conductor Links
-    {
-      name: "Overview",
-      href: "/conductor",
-      icon: LayoutDashboard,
-      roles: ["conductor"],
-    },
-    {
-      name: "Maintenance",
-      href: "/conductor/maintenance",
-      icon: Wrench,
-      roles: ["conductor"],
-    },
-
+    { name: "Overview", href: "/conductor", icon: LayoutDashboard, roles: ["conductor"] },
+    { name: "Maintenance", href: "/conductor/maintenance", icon: Wrench, roles: ["conductor"] },
     // Driver Links
-    {
-      name: "Overview",
-      href: "/driver",
-      icon: LayoutDashboard,
-      roles: ["driver"],
-    },
-    {
-      name: "Maintenance",
-      href: "/driver/maintenance",
-      icon: Wrench,
-      roles: ["driver"],
-    },
-    {
-      name: "Alert Log",
-      href: "/driver/alerts",
-      icon: FileWarning,
-      roles: ["driver"],
-    },
-
+    { name: "Overview", href: "/driver", icon: LayoutDashboard, roles: ["driver"] },
+    { name: "Maintenance", href: "/driver/maintenance", icon: Wrench, roles: ["driver"] },
+    { name: "Alert Log", href: "/driver/alerts", icon: FileWarning, roles: ["driver"] },
     // Admin Links
-    {
-      name: "Overview",
-      href: "/admin",
-      icon: LayoutDashboard,
-      roles: ["authority", "admin"],
-    },
-    {
-      name: "Fleet Management",
-      href: "/admin/fleet",
-      icon: Bus,
-      roles: ["authority", "admin"],
-    },
-    {
-      name: "Bus Assignments",
-      href: "/admin/assignments",
-      icon: Link2,
-      roles: ["authority", "admin"],
-    },
-    {
-      name: "Employee Management",
-      href: "/admin/employees",
-      icon: Users,
-      roles: ["authority", "admin"],
-    },
-    {
-      name: "Edge Devices",
-      href: "/admin/edge-devices",
-      icon: Cpu,
-      roles: ["authority", "admin"],
-    },
-    {
-      name: "SOS Alerts",
-      href: "/admin/sos",
-      icon: Siren,
-      roles: ["authority", "admin"],
-    },
-    {
-      name: "Face Recognition",
-      href: "/admin/face-recognition",
-      icon: Scan,
-      roles: ["authority", "admin"],
-    },
+    { name: "Overview", href: "/admin", icon: LayoutDashboard, roles: ["authority", "admin"] },
+    { name: "Fleet Management", href: "/admin/fleet", icon: Bus, roles: ["authority", "admin"] },
+    { name: "Bus Assignments", href: "/admin/assignments", icon: Link2, roles: ["authority", "admin"] },
+    { name: "Employee Management", href: "/admin/employees", icon: Users, roles: ["authority", "admin"] },
+    { name: "Edge Devices", href: "/admin/edge-devices", icon: Cpu, roles: ["authority", "admin"] },
+    { name: "SOS Alerts", href: "/admin/sos", icon: Siren, roles: ["authority", "admin"] },
+    { name: "Face Recognition", href: "/admin/face-recognition", icon: Scan, roles: ["authority", "admin"] },
   ];
 
   const filteredLinks = links.filter((link) => link.roles.includes(role));
+
+  const linkStyle = (isActive) => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "10px 14px",
+    fontSize: "var(--text-sm)",
+    fontWeight: isActive ? 600 : 500,
+    borderRadius: "var(--radius-md)",
+    background: isActive
+      ? "linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700))"
+      : "transparent",
+    color: isActive ? "#fff" : "var(--sidebar-text)",
+    transition: "all var(--transition-base)",
+    cursor: "pointer",
+    position: "relative",
+    letterSpacing: "0.01em",
+  });
 
   return (
     <div
@@ -126,46 +71,58 @@ const Sidebar = () => {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        width: 256,
-        background: "#0f172a",
+        width: "var(--sidebar-width)",
+        minWidth: "var(--sidebar-width)",
+        background: "linear-gradient(180deg, #0f172a 0%, #0c1322 100%)",
         color: "#fff",
+        borderRight: "1px solid rgba(255,255,255,0.06)",
       }}
     >
-      <div style={{ padding: 24 }}>
-        <h1
-          style={{
-            fontSize: 20,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <Bus style={{ height: 24, width: 24, color: "#38bdf8" }} />
-          SmartBus
-        </h1>
-        <p
-          style={{
-            fontSize: 12,
-            color: "#94a3b8",
-            marginTop: 4,
-            textTransform: "capitalize",
-          }}
-        >
-          {role} Portal
-        </p>
+      {/* Logo */}
+      <div style={{ padding: "24px 20px 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: "var(--radius-lg)",
+              background: "linear-gradient(135deg, var(--color-primary-500), var(--color-info-600))",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 4px 12px rgba(59,130,246,0.3)",
+            }}
+          >
+            <Bus style={{ height: 20, width: 20, color: "#fff" }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: "var(--text-lg)", fontWeight: 700, color: "#fff", letterSpacing: "-0.02em" }}>
+              SmartBus
+            </h1>
+            <p style={{ fontSize: 11, color: "var(--color-slate-400)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 500 }}>
+              {role} Portal
+            </p>
+          </div>
+        </div>
       </div>
 
+      {/* Divider */}
+      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 16px 8px" }} />
+
+      {/* Navigation */}
       <nav
         style={{
           flex: 1,
-          paddingLeft: 16,
-          paddingRight: 16,
+          padding: "0 12px",
           display: "flex",
           flexDirection: "column",
-          gap: 8,
+          gap: 2,
+          overflowY: "auto",
         }}
       >
+        <p style={{ fontSize: 11, fontWeight: 600, color: "var(--color-slate-500)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "12px 14px 8px" }}>
+          Navigation
+        </p>
         {filteredLinks.map((link) => {
           const Icon = link.icon;
           const isActive = location.pathname === link.href;
@@ -173,76 +130,76 @@ const Sidebar = () => {
             <Link
               key={link.href}
               to={link.href}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "12px 16px",
-                fontSize: 14,
-                fontWeight: 500,
-                borderRadius: 8,
-                background: isActive ? "#0284c7" : "transparent",
-                color: isActive ? "#fff" : "#d1d5db",
-                transition: "background 0.2s, color 0.2s",
-                cursor: "pointer",
+              style={linkStyle(isActive)}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = "var(--sidebar-hover-bg)";
+                  e.currentTarget.style.color = "#fff";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "var(--sidebar-text)";
+                }
               }}
             >
-              <Icon style={{ height: 20, width: 20 }} />
-              {link.name}
+              <Icon style={{ height: 18, width: 18, flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>{link.name}</span>
+              {isActive && <ChevronRight style={{ height: 14, width: 14, opacity: 0.7 }} />}
             </Link>
           );
         })}
       </nav>
 
-      <div style={{ padding: 16, borderTop: "1px solid #1e293b" }}>
+      {/* Footer */}
+      <div style={{ padding: "8px 12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <Link
           to="/profile"
           style={{
             display: "flex",
             alignItems: "center",
             gap: 12,
-            padding: "12px 16px",
-            fontSize: 14,
+            padding: "10px 14px",
+            fontSize: "var(--text-sm)",
             fontWeight: 500,
-            borderRadius: 8,
-            marginBottom: 8,
-            background:
-              location.pathname === "/profile" ? "#1e293b" : "transparent",
-            color: location.pathname === "/profile" ? "#fff" : "#d1d5db",
-            transition: "background 0.2s, color 0.2s",
-            cursor: "pointer",
+            borderRadius: "var(--radius-md)",
+            marginBottom: 4,
+            background: location.pathname === "/profile" ? "rgba(255,255,255,0.08)" : "transparent",
+            color: location.pathname === "/profile" ? "#fff" : "var(--sidebar-text)",
+            transition: "all var(--transition-base)",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sidebar-hover-bg)"; e.currentTarget.style.color = "#fff"; }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = location.pathname === "/profile" ? "rgba(255,255,255,0.08)" : "transparent";
+            e.currentTarget.style.color = location.pathname === "/profile" ? "#fff" : "var(--sidebar-text)";
           }}
         >
-          <User style={{ height: 20, width: 20 }} />
-          Profile
+          <div style={{
+            width: 28, height: 28, borderRadius: "var(--radius-full)",
+            background: "var(--color-primary-600)", display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 12, fontWeight: 700, color: "#fff",
+          }}>
+            {user.username?.[0]?.toUpperCase() || "U"}
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "inherit" }}>{user.username || "User"}</p>
+          </div>
         </Link>
         <button
           onClick={logout}
           style={{
-            display: "flex",
-            width: "100%",
-            alignItems: "center",
-            gap: 12,
-            padding: "12px 16px",
-            fontSize: 14,
-            fontWeight: 500,
-            color: "#d1d5db",
-            borderRadius: 8,
-            background: "transparent",
-            transition: "background 0.2s, color 0.2s",
-            cursor: "pointer",
+            display: "flex", width: "100%", alignItems: "center", gap: 12,
+            padding: "10px 14px", fontSize: "var(--text-sm)", fontWeight: 500,
+            color: "var(--sidebar-text)", borderRadius: "var(--radius-md)",
+            background: "transparent", cursor: "pointer",
+            transition: "all var(--transition-base)",
           }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.background = "rgba(127,29,29,0.1)";
-            e.currentTarget.style.color = "#f87171";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "#d1d5db";
-          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; e.currentTarget.style.color = "#f87171"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--sidebar-text)"; }}
         >
-          <LogOut style={{ height: 20, width: 20 }} />
-          Logout
+          <LogOut style={{ height: 18, width: 18 }} />
+          Sign Out
         </button>
       </div>
     </div>

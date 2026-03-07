@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/Card";
-import { Bus } from "lucide-react";
+import { Bus, Lock, UserCircle } from "lucide-react";
 
 const Login = () => {
   const {
@@ -28,15 +28,7 @@ const Login = () => {
     setError("");
     const result = await login(data.username, data.password);
     setLoading(false);
-
     if (result.success) {
-      // Decode locally or refetch user to know role?
-      // AuthContext updates user state. We can rely on that or simple redirect logic.
-      // Usually AuthContext state update is async/effect based, so might need to wait or check result.
-      // For now, let's just let the AuthProvider/PrivateRoutes handle redirection or simple default.
-      // But we need to know where to go. Helper?
-      // Actually, let's just look at localStorage for instant redirect or wait for context.
-      // Simpler: Redirect to root, let helper decide.
       navigate("/");
     } else {
       setError(result.error);
@@ -50,114 +42,132 @@ const Login = () => {
         minHeight: "100vh",
         alignItems: "center",
         justifyContent: "center",
-        background: "#f8fafc",
-        padding: 16,
+        background: "linear-gradient(135deg, var(--color-slate-900) 0%, var(--color-primary-900) 50%, var(--color-slate-900) 100%)",
+        padding: "var(--space-4)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      {/* Decorative background elements */}
+      <div style={{
+        position: "absolute", width: 500, height: 500, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)",
+        top: "-10%", right: "-10%", pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute", width: 400, height: 400, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(14,165,233,0.1) 0%, transparent 70%)",
+        bottom: "-5%", left: "-5%", pointerEvents: "none",
+      }} />
+
       <Card
         style={{
           width: "100%",
-          maxWidth: 400,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+          maxWidth: 420,
+          boxShadow: "0 25px 50px rgba(0,0,0,0.25)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          background: "var(--bg-surface)",
+          animation: "fadeInUp 0.5s ease-out",
+          position: "relative",
+          zIndex: 1,
         }}
       >
-        <CardHeader style={{ textAlign: "center" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginBottom: 16,
-            }}
-          >
+        <CardHeader style={{ textAlign: "center", padding: "32px 32px 16px" }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
             <div
               style={{
-                padding: 12,
-                background: "#e0f2fe",
-                borderRadius: "9999px",
+                padding: 14,
+                background: "linear-gradient(135deg, var(--color-primary-500), var(--color-info-600))",
+                borderRadius: "var(--radius-xl)",
+                boxShadow: "0 8px 24px rgba(59,130,246,0.3)",
               }}
             >
-              <Bus style={{ height: 32, width: 32, color: "#0284c7" }} />
+              <Bus style={{ height: 28, width: 28, color: "#fff" }} />
             </div>
           </div>
-          <CardTitle
-            style={{ fontSize: 24, fontWeight: 700, color: "#1e293b" }}
-          >
+          <CardTitle style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
             Welcome Back
           </CardTitle>
-          <p style={{ fontSize: 14, color: "#64748b", marginTop: 8 }}>
-            Sign in to your account
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 4 }}>
+            Sign in to your SmartBus account
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent style={{ padding: "16px 32px 32px" }}>
           <form
             onSubmit={handleSubmit(onSubmit)}
-            style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            style={{ display: "flex", flexDirection: "column", gap: 20 }}
           >
             {error && (
               <div
                 style={{
-                  padding: 12,
-                  fontSize: 14,
-                  color: "#dc2626",
-                  background: "#fef2f2",
-                  borderRadius: 8,
+                  padding: "var(--space-3) var(--space-4)",
+                  fontSize: "var(--text-sm)",
+                  color: "var(--color-danger-600)",
+                  background: "var(--color-danger-50)",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--color-danger-100)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                 }}
               >
-                {error}
+                <span style={{ fontSize: 16 }}>!</span> {error}
               </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label
-                style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
-              >
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-secondary)" }}>
                 Username
               </label>
-              <Input
-                {...register("username", { required: "Username is required" })}
-                placeholder="Enter your username"
-              />
+              <div style={{ position: "relative" }}>
+                <UserCircle size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <Input
+                  {...register("username", { required: "Username is required" })}
+                  placeholder="Enter your username"
+                  style={{ paddingLeft: 40 }}
+                />
+              </div>
               {errors.username && (
-                <p style={{ fontSize: 12, color: "#ef4444" }}>
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--color-danger-500)" }}>
                   {errors.username.message}
                 </p>
               )}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label
-                style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
-              >
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-secondary)" }}>
                 Password
               </label>
-              <Input
-                type="password"
-                {...register("password", { required: "Password is required" })}
-                placeholder="••••••••"
-              />
+              <div style={{ position: "relative" }}>
+                <Lock size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <Input
+                  type="password"
+                  {...register("password", { required: "Password is required" })}
+                  placeholder="••••••••"
+                  style={{ paddingLeft: 40 }}
+                />
+              </div>
               {errors.password && (
-                <p style={{ fontSize: 12, color: "#ef4444" }}>
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--color-danger-500)" }}>
                   {errors.password.message}
                 </p>
               )}
             </div>
 
-            <Button type="submit" style={{ width: "100%" }} disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+            <Button type="submit" style={{ width: "100%", height: 44, fontSize: "var(--text-md)" }} disabled={loading}>
+              {loading ? (
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="animate-spin" style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid #fff", borderRadius: "50%" }} />
+                  Signing in...
+                </span>
+              ) : "Sign In"}
             </Button>
 
-            <div
-              style={{ textAlign: "center", fontSize: 14, color: "#64748b" }}
-            >
+            <div style={{ textAlign: "center", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
               Don't have an account?{" "}
               <Link
                 to="/register"
-                style={{
-                  fontWeight: 500,
-                  color: "#2563eb",
-                  textDecoration: "underline",
-                  cursor: "pointer",
-                }}
+                style={{ fontWeight: 600, color: "var(--color-primary-600)", cursor: "pointer" }}
               >
                 Register as Passenger
               </Link>

@@ -34,37 +34,37 @@ const TABS = [
 ];
 
 const tabStyle = (active) => ({
-  padding: "10px 20px",
-  fontSize: 14,
+  padding: "var(--space-3) var(--space-5)",
+  fontSize: "var(--text-sm)",
   fontWeight: active ? 600 : 500,
-  color: active ? "#0284c7" : "#64748b",
-  borderBottom: active ? "2px solid #0284c7" : "2px solid transparent",
-  background: "none",
+  color: active ? "var(--color-primary-600)" : "var(--text-muted)",
+  borderBottom: "none",
+  background: active ? "var(--color-primary-50)" : "transparent",
   border: "none",
-  borderBottomWidth: 2,
-  borderBottomStyle: "solid",
-  borderBottomColor: active ? "#0284c7" : "transparent",
+  borderRadius: "var(--radius-md)",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   gap: 8,
+  transition: "var(--transition-fast)",
 });
 
 const cardBoxStyle = {
-  background: "#fff",
-  border: "1px solid #e2e8f0",
-  borderRadius: 12,
-  padding: 20,
-  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+  background: "var(--bg-surface)",
+  border: "1px solid var(--border-light)",
+  borderRadius: "var(--radius-xl)",
+  padding: "var(--space-5)",
+  boxShadow: "var(--shadow-sm)",
+  transition: "var(--transition-fast)",
 };
 const inputStyle = {
-  padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 14, outline: "none", width: "100%",
+  padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-light)", fontSize: "var(--text-sm)", outline: "none", width: "100%", transition: "var(--transition-fast)",
 };
 const selectStyle = {
-  padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 14, outline: "none", width: "100%",
+  padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-light)", fontSize: "var(--text-sm)", outline: "none", width: "100%",
 };
-const thStyle = { padding: 12, fontSize: 12, color: "#64748b", textTransform: "uppercase", fontWeight: 600 };
-const tdStyle = { padding: 12, fontSize: 14 };
+const thStyle = { padding: "var(--space-3)", fontSize: "var(--text-xs)", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em" };
+const tdStyle = { padding: "var(--space-3)", fontSize: "var(--text-sm)" };
 
 const formatMinutes = (min) => {
   if (!min) return "0h 0m";
@@ -79,8 +79,6 @@ const formatMinutes = (min) => {
 const OverviewTab = ({ user }) => {
   const [busInfo, setBusInfo] = useState(null);
   const [busStatus, setBusStatus] = useState(null);
-  const [attendance, setAttendance] = useState(null);
-  const [cooldown, setCooldown] = useState(null);
   const [violations, setViolations] = useState([]);
   const [conductorInfo, setConductorInfo] = useState(null);
   const [locationName, setLocationName] = useState("");
@@ -126,16 +124,7 @@ const OverviewTab = ({ user }) => {
       }
 
       if (profile.driverProfile) {
-        try {
-          const [attendRes, coolRes] = await Promise.all([
-            api.get(`/attendance/today/${profile.driverProfile}`),
-            api.get(`/attendance/cooldown/${profile.driverProfile}`),
-          ]);
-          setAttendance(attendRes.data);
-          setCooldown(coolRes.data);
-        } catch (err) {
-          console.error("Attendance fetch error:", err);
-        }
+        // Driver profile exists — driving data comes from piSession below
       }
 
       // Fetch Pi verification session data
@@ -170,7 +159,7 @@ const OverviewTab = ({ user }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button variant="outline" onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: 6, color: "#2563eb", borderColor: "#bfdbfe", background: "#eff6ff" }}>
+        <Button variant="outline" onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--color-primary-600)", borderColor: "var(--color-primary-100)", background: "var(--color-primary-50)" }}>
           <RefreshCw size={16} /> Refresh
         </Button>
       </div>
@@ -180,8 +169,8 @@ const OverviewTab = ({ user }) => {
         <div style={{ ...cardBoxStyle, borderLeft: "4px solid #0284c7" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Today's Driving</p>
-              <p style={{ fontSize: 28, fontWeight: 700 }}>{formatMinutes(attendance?.totalDrivingMinutes)}</p>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Today's Driving</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>{formatMinutes(piSession?.todayDrivingMinutes)}</p>
             </div>
             <Clock size={32} color="#0284c7" />
           </div>
@@ -190,45 +179,49 @@ const OverviewTab = ({ user }) => {
         <div style={{ ...cardBoxStyle, borderLeft: "4px solid #f59e0b" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Continuous Driving</p>
-              <p style={{ fontSize: 28, fontWeight: 700 }}>{formatMinutes(attendance?.continuousDrivingMinutes)}</p>
-              <p style={{ fontSize: 12, color: "#94a3b8" }}>Max: 5h before cooldown</p>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Continuous Driving</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>{formatMinutes(piSession?.continuousDrivingMinutes)}</p>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+                Max: {piSession?.drivingLimits ? formatMinutes(piSession.drivingLimits.maxContinuousDriving) : "—"} before rest
+              </p>
             </div>
             <Timer size={32} color="#f59e0b" />
           </div>
-          <div style={{ marginTop: 12, background: "#f1f5f9", borderRadius: 4, height: 8, overflow: "hidden" }}>
+          <div style={{ marginTop: 12, background: "var(--bg-subtle)", borderRadius: 4, height: 8, overflow: "hidden" }}>
             <div style={{
-              width: `${Math.min(100, ((attendance?.continuousDrivingMinutes || 0) / 300) * 100)}%`,
+              width: `${Math.min(100, ((piSession?.continuousDrivingMinutes || 0) / (piSession?.drivingLimits?.maxContinuousDriving || 360)) * 100)}%`,
               height: "100%",
-              background: (attendance?.continuousDrivingMinutes || 0) >= 240 ? "#ef4444" : "#f59e0b",
+              background: (piSession?.continuousDrivingMinutes || 0) >= (piSession?.drivingLimits?.maxContinuousDriving || 360) * 0.8 ? "#ef4444" : "#f59e0b",
               borderRadius: 4,
             }} />
           </div>
         </div>
 
-        <div style={{ ...cardBoxStyle, borderLeft: cooldown?.inCooldown ? "4px solid #ef4444" : "4px solid #22c55e" }}>
+        <div style={{ ...cardBoxStyle, borderLeft: (piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "4px solid #ef4444" : "4px solid #22c55e" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Status</p>
-              {cooldown?.inCooldown ? (
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Status</p>
+              {piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360) ? (
                 <>
-                  <p style={{ fontSize: 22, fontWeight: 700, color: "#ef4444" }}>COOLDOWN</p>
-                  <p style={{ fontSize: 13, color: "#64748b" }}>{cooldown.remainingMinutes} min remaining</p>
+                  <p style={{ fontSize: 22, fontWeight: 700, color: "#ef4444" }}>REST REQUIRED</p>
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+                    Need {piSession?.drivingLimits?.requiredRest || 360} min rest
+                  </p>
                 </>
               ) : (
-                <p style={{ fontSize: 22, fontWeight: 700, color: "#22c55e" }}>ACTIVE</p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: "var(--color-success-500)" }}>ACTIVE</p>
               )}
             </div>
-            <AlertTriangle size={32} color={cooldown?.inCooldown ? "#ef4444" : "#22c55e"} />
+            <AlertTriangle size={32} color={(piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "#ef4444" : "#22c55e"} />
           </div>
         </div>
 
         <div style={{ ...cardBoxStyle, borderLeft: "4px solid #8b5cf6" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Face Check-ins</p>
-              <p style={{ fontSize: 28, fontWeight: 700 }}>{attendance?.checkIns?.length || 0}</p>
-              <p style={{ fontSize: 12, color: "#94a3b8" }}>Verified every 5 min</p>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Sessions Today</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>{piSession?.todaySessionCount || 0}</p>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Face verified sessions</p>
             </div>
             <Siren size={32} color="#8b5cf6" />
           </div>
@@ -239,26 +232,26 @@ const OverviewTab = ({ user }) => {
       {piSession && (
         <Card>
           <CardContent style={{ padding: 24 }}>
-            <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-              <Shield size={20} color="#2563eb" /> Face Verification Status
+            <h3 style={{ fontWeight: 600, fontSize: "var(--text-lg)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
+              <Shield size={20} color="var(--color-primary-500)" /> Face Verification Status
             </h3>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 20 }}>
               <div style={{ ...cardBoxStyle, borderLeft: "4px solid #0284c7", padding: 16 }}>
-                <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Verified Driving</p>
-                <p style={{ fontSize: 24, fontWeight: 700 }}>{formatMinutes(piSession.todayDrivingMinutes)}</p>
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Verified Driving</p>
+                <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>{formatMinutes(piSession.todayDrivingMinutes)}</p>
               </div>
               <div style={{ ...cardBoxStyle, borderLeft: "4px solid #22c55e", padding: 16 }}>
-                <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Resting Time</p>
-                <p style={{ fontSize: 24, fontWeight: 700 }}>{formatMinutes(piSession.todayRestingMinutes)}</p>
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Resting Time</p>
+                <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>{formatMinutes(piSession.todayRestingMinutes)}</p>
               </div>
               <div style={{ ...cardBoxStyle, borderLeft: "4px solid #8b5cf6", padding: 16 }}>
-                <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Sessions Today</p>
-                <p style={{ fontSize: 24, fontWeight: 700 }}>{piSession.todaySessionCount || 0}</p>
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Sessions Today</p>
+                <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>{piSession.todaySessionCount || 0}</p>
               </div>
               <div style={{ ...cardBoxStyle, borderLeft: piSession.todayDrowsinessEvents > 0 ? "4px solid #ef4444" : "4px solid #94a3b8", padding: 16 }}>
-                <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Drowsiness Alerts</p>
-                <p style={{ fontSize: 24, fontWeight: 700, color: piSession.todayDrowsinessEvents > 0 ? "#ef4444" : "inherit" }}>
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Drowsiness Alerts</p>
+                <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: piSession.todayDrowsinessEvents > 0 ? "#ef4444" : "inherit" }}>
                   {piSession.todayDrowsinessEvents || 0}
                 </p>
               </div>
@@ -267,10 +260,10 @@ const OverviewTab = ({ user }) => {
             {/* Driving Limits Progress */}
             {piSession.drivingLimits && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                <div style={{ background: "#f8fafc", borderRadius: 10, padding: 16 }}>
+                <div style={{ background: "var(--bg-muted)", borderRadius: "var(--radius-lg)", padding: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>Continuous Driving</p>
-                    <p style={{ fontSize: 13, color: "#64748b" }}>
+                    <p style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--text-secondary)" }}>Continuous Driving</p>
+                    <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
                       {piSession.continuousDrivingMinutes || 0}m / {piSession.drivingLimits.maxContinuousDriving}m
                     </p>
                   </div>
@@ -284,10 +277,10 @@ const OverviewTab = ({ user }) => {
                     }} />
                   </div>
                 </div>
-                <div style={{ background: "#f8fafc", borderRadius: 10, padding: 16 }}>
+                <div style={{ background: "var(--bg-muted)", borderRadius: "var(--radius-lg)", padding: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>Daily Driving</p>
-                    <p style={{ fontSize: 13, color: "#64748b" }}>
+                    <p style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--text-secondary)" }}>Daily Driving</p>
+                    <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
                       {piSession.todayDrivingMinutes || 0}m / {piSession.drivingLimits.maxDailyDriving}m
                     </p>
                   </div>
@@ -307,16 +300,16 @@ const OverviewTab = ({ user }) => {
             {/* Driving Limit Warnings */}
             {piSession.drivingLimits && (piSession.continuousDrivingMinutes >= piSession.drivingLimits.maxContinuousDriving ||
                piSession.todayDrivingMinutes >= piSession.drivingLimits.maxDailyDriving) && (
-                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ background: "var(--color-danger-50)", border: "1px solid var(--color-danger-200)", borderRadius: 8, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
                   <AlertTriangle size={20} color="#ef4444" />
                   <div>
                     {piSession.continuousDrivingMinutes >= piSession.drivingLimits.maxContinuousDriving && (
-                      <p style={{ fontSize: 13, fontWeight: 600, color: "#dc2626" }}>
-                        Continuous driving limit reached! Take a mandatory rest of at least {piSession.drivingLimits.minRestDuration} minutes.
+                      <p style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-danger-500)" }}>
+                        Continuous driving limit reached! Take a mandatory rest of at least {piSession.drivingLimits.requiredRest || piSession.drivingLimits.minRestDuration} minutes.
                       </p>
                     )}
                     {piSession.todayDrivingMinutes >= piSession.drivingLimits.maxDailyDriving && (
-                      <p style={{ fontSize: 13, fontWeight: 600, color: "#dc2626" }}>
+                      <p style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-danger-500)" }}>
                         Daily driving limit reached ({piSession.drivingLimits.maxDailyDriving} min). No more driving allowed today.
                       </p>
                     )}
@@ -336,24 +329,24 @@ const OverviewTab = ({ user }) => {
                   </Badge>
                 </div>
                 {piSession.currentSession.confidence != null && (
-                  <p style={{ fontSize: 13, color: "#64748b" }}>
-                    Confidence: <strong>{(piSession.currentSession.confidence * 100).toFixed(0)}%</strong>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
+                    Confidence: <strong>{piSession.currentSession.confidence?.toFixed(0)}%</strong>
                     {piSession.currentSession.local ? " (On-device)" : " (Remote)"}
                   </p>
                 )}
                 {piSession.currentSession.alertnessLevel && (
-                  <p style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 4 }}>
                     Alertness: <Badge variant={piSession.currentSession.alertnessLevel === "ALERT" ? "success" : piSession.currentSession.alertnessLevel === "TIRED" ? "warning" : "error"}>
                       {piSession.currentSession.alertnessLevel} {piSession.currentSession.alertnessScore != null ? `(${piSession.currentSession.alertnessScore})` : ""}
                     </Badge>
                   </p>
                 )}
-                <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 6 }}>
                   Since: {new Date(piSession.currentSession.sessionStart).toLocaleTimeString()}
                 </p>
               </div>
             ) : (
-              <div style={{ background: "#f8fafc", borderRadius: 8, padding: 16, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
+              <div style={{ background: "var(--bg-muted)", borderRadius: 8, padding: 16, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
                 No active Pi verification session
               </div>
             )}
@@ -361,28 +354,28 @@ const OverviewTab = ({ user }) => {
             {/* Today's Sessions List */}
             {piSession.todaySessions?.length > 0 && (
               <div>
-                <h4 style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: "#64748b" }}>Today's Sessions</h4>
+                <h4 style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: "var(--text-muted)" }}>Today's Sessions</h4>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {piSession.todaySessions.map(s => (
                     <div key={s._id} style={{
-                      padding: 12, borderRadius: 8, background: "#f8fafc",
+                      padding: 12, borderRadius: 8, background: "var(--bg-muted)",
                       borderLeft: `3px solid ${s.verified ? "#22c55e" : "#f59e0b"}`,
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}>
                       <div>
-                        <span style={{ fontSize: 13, fontWeight: 500 }}>
+                        <span style={{ fontSize: "var(--text-sm)", fontWeight: 500 }}>
                           {new Date(s.sessionStart).toLocaleTimeString()}
                           {s.sessionEnd && ` — ${new Date(s.sessionEnd).toLocaleTimeString()}`}
                         </span>
                         {s.confidence != null && (
-                          <span style={{ fontSize: 12, color: "#64748b", marginLeft: 12 }}>
-                            {(s.confidence * 100).toFixed(0)}% confidence
+                          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginLeft: 12 }}>
+                            {s.confidence?.toFixed(0)}% confidence
                           </span>
                         )}
                       </div>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         {s.drowsinessEvents?.length > 0 && (
-                          <span style={{ fontSize: 12, color: "#ef4444" }}>{s.drowsinessEvents.length} alerts</span>
+                          <span style={{ fontSize: "var(--text-xs)", color: "#ef4444" }}>{s.drowsinessEvents.length} alerts</span>
                         )}
                         <Badge variant={s.verified ? "success" : "error"} style={{ fontSize: 11 }}>
                           {s.verified ? "Verified" : "Unverified"}
@@ -401,26 +394,26 @@ const OverviewTab = ({ user }) => {
         {/* Assigned Bus */}
         <Card>
           <CardContent style={{ padding: 24 }}>
-            <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-              <Bus size={20} color="#2563eb" /> Assigned Bus
+            <h3 style={{ fontWeight: 600, fontSize: "var(--text-lg)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
+              <Bus size={20} color="var(--color-primary-500)" /> Assigned Bus
             </h3>
             {busInfo ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748b" }}>License Plate</span>
+                  <span style={{ color: "var(--text-muted)" }}>License Plate</span>
                   <span style={{ fontWeight: 600 }}>{busInfo.licensePlate}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748b" }}>Route</span>
+                  <span style={{ color: "var(--text-muted)" }}>Route</span>
                   <span>{busInfo.routeId}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748b" }}>Status</span>
+                  <span style={{ color: "var(--text-muted)" }}>Status</span>
                   <Badge variant={busInfo.status === "active" ? "success" : "secondary"}>{busInfo.status || "active"}</Badge>
                 </div>
               </div>
             ) : (
-              <p style={{ color: "#94a3b8" }}>No bus assigned. Contact admin.</p>
+              <p style={{ color: "var(--text-muted)" }}>No bus assigned. Contact admin.</p>
             )}
           </CardContent>
         </Card>
@@ -428,22 +421,22 @@ const OverviewTab = ({ user }) => {
         {/* Assigned Conductor */}
         <Card>
           <CardContent style={{ padding: 24 }}>
-            <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-              <User size={20} color="#2563eb" /> Assigned Conductor
+            <h3 style={{ fontWeight: 600, fontSize: "var(--text-lg)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
+              <User size={20} color="var(--color-primary-500)" /> Assigned Conductor
             </h3>
             {conductorInfo ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748b" }}>Name</span>
+                  <span style={{ color: "var(--text-muted)" }}>Name</span>
                   <span style={{ fontWeight: 600 }}>{conductorInfo.fullName || conductorInfo.username}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748b" }}>Contact</span>
+                  <span style={{ color: "var(--text-muted)" }}>Contact</span>
                   <span>{conductorInfo.contactNumber || "—"}</span>
                 </div>
               </div>
             ) : (
-              <p style={{ color: "#94a3b8" }}>No conductor assigned.</p>
+              <p style={{ color: "var(--text-muted)" }}>No conductor assigned.</p>
             )}
           </CardContent>
         </Card>
@@ -452,21 +445,21 @@ const OverviewTab = ({ user }) => {
       {/* Recent Alerts */}
       <Card>
         <CardContent style={{ padding: 24 }}>
-          <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-            <AlertTriangle size={20} color="#f59e42" /> Recent Alerts
+            <h3 style={{ fontWeight: 600, fontSize: "var(--text-lg)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
+              <AlertTriangle size={20} color="var(--color-warning-500)" /> Recent Alerts
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {violations.length === 0 ? (
-              <div style={{ padding: 12, background: "#f0fdf4", color: "#15803d", borderRadius: 8, fontSize: 14, fontWeight: 500 }}>
+              <div style={{ padding: 12, background: "var(--color-success-50)", color: "#15803d", borderRadius: 8, fontSize: "var(--text-sm)", fontWeight: 500 }}>
                 No active violations or alerts.
               </div>
             ) : violations.map(v => (
-              <div key={v._id} style={{ padding: 12, background: "#fef2f2", borderRadius: 8, border: "1px solid #fee2e2" }}>
+              <div key={v._id} style={{ padding: 12, background: "var(--color-danger-50)", borderRadius: 8, border: "1px solid #fee2e2" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span style={{ color: "#dc2626", fontWeight: 600, fontSize: 14 }}>{v.violationType}</span>
-                  <span style={{ fontSize: 12, color: "#94a3b8" }}>{new Date(v.createdAt).toLocaleString()}</span>
+                  <span style={{ color: "var(--color-danger-500)", fontWeight: 600, fontSize: 14 }}>{v.violationType}</span>
+                  <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{new Date(v.createdAt).toLocaleString()}</span>
                 </div>
-                <p style={{ fontSize: 13, color: "#64748b" }}>Speed: {v.speed || 0} km/h</p>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Speed: {v.speed || 0} km/h</p>
               </div>
             ))}
           </div>
@@ -476,9 +469,9 @@ const OverviewTab = ({ user }) => {
       {/* Map */}
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 24px" }}>
-          <h3 style={{ fontWeight: 600, fontSize: 18, display: "flex", alignItems: "center", gap: 8 }}>
-            <MapPin size={20} color="#2563eb" /> Bus Live Location
-            {locationName && <span style={{ fontSize: 14, fontWeight: 400, color: "#64748b" }}>— {locationName}</span>}
+            <h3 style={{ fontWeight: 600, fontSize: "var(--text-lg)", display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
+              <MapPin size={20} color="var(--color-primary-500)" /> Bus Live Location
+            {locationName && <span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-muted)" }}>— {locationName}</span>}
           </h3>
         </div>
         <div style={{ height: 300 }}>
@@ -488,8 +481,8 @@ const OverviewTab = ({ user }) => {
             <RecenterMap position={busLocation} />
           </MapContainer>
         </div>
-        <div style={{ padding: 12, background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-          <span style={{ color: "#64748b" }}>Updated: {lastUpdated.toLocaleTimeString()}</span>
+        <div style={{ padding: 12, background: "var(--bg-muted)", borderTop: "1px solid var(--border-light)", display: "flex", justifyContent: "space-between", fontSize: "var(--text-xs)" }}>
+          <span style={{ color: "var(--text-muted)" }}>Updated: {lastUpdated.toLocaleTimeString()}</span>
         </div>
       </Card>
     </div>
@@ -551,7 +544,7 @@ const MaintenanceTab = ({ user }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ color: "#64748b" }}>Request maintenance and track status.</p>
+        <p style={{ color: "var(--text-muted)" }}>Request maintenance and track status.</p>
         <Button onClick={() => setIsAdding(!isAdding)} style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <Wrench size={16} /> {isAdding ? "Cancel" : "Request Maintenance"}
         </Button>
@@ -560,19 +553,19 @@ const MaintenanceTab = ({ user }) => {
       {message && <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8 }}>{message}</div>}
 
       {isAdding && (
-        <Card style={{ border: "1px solid #bae6fd", background: "#f0f9ff" }}>
+        <Card style={{ border: "1px solid #bae6fd", background: "var(--color-info-50)" }}>
           <CardContent style={{ padding: 20 }}>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Issue *</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Issue *</label>
                 <input style={inputStyle} value={form.issue} onChange={e => setForm(p => ({ ...p, issue: e.target.value }))} placeholder="e.g. Brake issue" required />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Description</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Description</label>
                 <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Priority</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Priority</label>
                 <select style={selectStyle} value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}>
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -591,11 +584,11 @@ const MaintenanceTab = ({ user }) => {
           {loading ? (
             <div style={{ textAlign: "center", padding: 32 }}>Loading...</div>
           ) : logs.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 32, color: "#94a3b8" }}>No maintenance requests.</div>
+            <div style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>No maintenance requests.</div>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
-                <thead style={{ background: "#f8fafc" }}>
+                <thead style={{ background: "var(--bg-muted)" }}>
                   <tr>
                     <th style={thStyle}>Date</th>
                     <th style={thStyle}>Bus</th>
@@ -664,11 +657,11 @@ const AlertLogTab = ({ user }) => {
       case "drowsiness": return { icon: "😴", label: "Drowsiness Detection", color: "#f59e0b" };
       case "yawning": return { icon: "🥱", label: "Yawning Detection", color: "#f97316" };
       case "sleepiness": return { icon: "💤", label: "Sleepiness Alert", color: "#ef4444" };
-      case "no_face": return { icon: "👤", label: "Driver Not Visible", color: "#94a3b8" };
-      case "mobile_phone": return { icon: "📱", label: "Mobile Phone Usage", color: "#dc2626" };
+      case "no_face": return { icon: "👤", label: "Driver Not Visible", color: "var(--text-muted)" };
+      case "mobile_phone": return { icon: "📱", label: "Mobile Phone Usage", color: "var(--color-danger-500)" };
       case "footboard": return { icon: "🚪", label: "Footboard Violation", color: "#ef4444" };
       case "overcrowding": return { icon: "👥", label: "Overcrowding", color: "#f97316" };
-      default: return { icon: "⚠️", label: type, color: "#64748b" };
+      default: return { icon: "⚠️", label: type, color: "var(--text-muted)" };
     }
   };
 
@@ -705,8 +698,8 @@ const AlertLogTab = ({ user }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ color: "#64748b" }}>Violations, drowsiness, and yawning events from Pi monitoring.</p>
-        <button onClick={fetchData} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+        <p style={{ color: "var(--text-muted)" }}>Violations, drowsiness, and yawning events from Pi monitoring.</p>
+        <button onClick={fetchData} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
           <RefreshCw size={18} />
         </button>
       </div>
@@ -734,7 +727,7 @@ const AlertLogTab = ({ user }) => {
           <CardContent style={{ padding: 48, textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
             <h3 style={{ fontSize: 18, fontWeight: 600, color: "#166534" }}>No Alerts</h3>
-            <p style={{ color: "#64748b" }}>Great driving! No alerts recorded.</p>
+            <p style={{ color: "var(--text-muted)" }}>Great driving! No alerts recorded.</p>
           </CardContent>
         </Card>
       ) : (
@@ -753,7 +746,7 @@ const AlertLogTab = ({ user }) => {
                           {a.source === "pi" ? "Pi Device" : "System"}
                         </Badge>
                       </div>
-                      <p style={{ fontSize: 13, color: "#64748b" }}>
+                      <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
                         {a.source === "pi" ? (
                           <>
                             {a.ear != null && `EAR: ${a.ear.toFixed(3)}`}
@@ -771,8 +764,8 @@ const AlertLogTab = ({ user }) => {
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <p style={{ fontSize: 13, color: "#64748b" }}>{new Date(a.timestamp).toLocaleDateString()}</p>
-                    <p style={{ fontSize: 12, color: "#94a3b8" }}>{new Date(a.timestamp).toLocaleTimeString()}</p>
+                    <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>{new Date(a.timestamp).toLocaleDateString()}</p>
+                    <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{new Date(a.timestamp).toLocaleTimeString()}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -809,8 +802,16 @@ const DriverPanel = () => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b" }}>Driver Panel</h1>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)", maxWidth: 1200, margin: "0 auto", animation: "fadeIn 0.3s ease-out" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <div style={{
+          padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+          background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+        }}>
+          <Bus size={24} color="#fff" />
+        </div>
+        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>Driver Panel</h1>
+      </div>
 
       <div>{renderTab()}</div>
     </div>

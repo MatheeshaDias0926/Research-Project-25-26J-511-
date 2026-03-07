@@ -47,7 +47,7 @@ const SOSAlertsDashboard = () => {
       case "active": return { bg: "#fee2e2", color: "#991b1b" };
       case "acknowledged": return { bg: "#fef9c3", color: "#854d0e" };
       case "resolved": return { bg: "#dcfce7", color: "#166534" };
-      default: return { bg: "#f1f5f9", color: "#475569" };
+      default: return { bg: "#f1f5f9", color: "var(--text-secondary)" };
     }
   };
 
@@ -70,14 +70,22 @@ const SOSAlertsDashboard = () => {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-          <Siren size={28} /> SOS Alerts
-        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+          <div style={{
+            padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+            background: "linear-gradient(135deg, var(--color-danger-500), var(--color-danger-600))",
+          }}>
+            <Siren size={24} color="#fff" />
+          </div>
+          <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700 }}>
+            SOS Alerts
+          </h1>
+        </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <span style={{ padding: "6px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600, background: "#fee2e2", color: "#991b1b" }}>
+          <span style={{ padding: "6px 14px", borderRadius: 20, fontSize: "var(--text-sm)", fontWeight: 600, background: "var(--color-danger-100)", color: "#991b1b" }}>
             {activeCount} Active
           </span>
-          <span style={{ padding: "6px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600, background: "#fef9c3", color: "#854d0e" }}>
+          <span style={{ padding: "6px 14px", borderRadius: 20, fontSize: "var(--text-sm)", fontWeight: 600, background: "#fef9c3", color: "#854d0e" }}>
             {acknowledgedCount} Acknowledged
           </span>
         </div>
@@ -105,20 +113,20 @@ const SOSAlertsDashboard = () => {
         {alerts.map((alert) => {
           const statusColors = getStatusColor(alert.status);
           return (
-            <div key={alert._id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div key={alert._id} style={{ background: "#fff", border: "1px solid var(--border-light)", borderRadius: "var(--radius-lg)", padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 20 }}>{getAlertTypeIcon(alert.alertType)}</span>
                     <h3 style={{ fontWeight: 600, fontSize: 16, textTransform: "capitalize" }}>{alert.alertType}</h3>
-                    <span style={{ padding: "3px 10px", borderRadius: 12, fontSize: 12, fontWeight: 500, background: statusColors.bg, color: statusColors.color }}>
+                    <span style={{ padding: "3px 10px", borderRadius: "var(--radius-lg)", fontSize: 12, fontWeight: 500, background: statusColors.bg, color: statusColors.color }}>
                       {alert.status}
                     </span>
                   </div>
-                  {alert.description && <p style={{ color: "#64748b", fontSize: 14, marginBottom: 8 }}>{alert.description}</p>}
-                  <div style={{ display: "flex", gap: 16, fontSize: 13, color: "#94a3b8" }}>
-                    <span>Bus: <strong style={{ color: "#334155" }}>{alert.busId?.licensePlate || "N/A"}</strong></span>
-                    <span>By: <strong style={{ color: "#334155" }}>{alert.reportedBy?.username || "N/A"}</strong> ({alert.reportedBy?.role})</span>
+                  {alert.description && <p style={{ color: "var(--text-muted)", fontSize: 14, marginBottom: 8 }}>{alert.description}</p>}
+                  <div style={{ display: "flex", gap: 16, fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
+                    <span>Bus: <strong style={{ color: "var(--text-secondary)" }}>{alert.busId?.licensePlate || "N/A"}</strong></span>
+                    <span>By: <strong style={{ color: "var(--text-secondary)" }}>{alert.reportedBy?.username || "N/A"}</strong> ({alert.reportedBy?.role})</span>
                     <span><Clock size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {new Date(alert.createdAt).toLocaleString()}</span>
                   </div>
                 </div>
@@ -141,7 +149,7 @@ const SOSAlertsDashboard = () => {
       </div>
 
       {alerts.length === 0 && (
-        <div style={{ textAlign: "center", padding: 48, color: "#94a3b8" }}>
+        <div style={{ textAlign: "center", padding: 48, color: "var(--text-muted)" }}>
           <Siren size={48} style={{ margin: "0 auto 16px" }} />
           <p>No SOS alerts {filter !== "all" ? `with status "${filter}"` : ""}</p>
         </div>

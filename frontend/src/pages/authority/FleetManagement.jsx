@@ -63,9 +63,17 @@ const FleetManagement = () => {
           justifyContent: "space-between",
         }}
       >
-        <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
-          Fleet Management
-        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+          <div style={{
+            padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+            background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+          }}>
+            <Bus size={24} color="#fff" />
+          </div>
+          <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+            Fleet Management
+          </h1>
+        </div>
         <Button
           onClick={() => setIsAdding(!isAdding)}
           style={{ display: "flex", alignItems: "center", gap: 8 }}
@@ -79,7 +87,7 @@ const FleetManagement = () => {
           style={{
             animation: "slideInTop 0.3s",
             border: "1px solid #bae6fd",
-            background: "#f0f9ff",
+            background: "var(--color-info-50)",
           }}
         >
           <CardHeader>
@@ -106,7 +114,7 @@ const FleetManagement = () => {
                 }}
               >
                 <label
-                  style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                  style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)" }}
                 >
                   License Plate
                 </label>
@@ -125,7 +133,7 @@ const FleetManagement = () => {
                 }}
               >
                 <label
-                  style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                  style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)" }}
                 >
                   Route ID
                 </label>
@@ -144,7 +152,7 @@ const FleetManagement = () => {
                 }}
               >
                 <label
-                  style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
+                  style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)" }}
                 >
                   Capacity
                 </label>
@@ -173,7 +181,7 @@ const FleetManagement = () => {
           <button
             onClick={fetchBuses}
             style={{
-              color: "#94a3b8",
+              color: "var(--text-muted)",
               transition: "color 0.2s",
               background: "none",
               border: "none",
@@ -196,9 +204,9 @@ const FleetManagement = () => {
                 <thead
                   style={{
                     fontSize: 12,
-                    color: "#64748b",
+                    color: "var(--text-muted)",
                     textTransform: "uppercase",
-                    background: "#f8fafc",
+                    background: "var(--bg-muted)",
                   }}
                 >
                   <tr>
@@ -217,7 +225,7 @@ const FleetManagement = () => {
                         style={{
                           textAlign: "center",
                           padding: "32px 0",
-                          color: "#64748b",
+                          color: "var(--text-muted)",
                         }}
                       >
                         No buses in fleet.
@@ -242,14 +250,14 @@ const FleetManagement = () => {
                         style={{
                           padding: "12px",
                           fontWeight: 500,
-                          color: "#0f172a",
+                          color: "var(--text-primary)",
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
                         }}
                       >
                         <Bus
-                          style={{ height: 16, width: 16, color: "#94a3b8" }}
+                          style={{ height: 16, width: 16, color: "var(--text-muted)" }}
                         />
                         {bus.licensePlate}
                       </td>
@@ -277,7 +285,7 @@ const FleetManagement = () => {
                           padding: "12px",
                           fontFamily: "monospace",
                           fontSize: 12,
-                          color: "#64748b",
+                          color: "var(--text-muted)",
                         }}
                       >
                         {bus._id}

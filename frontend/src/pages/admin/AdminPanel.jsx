@@ -32,39 +32,36 @@ const TABS = [
 ];
 
 const tabStyle = (active) => ({
-  padding: "10px 20px",
-  fontSize: 14,
+  padding: "var(--space-3) var(--space-5)",
+  fontSize: "var(--text-sm)",
   fontWeight: active ? 600 : 500,
-  color: active ? "#0284c7" : "#64748b",
-  borderBottom: active ? "2px solid #0284c7" : "2px solid transparent",
-  background: "none",
+  color: active ? "var(--color-primary-600)" : "var(--text-muted)",
+  background: active ? "var(--color-primary-50)" : "transparent",
   border: "none",
-  borderBottomWidth: 2,
-  borderBottomStyle: "solid",
-  borderBottomColor: active ? "#0284c7" : "transparent",
+  borderRadius: "var(--radius-md)",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   gap: 8,
-  transition: "all 0.2s",
+  transition: "var(--transition-fast)",
   whiteSpace: "nowrap",
 });
 
-const sectionTitle = { fontSize: 22, fontWeight: 700, color: "#1e293b", marginBottom: 16 };
+const sectionTitle = { fontSize: "var(--text-xl)", fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 };
 const cardStyle = {
-  background: "#fff",
-  border: "1px solid #e2e8f0",
-  borderRadius: 12,
-  padding: 20,
-  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+  background: "var(--bg-surface)",
+  border: "1px solid var(--border-light)",
+  borderRadius: "var(--radius-xl)",
+  padding: "var(--space-5)",
+  boxShadow: "var(--shadow-sm)",
 };
-const thStyle = { padding: 12, fontSize: 12, color: "#64748b", textTransform: "uppercase", fontWeight: 600 };
-const tdStyle = { padding: 12, fontSize: 14 };
+const thStyle = { padding: "var(--space-3)", fontSize: "var(--text-xs)", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em" };
+const tdStyle = { padding: "var(--space-3)", fontSize: "var(--text-sm)" };
 const selectStyle = {
-  padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 14, outline: "none", minWidth: 180,
+  padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-light)", fontSize: "var(--text-sm)", outline: "none", minWidth: 180,
 };
 const inputStyle = {
-  padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 14, outline: "none", width: "100%",
+  padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-light)", fontSize: "var(--text-sm)", outline: "none", width: "100%",
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -114,35 +111,35 @@ const OverviewTab = () => {
   }, []);
 
   if (loading) return <div style={{ padding: 32 }}>Loading overview...</div>;
-  if (!stats) return <div style={{ padding: 32, color: "#ef4444" }}>Failed to load stats.</div>;
+  if (!stats) return <div style={{ padding: 32, color: "var(--color-danger-500)" }}>Failed to load stats.</div>;
 
   const statCards = [
-    { label: "Registered Buses", value: stats.registeredBuses, icon: Bus, bg: "#dbeafe", color: "#2563eb" },
-    { label: "Active Buses", value: stats.activeBuses, icon: Bus, bg: "#dcfce7", color: "#16a34a" },
-    { label: "Registered Drivers", value: stats.registeredDrivers, icon: UserPlus, bg: "#fef3c7", color: "#d97706" },
+    { label: "Registered Buses", value: stats.registeredBuses, icon: Bus, bg: "var(--color-primary-50)", color: "var(--color-primary-600)" },
+    { label: "Active Buses", value: stats.activeBuses, icon: Bus, bg: "var(--color-success-50)", color: "var(--color-success-600)" },
+    { label: "Registered Drivers", value: stats.registeredDrivers, icon: UserPlus, bg: "var(--color-warning-50)", color: "var(--color-warning-600)" },
     { label: "Registered Conductors", value: stats.registeredConductors, icon: Users, bg: "#e0e7ff", color: "#4f46e5" },
     { label: "Active Drivers", value: stats.activeDrivers, icon: UserPlus, bg: "#d1fae5", color: "#059669" },
     { label: "Active Conductors", value: stats.activeConductors, icon: Users, bg: "#ddd6fe", color: "#7c3aed" },
-    { label: "Violations (24h)", value: stats.violations24h, icon: AlertTriangle, bg: "#fee2e2", color: "#dc2626" },
-    { label: "Registered Edge Devices", value: stats.registeredEdgeDevices, icon: Cpu, bg: "#f0f9ff", color: "#0284c7" },
+    { label: "Violations (24h)", value: stats.violations24h, icon: AlertTriangle, bg: "var(--color-danger-50)", color: "var(--color-danger-600)" },
+    { label: "Registered Edge Devices", value: stats.registeredEdgeDevices, icon: Cpu, bg: "var(--color-info-50)", color: "var(--color-info-600)" },
     { label: "Active Edge Devices", value: stats.activeEdgeDevices, icon: Cpu, bg: "#ccfbf1", color: "#0d9488" },
-    { label: "Maintenance Pending", value: stats.maintenanceCount, icon: Wrench, bg: "#ffedd5", color: "#ea580c" },
+    { label: "Maintenance Pending", value: stats.maintenanceCount, icon: Wrench, bg: "#ffedd5", color: "var(--color-warning-600)" },
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
       {/* Stat Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "var(--space-4)" }}>
         {statCards.map((s, i) => {
           const Icon = s.icon;
           return (
-            <Card key={i}>
-              <CardContent style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Card key={i} hover>
+              <CardContent style={{ padding: "var(--space-4)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
-                  <p style={{ fontSize: 12, fontWeight: 500, color: "#64748b" }}>{s.label}</p>
-                  <p style={{ fontSize: 24, fontWeight: 700, color: "#0f172a" }}>{s.value}</p>
+                  <p style={{ fontSize: "var(--text-xs)", fontWeight: 500, color: "var(--text-muted)" }}>{s.label}</p>
+                  <p style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "var(--text-primary)" }}>{s.value}</p>
                 </div>
-                <div style={{ padding: 10, background: s.bg, borderRadius: 9999, color: s.color }}>
+                <div style={{ padding: 10, background: s.bg, borderRadius: "var(--radius-full)", color: s.color }}>
                   <Icon style={{ height: 20, width: 20 }} />
                 </div>
               </CardContent>
@@ -168,7 +165,7 @@ const OverviewTab = () => {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
               No violation data available.
             </div>
           )}
@@ -193,7 +190,7 @@ const OverviewTab = () => {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>No trend data.</div>
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>No trend data.</div>
             )}
           </CardContent>
         </Card>
@@ -213,9 +210,9 @@ const OverviewTab = () => {
                       if (active && payload?.length) {
                         const d = payload[0].payload;
                         return (
-                          <div style={{ background: "#fff", padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0/0.1)" }}>
+                          <div style={{ background: "#fff", padding: 10, borderRadius: 8, border: "1px solid var(--border-light)", boxShadow: "0 4px 6px -1px rgb(0 0 0/0.1)" }}>
                             <p style={{ fontWeight: 600 }}>{d.licensePlate}</p>
-                            <p style={{ color: "#64748b", fontSize: 13 }}>Route: {d.routeId}</p>
+                            <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Route: {d.routeId}</p>
                             <p style={{ color: d.occupancyPct > 100 ? "#ef4444" : "#10b981", fontWeight: 600 }}>
                               {d.occupancyPct}% ({d.currentLoad}/{d.capacity})
                             </p>
@@ -234,7 +231,7 @@ const OverviewTab = () => {
                 </ScatterChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>No active buses.</div>
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>No active buses.</div>
             )}
           </CardContent>
         </Card>
@@ -299,26 +296,26 @@ const FleetTab = () => {
           <Button onClick={() => { setIsAdding(!isAdding); setEditingBus(null); setForm({ licensePlate: "", routeId: "", capacity: "" }); }} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Plus size={16} /> {isAdding ? "Cancel" : "Register New Bus"}
           </Button>
-          <button onClick={fetchBuses} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+          <button onClick={fetchBuses} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
             <RefreshCw size={18} />
           </button>
         </div>
       </div>
 
       {isAdding && (
-        <Card style={{ border: "1px solid #bae6fd", background: "#f0f9ff" }}>
+        <Card style={{ border: "1px solid #bae6fd", background: "var(--color-info-50)" }}>
           <CardContent style={{ padding: 20 }}>
             <form onSubmit={handleSubmit} style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 180 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, color: "#334155", display: "block", marginBottom: 4 }}>License Plate</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>License Plate</label>
                 <input style={inputStyle} value={form.licensePlate} onChange={e => setForm(p => ({ ...p, licensePlate: e.target.value }))} placeholder="NP-XXXX" required />
               </div>
               <div style={{ flex: 1, minWidth: 180 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, color: "#334155", display: "block", marginBottom: 4 }}>Route ID</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Route ID</label>
                 <input style={inputStyle} value={form.routeId} onChange={e => setForm(p => ({ ...p, routeId: e.target.value }))} placeholder="ROUTE-XXX" required />
               </div>
               <div style={{ flex: 1, minWidth: 120 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, color: "#334155", display: "block", marginBottom: 4 }}>Capacity</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Capacity</label>
                 <input style={inputStyle} type="number" value={form.capacity} onChange={e => setForm(p => ({ ...p, capacity: e.target.value }))} placeholder="50" required />
               </div>
               <Button type="submit">{editingBus ? "Update Bus" : "Create Bus"}</Button>
@@ -334,7 +331,7 @@ const FleetTab = () => {
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
-                <thead style={{ background: "#f8fafc" }}>
+                <thead style={{ background: "var(--bg-muted)" }}>
                   <tr>
                     <th style={thStyle}>License Plate</th>
                     <th style={thStyle}>Route</th>
@@ -348,7 +345,7 @@ const FleetTab = () => {
                 </thead>
                 <tbody>
                   {buses.length === 0 ? (
-                    <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No buses in fleet.</td></tr>
+                    <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>No buses in fleet.</td></tr>
                   ) : buses.map((bus) => (
                     <tr key={bus._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ ...tdStyle, fontWeight: 600 }}>{bus.licensePlate}</td>
@@ -359,11 +356,11 @@ const FleetTab = () => {
                           {bus.status || "inactive"}
                         </Badge>
                       </td>
-                      <td style={tdStyle}>{bus.assignedDriver?.name || <span style={{ color: "#94a3b8" }}>—</span>}</td>
-                      <td style={tdStyle}>{bus.assignedConductor?.username || <span style={{ color: "#94a3b8" }}>—</span>}</td>
-                      <td style={tdStyle}>{bus.assignedEdgeDevice?.name || <span style={{ color: "#94a3b8" }}>—</span>}</td>
+                      <td style={tdStyle}>{bus.assignedDriver?.name || <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
+                      <td style={tdStyle}>{bus.assignedConductor?.username || <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
+                      <td style={tdStyle}>{bus.assignedEdgeDevice?.name || <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
                       <td style={tdStyle}>
-                        <button onClick={() => startEdit(bus)} style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", marginRight: 8 }}>
+                        <button onClick={() => startEdit(bus)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-info-500)", marginRight: 8 }}>
                           <Edit size={16} />
                         </button>
                       </td>
@@ -463,7 +460,7 @@ const AssignmentsTab = () => {
       <h2 style={sectionTitle}>Bus Assignments</h2>
 
       {message && <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8 }}>{message}</div>}
-      {error && <div style={{ padding: 12, background: "#fee2e2", color: "#991b1b", borderRadius: 8 }}>{error}</div>}
+      {error && <div style={{ padding: 12, background: "var(--color-danger-100)", color: "#991b1b", borderRadius: 8 }}>{error}</div>}
 
       <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0" }}>
         {subTabs.map(t => (
@@ -478,14 +475,14 @@ const AssignmentsTab = () => {
           <CardContent style={{ padding: 20 }}>
             <form onSubmit={handleAssignDriver} style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Select Bus</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Select Bus</label>
                 <select style={selectStyle} value={driverAssign.busId} onChange={e => setDriverAssign(p => ({ ...p, busId: e.target.value }))} required>
                   <option value="">-- Select Bus --</option>
                   {buses.map(b => <option key={b._id} value={b._id}>{b.licensePlate} ({b.routeId})</option>)}
                 </select>
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Select Driver</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Select Driver</label>
                 <select style={selectStyle} value={driverAssign.driverId} onChange={e => setDriverAssign(p => ({ ...p, driverId: e.target.value }))} required>
                   <option value="">-- Select Driver --</option>
                   {drivers.map(d => <option key={d._id} value={d._id}>{d.name} ({d.licenseNumber})</option>)}
@@ -502,14 +499,14 @@ const AssignmentsTab = () => {
           <CardContent style={{ padding: 20 }}>
             <form onSubmit={handleAssignConductor} style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Select Bus</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Select Bus</label>
                 <select style={selectStyle} value={conductorAssign.busId} onChange={e => setConductorAssign(p => ({ ...p, busId: e.target.value }))} required>
                   <option value="">-- Select Bus --</option>
                   {buses.map(b => <option key={b._id} value={b._id}>{b.licensePlate} ({b.routeId})</option>)}
                 </select>
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Select Conductor</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Select Conductor</label>
                 <select style={selectStyle} value={conductorAssign.conductorId} onChange={e => setConductorAssign(p => ({ ...p, conductorId: e.target.value }))} required>
                   <option value="">-- Select Conductor --</option>
                   {conductors.map(c => <option key={c._id} value={c._id}>{c.fullName || c.username}</option>)}
@@ -526,14 +523,14 @@ const AssignmentsTab = () => {
           <CardContent style={{ padding: 20 }}>
             <form onSubmit={handleAssignDevice} style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Select Bus</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Select Bus</label>
                 <select style={selectStyle} value={deviceAssign.busId} onChange={e => setDeviceAssign(p => ({ ...p, busId: e.target.value }))} required>
                   <option value="">-- Select Bus --</option>
                   {buses.map(b => <option key={b._id} value={b._id}>{b.licensePlate} ({b.routeId})</option>)}
                 </select>
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Select Edge Device</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Select Edge Device</label>
                 <select style={selectStyle} value={deviceAssign.edgeDeviceId} onChange={e => setDeviceAssign(p => ({ ...p, edgeDeviceId: e.target.value }))} required>
                   <option value="">-- Select Device --</option>
                   {edgeDevices.map(d => <option key={d._id} value={d._id}>{d.name} ({d.deviceId})</option>)}
@@ -550,7 +547,7 @@ const AssignmentsTab = () => {
           <CardContent style={{ padding: 0 }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
-                <thead style={{ background: "#f8fafc" }}>
+                <thead style={{ background: "var(--bg-muted)" }}>
                   <tr>
                     <th style={thStyle}>Bus</th>
                     <th style={thStyle}>Route</th>
@@ -568,17 +565,17 @@ const AssignmentsTab = () => {
                       <td style={tdStyle}>
                         {bus.assignedDriver ? (
                           <span>{bus.assignedDriver.name} <button onClick={() => handleUnassign(bus._id, "driver")} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", marginLeft: 4 }}><X size={14} /></button></span>
-                        ) : <span style={{ color: "#94a3b8" }}>—</span>}
+                        ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
                       </td>
                       <td style={tdStyle}>
                         {bus.assignedConductor ? (
                           <span>{bus.assignedConductor.fullName || bus.assignedConductor.username} <button onClick={() => handleUnassign(bus._id, "conductor")} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", marginLeft: 4 }}><X size={14} /></button></span>
-                        ) : <span style={{ color: "#94a3b8" }}>—</span>}
+                        ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
                       </td>
                       <td style={tdStyle}>
                         {bus.assignedEdgeDevice ? (
                           <span>{bus.assignedEdgeDevice.name} <button onClick={() => handleUnassign(bus._id, "edge-device")} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", marginLeft: 4 }}><X size={14} /></button></span>
-                        ) : <span style={{ color: "#94a3b8" }}>—</span>}
+                        ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
                       </td>
                       <td style={tdStyle}>—</td>
                     </tr>
@@ -710,7 +707,7 @@ const EmployeeTab = () => {
       <h2 style={sectionTitle}>Employee Management</h2>
 
       {message && <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8 }}>{message}</div>}
-      {error && <div style={{ padding: 12, background: "#fee2e2", color: "#991b1b", borderRadius: 8 }}>{error}</div>}
+      {error && <div style={{ padding: 12, background: "var(--color-danger-100)", color: "#991b1b", borderRadius: 8 }}>{error}</div>}
 
       <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0" }}>
         {subTabs.map(t => (
@@ -724,7 +721,7 @@ const EmployeeTab = () => {
         <Card>
           <CardContent style={{ padding: 24 }}>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, marginRight: 12 }}>Register as:</label>
+              <label style={{ fontSize: "var(--text-sm)", fontWeight: 600, marginRight: 12 }}>Register as:</label>
               <label style={{ marginRight: 16, cursor: "pointer" }}>
                 <input type="radio" name="empType" value="driver" checked={employeeType === "driver"} onChange={() => setEmployeeType("driver")} style={{ marginRight: 4 }} />
                 Driver
@@ -736,31 +733,31 @@ const EmployeeTab = () => {
             </div>
             <form onSubmit={handleRegister} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Username *</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Username *</label>
                 <input style={inputStyle} value={form.username} onChange={e => setForm(p => ({ ...p, username: e.target.value }))} required />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Password *</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Password *</label>
                 <input style={inputStyle} type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} required />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Full Name *</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Full Name *</label>
                 <input style={inputStyle} value={form.fullName} onChange={e => setForm(p => ({ ...p, fullName: e.target.value }))} required />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>NIC *</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>NIC *</label>
                 <input style={inputStyle} value={form.nic} onChange={e => setForm(p => ({ ...p, nic: e.target.value }))} required />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Licence Number</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Licence Number</label>
                 <input style={inputStyle} value={form.licenceNumber} onChange={e => setForm(p => ({ ...p, licenceNumber: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Contact Number *</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Contact Number *</label>
                 <input style={inputStyle} value={form.contactNumber} onChange={e => setForm(p => ({ ...p, contactNumber: e.target.value }))} required />
               </div>
               <div style={{ gridColumn: "span 2" }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Profile Image URL</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Profile Image URL</label>
                 <input style={inputStyle} value={form.profileImage} onChange={e => setForm(p => ({ ...p, profileImage: e.target.value }))} placeholder="https://..." />
               </div>
               <div style={{ gridColumn: "span 2" }}>
@@ -775,28 +772,28 @@ const EmployeeTab = () => {
         <Card>
           <CardContent style={{ padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600 }}>Editing: {editingUser.username} ({editingUser.role})</h3>
-              <button onClick={() => { resetForm(); setSubTab("view"); }} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer" }}><X size={20} /></button>
+              <h3 style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>Editing: {editingUser.username} ({editingUser.role})</h3>
+              <button onClick={() => { resetForm(); setSubTab("view"); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}><X size={20} /></button>
             </div>
             <form onSubmit={handleUpdate} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Full Name</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Full Name</label>
                 <input style={inputStyle} value={form.fullName} onChange={e => setForm(p => ({ ...p, fullName: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>NIC</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>NIC</label>
                 <input style={inputStyle} value={form.nic} onChange={e => setForm(p => ({ ...p, nic: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Licence Number</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Licence Number</label>
                 <input style={inputStyle} value={form.licenceNumber} onChange={e => setForm(p => ({ ...p, licenceNumber: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Contact Number</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Contact Number</label>
                 <input style={inputStyle} value={form.contactNumber} onChange={e => setForm(p => ({ ...p, contactNumber: e.target.value }))} />
               </div>
               <div style={{ gridColumn: "span 2" }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Profile Image URL</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Profile Image URL</label>
                 <input style={inputStyle} value={form.profileImage} onChange={e => setForm(p => ({ ...p, profileImage: e.target.value }))} />
               </div>
               <div style={{ gridColumn: "span 2" }}>
@@ -815,7 +812,7 @@ const EmployeeTab = () => {
             <CardContent style={{ padding: 0 }}>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
-                  <thead style={{ background: "#f8fafc" }}>
+                  <thead style={{ background: "var(--bg-muted)" }}>
                     <tr>
                       <th style={thStyle}>Photo</th>
                       <th style={thStyle}>Full Name</th>
@@ -829,7 +826,7 @@ const EmployeeTab = () => {
                   </thead>
                   <tbody>
                     {drivers.length === 0 ? (
-                      <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No drivers registered.</td></tr>
+                      <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>No drivers registered.</td></tr>
                     ) : drivers.map(d => (
                       <tr key={d._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                         <td style={tdStyle}>
@@ -844,7 +841,7 @@ const EmployeeTab = () => {
                         <td style={tdStyle}>{d.contactNumber || d.driverProfile?.contactNumber || "—"}</td>
                         <td style={tdStyle}>{d.assignedBus?.licensePlate || "—"}</td>
                         <td style={tdStyle}>
-                          <button onClick={() => startEdit(d)} style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", marginRight: 8 }}><Edit size={16} /></button>
+                          <button onClick={() => startEdit(d)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-info-500)", marginRight: 8 }}><Edit size={16} /></button>
                           <button onClick={() => handleDelete(d._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}><Trash2 size={16} /></button>
                         </td>
                       </tr>
@@ -861,7 +858,7 @@ const EmployeeTab = () => {
             <CardContent style={{ padding: 0 }}>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
-                  <thead style={{ background: "#f8fafc" }}>
+                  <thead style={{ background: "var(--bg-muted)" }}>
                     <tr>
                       <th style={thStyle}>Photo</th>
                       <th style={thStyle}>Full Name</th>
@@ -875,7 +872,7 @@ const EmployeeTab = () => {
                   </thead>
                   <tbody>
                     {conductors.length === 0 ? (
-                      <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No conductors registered.</td></tr>
+                      <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>No conductors registered.</td></tr>
                     ) : conductors.map(c => (
                       <tr key={c._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                         <td style={tdStyle}>
@@ -890,7 +887,7 @@ const EmployeeTab = () => {
                         <td style={tdStyle}>{c.contactNumber || "—"}</td>
                         <td style={tdStyle}>{c.assignedBus?.licensePlate || "—"}</td>
                         <td style={tdStyle}>
-                          <button onClick={() => startEdit(c)} style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", marginRight: 8 }}><Edit size={16} /></button>
+                          <button onClick={() => startEdit(c)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-info-500)", marginRight: 8 }}><Edit size={16} /></button>
                           <button onClick={() => handleDelete(c._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}><Trash2 size={16} /></button>
                         </td>
                       </tr>
@@ -1047,19 +1044,19 @@ const EdgeDeviceTab = () => {
       {message && <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8 }}>{message}</div>}
 
       {isAdding && (
-        <Card style={{ border: "1px solid #bae6fd", background: "#f0f9ff" }}>
+        <Card style={{ border: "1px solid #bae6fd", background: "var(--color-info-50)" }}>
           <CardContent style={{ padding: 20 }}>
             <form onSubmit={handleSubmit} style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 180 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Device ID</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Device ID</label>
                 <input style={inputStyle} value={form.deviceId} onChange={e => setForm(p => ({ ...p, deviceId: e.target.value }))} placeholder="ESP32-XXX" required />
               </div>
               <div style={{ flex: 1, minWidth: 180 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Name</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Name</label>
                 <input style={inputStyle} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Sensor Unit A" required />
               </div>
               <div style={{ flex: 1, minWidth: 180 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Type</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Type</label>
                 <select style={selectStyle} value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
                   <option value="multi_sensor">Multi Sensor</option>
                   <option value="passenger_counter">Passenger Counter</option>
@@ -1079,7 +1076,7 @@ const EdgeDeviceTab = () => {
         <>
           {selectedDevice ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <button onClick={() => setSelectedDevice(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: 14, textAlign: "left" }}>
+              <button onClick={() => setSelectedDevice(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-primary-500)", fontSize: 14, textAlign: "left" }}>
                 ← Back to Monitoring
               </button>
               <h3 style={{ fontSize: 18, fontWeight: 600 }}>Session History — {selectedDevice}</h3>
@@ -1087,7 +1084,7 @@ const EdgeDeviceTab = () => {
                 <CardContent style={{ padding: 0 }}>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
-                      <thead style={{ background: "#f8fafc" }}>
+                      <thead style={{ background: "var(--bg-muted)" }}>
                         <tr>
                           <th style={thStyle}>Driver</th>
                           <th style={thStyle}>Verified</th>
@@ -1101,7 +1098,7 @@ const EdgeDeviceTab = () => {
                       </thead>
                       <tbody>
                         {sessionHistory.length === 0 ? (
-                          <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No sessions recorded.</td></tr>
+                          <tr><td colSpan="8" style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>No sessions recorded.</td></tr>
                         ) : sessionHistory.map(s => (
                           <tr key={s._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                             <td style={{ ...tdStyle, fontWeight: 600 }}>{s.driverName || "Unknown"}</td>
@@ -1133,7 +1130,7 @@ const EdgeDeviceTab = () => {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button onClick={fetchMonitoring} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
+                <button onClick={fetchMonitoring} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
                   <RefreshCw size={16} /> Refresh
                 </button>
               </div>
@@ -1141,8 +1138,8 @@ const EdgeDeviceTab = () => {
                 <Card>
                   <CardContent style={{ padding: 48, textAlign: "center" }}>
                     <Cpu size={48} color="#94a3b8" style={{ marginBottom: 16 }} />
-                    <h3 style={{ fontSize: 18, fontWeight: 600, color: "#64748b" }}>No Raspberry Pi Devices</h3>
-                    <p style={{ color: "#94a3b8" }}>Register a Raspberry Pi device to enable driver monitoring.</p>
+                    <h3 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-muted)" }}>No Raspberry Pi Devices</h3>
+                    <p style={{ color: "var(--text-muted)" }}>Register a Raspberry Pi device to enable driver monitoring.</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -1159,7 +1156,7 @@ const EdgeDeviceTab = () => {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                             <div>
                               <h4 style={{ fontWeight: 600, fontSize: 16 }}>{dev.name}</h4>
-                              <p style={{ fontSize: 12, color: "#94a3b8", fontFamily: "monospace" }}>{dev.deviceId}</p>
+                              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontFamily: "monospace" }}>{dev.deviceId}</p>
                             </div>
                             <Badge variant={isOnline ? "success" : "secondary"}>
                               {isOnline ? "Online" : "Offline"}
@@ -1167,7 +1164,7 @@ const EdgeDeviceTab = () => {
                           </div>
 
                           {dev.assignedBus && (
-                            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>
+                            <div style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: 8 }}>
                               Bus: <strong>{dev.assignedBus.licensePlate}</strong> — Route: {dev.assignedBus.routeId || "N/A"}
                             </div>
                           )}
@@ -1180,9 +1177,9 @@ const EdgeDeviceTab = () => {
                                   {cs.verified ? "Verified" : "Unverified"}
                                 </Badge>
                               </div>
-                              {cs.driverId && <p style={{ fontSize: 12, color: "#64748b" }}>License: {cs.driverId}</p>}
+                              {cs.driverId && <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>License: {cs.driverId}</p>}
                               {cs.confidence != null && (
-                                <p style={{ fontSize: 12, color: "#64748b" }}>
+                                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
                                   Face Confidence: <strong>{(cs.confidence * 100).toFixed(0)}%</strong>
                                   {cs.local ? " (On-device)" : " (Remote)"}
                                 </p>
@@ -1194,17 +1191,17 @@ const EdgeDeviceTab = () => {
                                   </Badge>
                                 </div>
                               )}
-                              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
+                              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 6 }}>
                                 Since: {new Date(cs.sessionStart).toLocaleTimeString()}
                               </p>
                             </div>
                           ) : (
-                            <div style={{ background: "#f8fafc", borderRadius: 8, padding: 12, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
+                            <div style={{ background: "var(--bg-muted)", borderRadius: 8, padding: 12, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
                               No active driver session
                             </div>
                           )}
 
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#64748b", marginTop: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 8 }}>
                             <span>Sessions today: {dev.todaySessionCount || 0}</span>
                             <span>Drowsiness alerts: {dev.todayDrowsinessEvents || 0}</span>
                           </div>
@@ -1213,15 +1210,15 @@ const EdgeDeviceTab = () => {
                           <div style={{ display: "flex", gap: 8, marginTop: 12, borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
                             <button onClick={(e) => { e.stopPropagation(); handleManualVerify(dev.deviceId); }} style={{
                               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                              padding: "6px 10px", borderRadius: 6, border: "1px solid #bfdbfe", background: "#eff6ff",
-                              color: "#2563eb", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                              padding: "6px 10px", borderRadius: 6, border: "1px solid #bfdbfe", background: "var(--color-primary-50)",
+                              color: "var(--color-primary-500)", fontSize: 12, fontWeight: 500, cursor: "pointer",
                             }}>
                               <Play size={12} /> Verify Now
                             </button>
                             <button onClick={(e) => { e.stopPropagation(); openConfigModal(dev); }} style={{
                               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                              padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#f8fafc",
-                              color: "#64748b", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                              padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border-light)", background: "var(--bg-muted)",
+                              color: "var(--text-muted)", fontSize: 12, fontWeight: 500, cursor: "pointer",
                             }}>
                               <Settings size={12} /> Configure
                             </button>
@@ -1246,7 +1243,7 @@ const EdgeDeviceTab = () => {
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" }}>
-                  <thead style={{ background: "#f8fafc" }}>
+                  <thead style={{ background: "var(--bg-muted)" }}>
                     <tr>
                       <th style={thStyle}>Device ID</th>
                       <th style={thStyle}>Name</th>
@@ -1261,7 +1258,7 @@ const EdgeDeviceTab = () => {
                   </thead>
                   <tbody>
                     {devices.length === 0 ? (
-                      <tr><td colSpan="9" style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No edge devices registered.</td></tr>
+                      <tr><td colSpan="9" style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>No edge devices registered.</td></tr>
                     ) : devices.map(d => {
                       const isOnline = d.status === "active" && d.lastPing && (Date.now() - new Date(d.lastPing).getTime()) < 120000;
                       return (
@@ -1288,7 +1285,7 @@ const EdgeDeviceTab = () => {
                           <td style={tdStyle}>
                             <div style={{ display: "flex", gap: 6 }}>
                               {d.type === "raspberry_pi" && (
-                                <button onClick={() => openConfigModal(d)} title="Configure" style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb" }}><Settings size={16} /></button>
+                                <button onClick={() => openConfigModal(d)} title="Configure" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-primary-500)" }}><Settings size={16} /></button>
                               )}
                               <button onClick={() => handleDelete(d._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}><Trash2 size={16} /></button>
                             </div>
@@ -1311,90 +1308,90 @@ const EdgeDeviceTab = () => {
           alignItems: "center", justifyContent: "center", zIndex: 9999,
         }} onClick={() => setConfigDevice(null)}>
           <div style={{
-            background: "#fff", borderRadius: 12, padding: 28, width: 480, maxWidth: "90vw",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+            background: "var(--bg-surface)", borderRadius: "var(--radius-xl)", padding: 28, width: 480, maxWidth: "90vw",
+            boxShadow: "var(--shadow-xl)", animation: "fadeInUp 0.2s ease-out",
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700 }}>
+              <h3 style={{ fontSize: "var(--text-lg)", fontWeight: 700, color: "var(--text-primary)" }}>
                 <Settings size={18} style={{ marginRight: 8, verticalAlign: "middle" }} />
                 Configure — {configDevice.name}
               </h3>
               <button onClick={() => setConfigDevice(null)} style={{ background: "none", border: "none", cursor: "pointer" }}>
-                <X size={20} color="#64748b" />
+                <X size={20} color="var(--text-muted)" />
               </button>
             </div>
 
-            <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+            <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: 16 }}>
               Changes will be applied on the device's next heartbeat (within ~60s).
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Face Verification Interval (seconds)</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Face Verification Interval (seconds)</label>
                 <input type="number" style={inputStyle} value={configForm.verifyInterval}
                   onChange={e => setConfigForm(p => ({ ...p, verifyInterval: Number(e.target.value) }))} />
-                <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>How often the Pi re-verifies the driver (default: 300s = 5min)</p>
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>How often the Pi re-verifies the driver (default: 300s = 5min)</p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>EAR Threshold</label>
+                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>EAR Threshold</label>
                   <input type="number" step="0.01" style={inputStyle} value={configForm.earThreshold}
                     onChange={e => setConfigForm(p => ({ ...p, earThreshold: Number(e.target.value) }))} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>MAR Threshold</label>
+                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>MAR Threshold</label>
                   <input type="number" step="0.01" style={inputStyle} value={configForm.marThreshold}
                     onChange={e => setConfigForm(p => ({ ...p, marThreshold: Number(e.target.value) }))} />
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>No-Face Timeout (s)</label>
+                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>No-Face Timeout (s)</label>
                   <input type="number" style={inputStyle} value={configForm.noFaceTimeout}
                     onChange={e => setConfigForm(p => ({ ...p, noFaceTimeout: Number(e.target.value) }))} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Drowsy Frames</label>
+                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Drowsy Frames</label>
                   <input type="number" style={inputStyle} value={configForm.drowsyFrames}
                     onChange={e => setConfigForm(p => ({ ...p, drowsyFrames: Number(e.target.value) }))} />
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Yawn Frames</label>
+                <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Yawn Frames</label>
                 <input type="number" style={inputStyle} value={configForm.yawnFrames}
                   onChange={e => setConfigForm(p => ({ ...p, yawnFrames: Number(e.target.value) }))} />
               </div>
 
               {/* Driving Time Management */}
               <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 14, marginTop: 4 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "#334155", marginBottom: 10 }}>Driving Time Rules</p>
+                <p style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 10 }}>Driving Time Rules</p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Rest Timeout (seconds)</label>
+                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Rest Timeout (seconds)</label>
                   <input type="number" style={inputStyle} value={configForm.restTimeout}
                     onChange={e => setConfigForm(p => ({ ...p, restTimeout: Number(e.target.value) }))} />
-                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>No-face duration to switch to resting</p>
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>No-face duration to switch to resting</p>
                 </div>
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Min Rest Duration (min)</label>
+                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Min Rest Duration (min)</label>
                   <input type="number" style={inputStyle} value={configForm.minRestDuration}
                     onChange={e => setConfigForm(p => ({ ...p, minRestDuration: Number(e.target.value) }))} />
-                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Minimum rest between driving periods</p>
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>Minimum rest between driving periods</p>
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Max Continuous Driving (min)</label>
+                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Max Continuous Driving (min)</label>
                   <input type="number" style={inputStyle} value={configForm.maxContinuousDriving}
                     onChange={e => setConfigForm(p => ({ ...p, maxContinuousDriving: Number(e.target.value) }))} />
-                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Mandatory break after this duration</p>
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>Mandatory break after this duration</p>
                 </div>
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Max Daily Driving (min)</label>
+                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Max Daily Driving (min)</label>
                   <input type="number" style={inputStyle} value={configForm.maxDailyDriving}
                     onChange={e => setConfigForm(p => ({ ...p, maxDailyDriving: Number(e.target.value) }))} />
-                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Total driving limit per day (e.g. 480 = 8h)</p>
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>Total driving limit per day (e.g. 480 = 8h)</p>
                 </div>
               </div>
             </div>
@@ -1463,7 +1460,7 @@ const SOSTab = () => {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2 style={sectionTitle}>SOS Alerts</h2>
-        <button onClick={fetchAlerts} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+        <button onClick={fetchAlerts} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
           <RefreshCw size={18} />
         </button>
       </div>
@@ -1479,7 +1476,7 @@ const SOSTab = () => {
       {loading ? (
         <div style={{ padding: 32, textAlign: "center" }}>Loading alerts...</div>
       ) : filtered.length === 0 ? (
-        <div style={{ padding: 32, textAlign: "center", color: "#94a3b8" }}>No alerts found.</div>
+        <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)" }}>No alerts found.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {filtered.map(alert => (
@@ -1494,13 +1491,13 @@ const SOSTab = () => {
                         {alert.status}
                       </Badge>
                       <Badge variant="secondary">{alert.alertType}</Badge>
-                      <span style={{ fontSize: 12, color: "#64748b" }}>{new Date(alert.createdAt).toLocaleString()}</span>
+                      <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{new Date(alert.createdAt).toLocaleString()}</span>
                     </div>
                     <p style={{ fontWeight: 600, fontSize: 15 }}>
                       Bus: {alert.busId?.licensePlate || "Unknown"} — Route: {alert.busId?.routeId || "N/A"}
                     </p>
-                    {alert.description && <p style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>{alert.description}</p>}
-                    <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>
+                    {alert.description && <p style={{ color: "var(--text-muted)", fontSize: 14, marginTop: 4 }}>{alert.description}</p>}
+                    <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 4 }}>
                       Reported by: {alert.reportedBy?.username || "Unknown"}
                       {alert.gps && ` | GPS: ${alert.gps.lat?.toFixed(4)}, ${alert.gps.lon?.toFixed(4)}`}
                     </p>
@@ -1584,19 +1581,19 @@ const FaceRecognitionTab = () => {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
         <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12 }}>
           <Users size={20} color="#0284c7" />
-          <div><div style={{ fontSize: 24, fontWeight: 700 }}>{drivers.length}</div><div style={{ fontSize: 12, color: "#64748b" }}>Total Drivers</div></div>
+          <div><div style={{ fontSize: "var(--text-2xl)", fontWeight: 700 }}>{drivers.length}</div><div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Total Drivers</div></div>
         </div>
         <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12 }}>
           <CheckCircle size={20} color="#16a34a" />
-          <div><div style={{ fontSize: 24, fontWeight: 700, color: "#16a34a" }}>{registeredCount}</div><div style={{ fontSize: 12, color: "#64748b" }}>Face ID Active</div></div>
+          <div><div style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "#16a34a" }}>{registeredCount}</div><div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Face ID Active</div></div>
         </div>
         <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12 }}>
           <XCircle size={20} color="#dc2626" />
-          <div><div style={{ fontSize: 24, fontWeight: 700, color: "#dc2626" }}>{failedCount}</div><div style={{ fontSize: 12, color: "#64748b" }}>Face ID Failed</div></div>
+          <div><div style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--color-danger-500)" }}>{failedCount}</div><div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Face ID Failed</div></div>
         </div>
         <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12 }}>
           <Scan size={20} color="#7c3aed" />
-          <div><div style={{ fontSize: 24, fontWeight: 700, color: "#7c3aed" }}>{mlStatus?.total_encodings ?? "—"}</div><div style={{ fontSize: 12, color: "#64748b" }}>ML Encodings</div></div>
+          <div><div style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "#7c3aed" }}>{mlStatus?.total_encodings ?? "—"}</div><div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>ML Encodings</div></div>
         </div>
       </div>
 
@@ -1618,7 +1615,7 @@ const FaceRecognitionTab = () => {
             <Users size={18} /> Registered Drivers — Face ID Status
           </h3>
           <button onClick={refreshAll}
-            style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            style={{ background: "none", border: "1px solid var(--border-light)", borderRadius: 8, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
             <RefreshCw size={14} /> Refresh
           </button>
         </div>
@@ -1651,18 +1648,18 @@ const FaceRecognitionTab = () => {
                 <td style={tdStyle}>
                   {d.faceEncoding?.length > 0
                     ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#16a34a", fontWeight: 600, fontSize: 13 }}><CheckCircle size={14} /> Active</span>
-                    : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#dc2626", fontWeight: 600, fontSize: 13 }}><XCircle size={14} /> Failed</span>}
+                    : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--color-danger-500)", fontWeight: 600, fontSize: 13 }}><XCircle size={14} /> Failed</span>}
                 </td>
                 <td style={tdStyle}>
                   <button onClick={() => setReuploadDriver(d)}
-                    style={{ background: "#f1f5f9", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                    style={{ background: "var(--bg-subtle)", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
                     <Camera size={12} /> Re-register Face
                   </button>
                 </td>
               </tr>
             ))}
             {drivers.length === 0 && (
-              <tr><td colSpan={6} style={{ ...tdStyle, textAlign: "center", color: "#94a3b8" }}>No drivers registered yet</td></tr>
+              <tr><td colSpan={6} style={{ ...tdStyle, textAlign: "center", color: "var(--text-muted)" }}>No drivers registered yet</td></tr>
             )}
           </tbody>
         </table>
@@ -1675,16 +1672,16 @@ const FaceRecognitionTab = () => {
             <Scan size={18} /> Face Recognition Model Database
           </h3>
           <button onClick={handleReloadPickle} disabled={reloadingPickle}
-            style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "6px 14px", cursor: reloadingPickle ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, opacity: reloadingPickle ? 0.6 : 1 }}>
+            style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "6px 14px", cursor: reloadingPickle ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: "var(--text-sm)", fontWeight: 600, opacity: reloadingPickle ? 0.6 : 1 }}>
             <RefreshCw size={14} /> {reloadingPickle ? "Reloading..." : "Reload Pickle"}
           </button>
         </div>
-        <p style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: 12 }}>
           Showing face encodings loaded from <strong>Face_Recognition.pickle</strong> (trained in Google Colab). Use "Reload Pickle" after replacing the file with a newly trained model.
         </p>
         {mlStatus ? (
           <>
-            <div style={{ marginBottom: 12, padding: 10, background: "#f0f9ff", borderRadius: 8, fontSize: 14 }}>
+            <div style={{ marginBottom: 12, padding: 10, background: "var(--color-info-50)", borderRadius: 8, fontSize: 14 }}>
               Total encodings in pickle: <strong>{mlStatus.total_encodings}</strong> | Unique identities: <strong>{mlStatus.drivers?.length ?? 0}</strong>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1702,24 +1699,24 @@ const FaceRecognitionTab = () => {
                   <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={tdStyle}>{i + 1}</td>
                     <td style={{ ...tdStyle, fontWeight: 600 }}>{d.name}</td>
-                    <td style={tdStyle}>{d.driver_id || <span style={{ color: "#94a3b8", fontStyle: "italic" }}>from Colab training</span>}</td>
+                    <td style={tdStyle}>{d.driver_id || <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>from Colab training</span>}</td>
                     <td style={tdStyle}>{d.encoding_count}</td>
                     <td style={tdStyle}>
                       <button onClick={() => handleDeleteFaceData(d)}
-                        style={{ background: "none", border: "1px solid #fecaca", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#dc2626", display: "flex", alignItems: "center", gap: 4 }}>
+                        style={{ background: "none", border: "1px solid var(--color-danger-200)", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--color-danger-500)", display: "flex", alignItems: "center", gap: 4 }}>
                         <Trash2 size={12} /> Remove
                       </button>
                     </td>
                   </tr>
                 ))}
                 {(!mlStatus.drivers || mlStatus.drivers.length === 0) && (
-                  <tr><td colSpan={5} style={{ ...tdStyle, textAlign: "center", color: "#94a3b8" }}>No faces in pickle database</td></tr>
+                  <tr><td colSpan={5} style={{ ...tdStyle, textAlign: "center", color: "var(--text-muted)" }}>No faces in pickle database</td></tr>
                 )}
               </tbody>
             </table>
           </>
         ) : (
-          <div style={{ padding: 20, textAlign: "center", color: "#94a3b8" }}>
+          <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)" }}>
             ML face recognition service unavailable — make sure it is running on port 5001
           </div>
         )}
@@ -1729,7 +1726,7 @@ const FaceRecognitionTab = () => {
       {reuploadDriver && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={() => setReuploadDriver(null)}>
-          <div style={{ background: "white", borderRadius: 16, padding: 28, maxWidth: 540, width: "100%" }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "white", borderRadius: "var(--radius-xl)", padding: 28, maxWidth: 540, width: "100%" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ fontSize: 17, fontWeight: 700 }}>Re-register Face — {reuploadDriver.name}</h3>
               <button onClick={() => setReuploadDriver(null)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={20} /></button>
@@ -1775,8 +1772,16 @@ const AdminPanel = () => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b" }}>Admin Panel</h1>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)", animation: "fadeIn 0.3s ease-out" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <div style={{
+          padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+          background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+        }}>
+          <Shield size={24} color="#fff" />
+        </div>
+        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>Admin Panel</h1>
+      </div>
 
       {/* Tab Content */}
       <div>{renderTab()}</div>
