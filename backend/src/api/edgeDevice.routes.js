@@ -191,9 +191,11 @@ router.post("/manual-verify/:deviceId", protect, isAdmin, async (req, res) => {
     try {
         const device = await EdgeDevice.findOne({ deviceId: req.params.deviceId, type: "raspberry_pi" });
         if (!device) return res.status(404).json({ message: "Pi device not found" });
+        // Queue sync_cache first so Pi has latest face encodings, then verify
+        device.pendingCommands.push({ command: "sync_cache" });
         device.pendingCommands.push({ command: "verify_now" });
         await device.save();
-        res.json({ ok: true, message: "Verify command queued for device" });
+        res.json({ ok: true, message: "Cache sync + verify command queued for device" });
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
     }
@@ -395,39 +397,62 @@ router.post("/driver-alert", authenticateDevice, async (req, res) => {
                 alertnessScore: alertnessScore ?? null,
             });
         } else if (type === "drowsiness" || type === "no_face") {
-            // Append drowsiness event to the current open session
-            const currentSession = await DriverSession.findOne({
+            // Find or create a session for this device so events are never dropped
+            let currentSession = await DriverSession.findOne({
                 deviceId: device.deviceId,
                 sessionEnd: null,
             }).sort({ createdAt: -1 });
 
             const eventType = type === "no_face" ? "no_face" : drowsy ? "drowsiness" : "yawning";
 
-            if (currentSession) {
-                currentSession.drowsinessEvents.push({
-                    timestamp: new Date(),
-                    type: eventType,
-                    ear: ear ?? null,
-                    mar: mar ?? null,
-                    alertnessScore: alertnessScore ?? null,
-                });
-                if (alertnessScore != null) {
-                    currentSession.alertnessScore = alertnessScore;
-                    // Derive alertness level
-                    if (alertnessScore >= 75) currentSession.alertnessLevel = "ALERT";
-                    else if (alertnessScore >= 40) currentSession.alertnessLevel = "TIRED";
-                    else currentSession.alertnessLevel = "DANGER";
+            // If no open session exists, create an unverified fallback session
+            // so drowsiness / yawning / no_face events are still persisted
+            if (!currentSession) {
+                let driverRef = null;
+                if (driverId) {
+                    const driverDoc = await Driver.findOne({ licenseNumber: driverId });
+                    if (driverDoc) driverRef = driverDoc._id;
                 }
-                await currentSession.save();
+                currentSession = await DriverSession.create({
+                    deviceId: device.deviceId,
+                    edgeDevice: device._id,
+                    busId: device.assignedBus || null,
+                    driverName: driverName || "Unknown",
+                    driverId: driverId || null,
+                    driverRef,
+                    verified: false,
+                    confidence: 0,
+                    local: false,
+                });
+                console.log(`[EdgeDevice ${device.deviceId}] Created fallback unverified session for ${eventType} event`);
+            }
 
-                // Also log as ViolationLog so it shows in driver alert log
-                if (device.assignedBus && (eventType === "drowsiness" || eventType === "yawning")) {
+            currentSession.drowsinessEvents.push({
+                timestamp: new Date(),
+                type: eventType,
+                ear: ear ?? null,
+                mar: mar ?? null,
+                alertnessScore: alertnessScore ?? null,
+            });
+            if (alertnessScore != null) {
+                currentSession.alertnessScore = alertnessScore;
+                if (alertnessScore >= 75) currentSession.alertnessLevel = "ALERT";
+                else if (alertnessScore >= 40) currentSession.alertnessLevel = "TIRED";
+                else currentSession.alertnessLevel = "DANGER";
+            }
+            await currentSession.save();
+
+            // Also log as ViolationLog so it shows in violation analytics
+            if (device.assignedBus) {
+                try {
                     await ViolationLog.create({
                         busId: device.assignedBus,
                         violationType: eventType,
                         speed: 0,
                         gps: { lat: 0, lon: 0 },
                     });
+                } catch (vlErr) {
+                    console.error("ViolationLog create error:", vlErr.message);
                 }
             }
         }

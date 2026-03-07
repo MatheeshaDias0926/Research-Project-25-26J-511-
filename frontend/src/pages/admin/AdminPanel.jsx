@@ -956,8 +956,8 @@ const EdgeDeviceTab = () => {
   const handleManualVerify = async (deviceId) => {
     try {
       await api.post(`/edge-devices/manual-verify/${deviceId}`);
-      setMessage("Verify command sent to device");
-      setTimeout(() => setMessage(""), 3000);
+      setMessage("Cache sync + verify command sent. Device will verify on next heartbeat (~60s).");
+      setTimeout(() => setMessage(""), 5000);
     } catch (err) {
       alert("Failed: " + (err.response?.data?.message || err.message));
     }

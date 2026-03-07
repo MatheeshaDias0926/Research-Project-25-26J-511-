@@ -453,13 +453,14 @@ class SmartBusPiClient:
                     self.yawn_frames = cfg["yawnFrames"]
 
             # Handle pending commands from admin
-            for cmd in data.get("commands", []):
-                if cmd == "verify_now":
-                    log.info("[CMD] Admin requested immediate verification")
-                    self._force_verify = True
-                elif cmd == "sync_cache":
-                    log.info("[CMD] Admin requested cache sync")
-                    self.sync_face_cache()
+            # Process sync_cache first so face data is ready before verify_now
+            commands = data.get("commands", [])
+            if "sync_cache" in commands:
+                log.info("[CMD] Admin requested cache sync")
+                self.sync_face_cache()
+            if "verify_now" in commands:
+                log.info("[CMD] Admin requested immediate verification")
+                self._force_verify = True
         except Exception as e:
             log.debug(f"Heartbeat failed: {e}")
 
@@ -511,6 +512,11 @@ class SmartBusPiClient:
 
     def verify_driver_local(self, frame):
         """Verify the driver using local cached encodings."""
+        # Auto-sync face cache if empty
+        if len(self.face_verifier.encodings) == 0:
+            log.info("[LOCAL VERIFY] Cache empty — syncing face cache first...")
+            self.sync_face_cache()
+
         result = self.face_verifier.verify(frame)
         self.last_verify_time = time.time()
 
@@ -533,6 +539,7 @@ class SmartBusPiClient:
     def _verify_driver_remote(self, frame):
         """Fallback: verify via backend ML service (network required)."""
         try:
+            log.info("[REMOTE VERIFY] Attempting server-side face verification...")
             _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
             b64 = base64.b64encode(buf).decode("utf-8")
             resp = requests.post(
@@ -542,14 +549,17 @@ class SmartBusPiClient:
             result = resp.json()
             if result.get("verified"):
                 self.verified_driver = result.get("driver", "Unknown")
-                log.info(f"[REMOTE VERIFY] Driver: {self.verified_driver}")
+                log.info(f"[REMOTE VERIFY] Driver: {self.verified_driver} "
+                         f"(confidence: {result.get('confidence', 0):.1f}%)")
                 self.send_alert("verification", verified=True,
                                 driverName=self.verified_driver,
                                 driverId=result.get("driver_id", ""),
                                 confidence=result.get("confidence", 0),
                                 local=False)
+            else:
+                log.warning(f"[REMOTE VERIFY] No match: {result.get('message', 'unknown')}")
         except Exception as e:
-            log.debug(f"Remote verify failed: {e}")
+            log.warning(f"[REMOTE VERIFY] Failed: {e}")
 
     # ── Background threads ──
 
