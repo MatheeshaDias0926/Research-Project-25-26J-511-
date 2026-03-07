@@ -166,6 +166,26 @@ router.get("/driver-sessions", protect, async (req, res) => {
             dailySummary[day].drowsiness += s.drowsinessEvents?.length || 0;
         }
 
+        // Find the edge device for this driver to get driving limits config
+        let drivingLimits = null;
+        if (currentSession) {
+            const edgeDevice = await EdgeDevice.findOne({ deviceId: currentSession.deviceId });
+            if (edgeDevice) {
+                drivingLimits = {
+                    maxContinuousDriving: edgeDevice.config.maxContinuousDriving,
+                    maxDailyDriving: edgeDevice.config.maxDailyDriving,
+                    minRestDuration: edgeDevice.config.minRestDuration,
+                    restTimeout: edgeDevice.config.restTimeout,
+                };
+            }
+        }
+
+        // Calculate current continuous driving time (from current session start)
+        let continuousDrivingMinutes = 0;
+        if (currentSession) {
+            continuousDrivingMinutes = Math.round((new Date() - new Date(currentSession.sessionStart)) / 60000);
+        }
+
         res.json({
             todayDrivingMinutes: totalDrivingMinutes,
             todayRestingMinutes: totalRestingMinutes,
@@ -175,6 +195,8 @@ router.get("/driver-sessions", protect, async (req, res) => {
             todaySessions,
             dailySummary,
             driverName: driver.name,
+            drivingLimits,
+            continuousDrivingMinutes,
         });
     } catch (error) {
         console.error("driver-sessions error:", error);
@@ -211,13 +233,18 @@ router.put("/config/:deviceId", protect, isAdmin, async (req, res) => {
         const device = await EdgeDevice.findOne({ deviceId: req.params.deviceId });
         if (!device) return res.status(404).json({ message: "Device not found" });
 
-        const { verifyInterval, earThreshold, marThreshold, noFaceTimeout, drowsyFrames, yawnFrames } = req.body;
+        const { verifyInterval, earThreshold, marThreshold, noFaceTimeout, drowsyFrames, yawnFrames,
+                restTimeout, maxContinuousDriving, maxDailyDriving, minRestDuration } = req.body;
         if (verifyInterval != null) device.config.verifyInterval = verifyInterval;
         if (earThreshold != null) device.config.earThreshold = earThreshold;
         if (marThreshold != null) device.config.marThreshold = marThreshold;
         if (noFaceTimeout != null) device.config.noFaceTimeout = noFaceTimeout;
         if (drowsyFrames != null) device.config.drowsyFrames = drowsyFrames;
         if (yawnFrames != null) device.config.yawnFrames = yawnFrames;
+        if (restTimeout != null) device.config.restTimeout = restTimeout;
+        if (maxContinuousDriving != null) device.config.maxContinuousDriving = maxContinuousDriving;
+        if (maxDailyDriving != null) device.config.maxDailyDriving = maxDailyDriving;
+        if (minRestDuration != null) device.config.minRestDuration = minRestDuration;
         await device.save();
 
         res.json({ ok: true, config: device.config });
@@ -267,29 +294,9 @@ router.get("/drowsiness-log", protect, async (req, res) => {
     }
 });
 
-/**
- * @route   GET /api/edge-devices/:id
- * @desc    Get edge device by ID
- * @access  Private (Admin only)
- */
-router.get("/:id", protect, isAdmin, getEdgeDeviceById);
-
-/**
- * @route   PUT /api/edge-devices/:id
- * @desc    Update edge device
- * @access  Private (Admin only)
- */
-router.put("/:id", protect, isAdmin, updateEdgeDevice);
-
-/**
- * @route   DELETE /api/edge-devices/:id
- * @desc    Delete edge device
- * @access  Private (Admin only)
- */
-router.delete("/:id", protect, isAdmin, deleteEdgeDevice);
-
 // ═══════════════════════════════════════════════════════════════
 // Raspberry Pi Edge Device Endpoints (API-key authenticated)
+// IMPORTANT: These MUST be defined BEFORE the /:id wildcard routes
 // ═══════════════════════════════════════════════════════════════
 
 /**
@@ -465,6 +472,77 @@ router.post("/driver-alert", authenticateDevice, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/edge-devices/driving-status
+ * @desc    Pi reports driving/resting state and accumulated driving times
+ * @access  Device (x-device-id header)
+ *
+ * Body: { state, continuousDrivingMinutes, totalDailyDrivingMinutes, driverName, driverId }
+ */
+router.post("/driving-status", authenticateDevice, async (req, res) => {
+    try {
+        const { state, continuousDrivingMinutes, totalDailyDrivingMinutes, driverName, driverId } = req.body;
+        const device = req.edgeDevice;
+        const cfg = device.config;
+
+        const warnings = [];
+
+        // Check continuous driving limit
+        if (continuousDrivingMinutes != null && cfg.maxContinuousDriving > 0) {
+            if (continuousDrivingMinutes >= cfg.maxContinuousDriving) {
+                warnings.push(`Continuous driving limit reached (${cfg.maxContinuousDriving} min)`);
+                if (device.assignedBus) {
+                    try {
+                        await ViolationLog.create({
+                            busId: device.assignedBus,
+                            violationType: "driving_limit",
+                            speed: 0,
+                            gps: { lat: 0, lon: 0 },
+                        });
+                    } catch (vlErr) {
+                        console.error("ViolationLog driving_limit error:", vlErr.message);
+                    }
+                }
+            }
+        }
+
+        // Check daily driving limit
+        if (totalDailyDrivingMinutes != null && cfg.maxDailyDriving > 0) {
+            if (totalDailyDrivingMinutes >= cfg.maxDailyDriving) {
+                warnings.push(`Daily driving limit reached (${cfg.maxDailyDriving} min)`);
+                if (device.assignedBus) {
+                    try {
+                        await ViolationLog.create({
+                            busId: device.assignedBus,
+                            violationType: "driving_limit",
+                            speed: 0,
+                            gps: { lat: 0, lon: 0 },
+                        });
+                    } catch (vlErr) {
+                        console.error("ViolationLog daily_limit error:", vlErr.message);
+                    }
+                }
+            }
+        }
+
+        console.log(`[EdgeDevice ${device.deviceId}] Driving status: state=${state}, continuous=${continuousDrivingMinutes}min, daily=${totalDailyDrivingMinutes}min, warnings=${warnings.length}`);
+
+        res.json({
+            ok: true,
+            warnings,
+            limits: {
+                maxContinuousDriving: cfg.maxContinuousDriving,
+                maxDailyDriving: cfg.maxDailyDriving,
+                minRestDuration: cfg.minRestDuration,
+                restTimeout: cfg.restTimeout,
+            },
+        });
+    } catch (error) {
+        console.error("driving-status error:", error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
+/**
  * @route   POST /api/edge-devices/verify-face
  * @desc    Pi sends a captured image for face verification via the ML service
  * @access  Device (x-device-id header)
@@ -512,5 +590,28 @@ router.get("/face-cache", authenticateDevice, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Admin & Driver query endpoints (JWT-protected)
+// Wildcard :id routes - MUST be LAST to avoid catching named routes
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * @route   GET /api/edge-devices/:id
+ * @desc    Get edge device by ID
+ * @access  Private (Admin only)
+ */
+router.get("/:id", protect, isAdmin, getEdgeDeviceById);
+
+/**
+ * @route   PUT /api/edge-devices/:id
+ * @desc    Update edge device
+ * @access  Private (Admin only)
+ */
+router.put("/:id", protect, isAdmin, updateEdgeDevice);
+
+/**
+ * @route   DELETE /api/edge-devices/:id
+ * @desc    Delete edge device
+ * @access  Private (Admin only)
+ */
+router.delete("/:id", protect, isAdmin, deleteEdgeDevice);
+
 export default router;

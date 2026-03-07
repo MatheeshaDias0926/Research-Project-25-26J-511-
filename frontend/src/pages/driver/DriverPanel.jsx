@@ -264,6 +264,66 @@ const OverviewTab = ({ user }) => {
               </div>
             </div>
 
+            {/* Driving Limits Progress */}
+            {piSession.drivingLimits && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+                <div style={{ background: "#f8fafc", borderRadius: 10, padding: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>Continuous Driving</p>
+                    <p style={{ fontSize: 13, color: "#64748b" }}>
+                      {piSession.continuousDrivingMinutes || 0}m / {piSession.drivingLimits.maxContinuousDriving}m
+                    </p>
+                  </div>
+                  <div style={{ background: "#e2e8f0", borderRadius: 4, height: 8, overflow: "hidden" }}>
+                    <div style={{
+                      width: `${Math.min(100, ((piSession.continuousDrivingMinutes || 0) / piSession.drivingLimits.maxContinuousDriving) * 100)}%`,
+                      height: "100%",
+                      borderRadius: 4,
+                      background: (piSession.continuousDrivingMinutes || 0) >= piSession.drivingLimits.maxContinuousDriving ? "#ef4444"
+                        : (piSession.continuousDrivingMinutes || 0) >= piSession.drivingLimits.maxContinuousDriving * 0.8 ? "#f59e0b" : "#22c55e",
+                    }} />
+                  </div>
+                </div>
+                <div style={{ background: "#f8fafc", borderRadius: 10, padding: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>Daily Driving</p>
+                    <p style={{ fontSize: 13, color: "#64748b" }}>
+                      {piSession.todayDrivingMinutes || 0}m / {piSession.drivingLimits.maxDailyDriving}m
+                    </p>
+                  </div>
+                  <div style={{ background: "#e2e8f0", borderRadius: 4, height: 8, overflow: "hidden" }}>
+                    <div style={{
+                      width: `${Math.min(100, ((piSession.todayDrivingMinutes || 0) / piSession.drivingLimits.maxDailyDriving) * 100)}%`,
+                      height: "100%",
+                      borderRadius: 4,
+                      background: (piSession.todayDrivingMinutes || 0) >= piSession.drivingLimits.maxDailyDriving ? "#ef4444"
+                        : (piSession.todayDrivingMinutes || 0) >= piSession.drivingLimits.maxDailyDriving * 0.8 ? "#f59e0b" : "#22c55e",
+                    }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Driving Limit Warnings */}
+            {piSession.drivingLimits && (piSession.continuousDrivingMinutes >= piSession.drivingLimits.maxContinuousDriving ||
+               piSession.todayDrivingMinutes >= piSession.drivingLimits.maxDailyDriving) && (
+                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+                  <AlertTriangle size={20} color="#ef4444" />
+                  <div>
+                    {piSession.continuousDrivingMinutes >= piSession.drivingLimits.maxContinuousDriving && (
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "#dc2626" }}>
+                        Continuous driving limit reached! Take a mandatory rest of at least {piSession.drivingLimits.minRestDuration} minutes.
+                      </p>
+                    )}
+                    {piSession.todayDrivingMinutes >= piSession.drivingLimits.maxDailyDriving && (
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "#dc2626" }}>
+                        Daily driving limit reached ({piSession.drivingLimits.maxDailyDriving} min). No more driving allowed today.
+                      </p>
+                    )}
+                  </div>
+                </div>
+            )}
+
             {/* Current Session */}
             {piSession.currentSession ? (
               <div style={{ background: piSession.currentSession.verified ? "#f0fdf4" : "#fffbeb", borderRadius: 8, padding: 16, marginBottom: 16 }}>

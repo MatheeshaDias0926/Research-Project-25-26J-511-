@@ -14,7 +14,7 @@ const violationLogSchema = new mongoose.Schema(
     occupancyAtViolation: { type: Number },
     violationType: {
       type: String,
-      enum: ["footboard", "overcrowding", "drowsiness", "yawning", "sleepiness", "mobile_phone", "no_face"],
+      enum: ["footboard", "overcrowding", "drowsiness", "yawning", "sleepiness", "mobile_phone", "no_face", "driving_limit"],
       default: "footboard",
     },
     speed: { type: Number }, // Speed at the time of violation

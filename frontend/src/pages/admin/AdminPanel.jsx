@@ -972,6 +972,10 @@ const EdgeDeviceTab = () => {
       noFaceTimeout: dev.config?.noFaceTimeout ?? 30,
       drowsyFrames: dev.config?.drowsyFrames ?? 15,
       yawnFrames: dev.config?.yawnFrames ?? 10,
+      restTimeout: dev.config?.restTimeout ?? 60,
+      maxContinuousDriving: dev.config?.maxContinuousDriving ?? 240,
+      maxDailyDriving: dev.config?.maxDailyDriving ?? 480,
+      minRestDuration: dev.config?.minRestDuration ?? 15,
     });
   };
 
@@ -1359,6 +1363,39 @@ const EdgeDeviceTab = () => {
                 <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Yawn Frames</label>
                 <input type="number" style={inputStyle} value={configForm.yawnFrames}
                   onChange={e => setConfigForm(p => ({ ...p, yawnFrames: Number(e.target.value) }))} />
+              </div>
+
+              {/* Driving Time Management */}
+              <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 14, marginTop: 4 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "#334155", marginBottom: 10 }}>Driving Time Rules</p>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Rest Timeout (seconds)</label>
+                  <input type="number" style={inputStyle} value={configForm.restTimeout}
+                    onChange={e => setConfigForm(p => ({ ...p, restTimeout: Number(e.target.value) }))} />
+                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>No-face duration to switch to resting</p>
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Min Rest Duration (min)</label>
+                  <input type="number" style={inputStyle} value={configForm.minRestDuration}
+                    onChange={e => setConfigForm(p => ({ ...p, minRestDuration: Number(e.target.value) }))} />
+                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Minimum rest between driving periods</p>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Max Continuous Driving (min)</label>
+                  <input type="number" style={inputStyle} value={configForm.maxContinuousDriving}
+                    onChange={e => setConfigForm(p => ({ ...p, maxContinuousDriving: Number(e.target.value) }))} />
+                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Mandatory break after this duration</p>
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Max Daily Driving (min)</label>
+                  <input type="number" style={inputStyle} value={configForm.maxDailyDriving}
+                    onChange={e => setConfigForm(p => ({ ...p, maxDailyDriving: Number(e.target.value) }))} />
+                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Total driving limit per day (e.g. 480 = 8h)</p>
+                </div>
               </div>
             </div>
 

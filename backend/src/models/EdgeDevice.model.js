@@ -30,6 +30,12 @@ const edgeDeviceSchema = new mongoose.Schema(
       noFaceTimeout: { type: Number, default: 30 },         // seconds without face before alert
       drowsyFrames: { type: Number, default: 15 },          // consecutive frames for drowsiness
       yawnFrames: { type: Number, default: 10 },            // consecutive frames for yawning
+
+      // Driving time management rules
+      restTimeout: { type: Number, default: 60 },           // seconds without face → switch to resting
+      maxContinuousDriving: { type: Number, default: 240 }, // max continuous driving minutes before mandatory break
+      maxDailyDriving: { type: Number, default: 480 },      // max total driving minutes per day (8 hours)
+      minRestDuration: { type: Number, default: 15 },       // minimum rest minutes between driving periods
     },
 
     // Pending commands queue (admin → device)
