@@ -1,5 +1,6 @@
+import "dotenv/config"; // Must be first — loads .env before other imports
 import express from "express";
-import dotenv from "dotenv";
+import mongoose from "mongoose";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import { notFound, errorHandler } from "./middleware/error.middleware.js";
@@ -14,9 +15,6 @@ import edgeDeviceRoutes from "./api/edgeDevice.routes.js";
 import sosRoutes from "./api/sos.routes.js";
 import attendanceRoutes from "./api/attendance.routes.js";
 import assignmentRoutes from "./api/assignment.routes.js";
-
-// Load environment variables
-dotenv.config();
 
 // Connect to Database
 connectDB();

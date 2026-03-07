@@ -755,11 +755,23 @@ class SmartBusPiClient:
     # ── Network helpers (fire-and-forget, queue on failure) ──
 
     def _network_available(self) -> bool:
+        """Check if the backend is reachable using the health endpoint."""
         try:
-            requests.get(f"{self.backend_url}/api/edge-devices/heartbeat",
-                         timeout=3, headers=self.headers)
-            return True
-        except Exception:
+            resp = requests.get(f"{self.backend_url}/health", timeout=3)
+            ok = resp.status_code == 200
+            if ok:
+                log.info("[NETWORK] Backend reachable")
+            else:
+                log.warning(f"[NETWORK] Backend returned HTTP {resp.status_code}")
+            return ok
+        except requests.ConnectionError:
+            log.warning(f"[NETWORK] Cannot connect to {self.backend_url} — is the server running?")
+            return False
+        except requests.Timeout:
+            log.warning(f"[NETWORK] Backend connection timed out ({self.backend_url})")
+            return False
+        except Exception as e:
+            log.warning(f"[NETWORK] Connectivity check failed: {e}")
             return False
 
     def send_heartbeat(self):
@@ -775,11 +787,16 @@ class SmartBusPiClient:
             "currentRestMinutes": round(self.driving_tracker.current_rest_minutes, 1),
         }
         try:
+            log.info(f"[HEARTBEAT] Sending to {self.backend_url}/api/edge-devices/heartbeat ...")
             resp = requests.post(
                 f"{self.backend_url}/api/edge-devices/heartbeat",
                 headers=self.headers, json=payload, timeout=5,
             )
+            if resp.status_code != 200:
+                log.warning(f"[HEARTBEAT] Server returned HTTP {resp.status_code}: {resp.text[:200]}")
+                return
             self.last_heartbeat_time = time.time()
+            log.info(f"[HEARTBEAT] OK — status set to active on server")
 
             # Apply remote config if provided
             data = resp.json()
@@ -818,20 +835,30 @@ class SmartBusPiClient:
             if "verify_now" in commands:
                 log.info("[CMD] Admin requested immediate verification")
                 self._force_verify = True
+        except requests.ConnectionError:
+            log.error(f"[HEARTBEAT] FAILED — Cannot connect to {self.backend_url}. Is the backend running?")
+        except requests.Timeout:
+            log.error(f"[HEARTBEAT] FAILED — Request timed out (5s)")
         except Exception as e:
-            log.debug(f"Heartbeat failed: {e}")
+            log.error(f"[HEARTBEAT] FAILED — {type(e).__name__}: {e}")
 
     def send_alert(self, alert_type, **kwargs):
         payload = {"type": alert_type, **kwargs}
         try:
-            requests.post(
+            log.info(f"[ALERT] Sending {alert_type} alert to backend...")
+            resp = requests.post(
                 f"{self.backend_url}/api/edge-devices/driver-alert",
                 headers=self.headers, json=payload, timeout=5,
             )
-        except Exception:
+            if resp.status_code == 200:
+                log.info(f"[ALERT] {alert_type} sent successfully")
+            else:
+                log.warning(f"[ALERT] Server returned HTTP {resp.status_code}: {resp.text[:200]}")
+                self.alert_queue.push(payload)
+        except Exception as e:
             # Network down — queue for later
             self.alert_queue.push(payload)
-            log.info(f"Alert queued (offline): {alert_type} | Queue size: {self.alert_queue.size}")
+            log.warning(f"[ALERT] Queued offline ({alert_type}): {e} | Queue size: {self.alert_queue.size}")
 
     def flush_alert_queue(self):
         """Try to send all queued alerts."""
@@ -864,6 +891,7 @@ class SmartBusPiClient:
             "driverId": self.verified_driver_id,
         }
         try:
+            log.info(f"[DRIVING STATUS] Reporting: {dt.state}, cont={payload['continuousDrivingMinutes']}m, daily={payload['totalDailyDrivingMinutes']}m")
             resp = requests.post(
                 f"{self.backend_url}/api/edge-devices/driving-status",
                 headers=self.headers, json=payload, timeout=5,
@@ -889,7 +917,7 @@ class SmartBusPiClient:
                 if "cooldown" in limits:
                     dt.cooldown_minutes = limits["cooldown"]
         except Exception as e:
-            log.debug(f"Driving status report failed: {e}")
+            log.warning(f"[DRIVING STATUS] Report failed: {e}")
 
     def sync_face_cache(self):
         """Download latest face encodings from backend."""
@@ -984,8 +1012,10 @@ class SmartBusPiClient:
 
     def _bg_heartbeat_loop(self):
         """Background thread: heartbeat + queue flush + cache sync."""
+        log.info(f"[BG THREAD] Heartbeat loop started (interval: {self.heartbeat_interval}s)")
         while True:
             time.sleep(self.heartbeat_interval)
+            log.info(f"[BG THREAD] Running heartbeat cycle...")
             self.send_heartbeat()
             self.flush_alert_queue()
 
@@ -995,10 +1025,12 @@ class SmartBusPiClient:
     # ── Main loop ──
 
     def run(self):
-        log.info("Smart Bus Pi Client  v2.2 (offline-capable, cross-day tracking)")
+        log.info("Smart Bus Pi Client  v2.3 (offline-capable, cross-day tracking, 3.5\" display)")
         log.info(f"  Backend : {self.backend_url}")
         log.info(f"  Device  : {self.device_id}")
+        log.info(f"  Headers : x-device-id={self.headers['x-device-id']}")
         log.info(f"  Camera  : {self.camera_index}")
+        log.info(f"  Display : 480x320 (3.5\" RPi touch display)")
         log.info(f"  EAR thr : {self.ear_threshold}")
         log.info(f"  MAR thr : {self.mar_threshold}")
         log.info(f"  Driving : rest_timeout={self.driving_tracker.rest_timeout}s, "
@@ -1010,6 +1042,15 @@ class SmartBusPiClient:
         log.info(f"  GPIO buzzer: {'YES' if GPIO_AVAILABLE else 'NO'}")
         log.info(f"  Audio alarm: {'YES' if PYGAME_AVAILABLE else 'NO'}")
         log.info("")
+
+        # ── Startup connectivity check ──
+        log.info("[STARTUP] Checking backend connectivity...")
+        if self._network_available():
+            log.info(f"[STARTUP] Backend at {self.backend_url} is REACHABLE")
+        else:
+            log.warning(f"[STARTUP] Backend at {self.backend_url} is NOT reachable — running in offline mode")
+            log.warning("[STARTUP] Heartbeats will fail until the backend is accessible.")
+            log.warning("[STARTUP] Make sure the backend URL is correct and the server is running.")
 
         camera_source = self.camera_index 
 
@@ -1025,8 +1066,9 @@ class SmartBusPiClient:
             log.error("Cannot open camera")
             return
 
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        # 3.5-inch RPi touch display resolution: 480x320
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320)
 
         # Initial sync
         self.send_heartbeat()
@@ -1142,21 +1184,21 @@ class SmartBusPiClient:
                         status_text += "  ! YAWNING !"
                         color = (0, 165, 255)
 
-                    cv2.putText(frame, status_text, (10, 30),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-                    cv2.putText(frame, score_text, (10, 60),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                    cv2.putText(frame, status_text, (8, 22),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                    cv2.putText(frame, score_text, (8, 44),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45,
                                 (0, 255, 0) if self.alertness.level == "ALERT"
                                 else (0, 165, 255) if self.alertness.level == "TIRED"
-                                else (0, 0, 255), 2)
+                                else (0, 0, 255), 1)
                     if self.verified_driver:
-                        cv2.putText(frame, f"Driver: {self.verified_driver}", (10, 90),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                        cv2.putText(frame, f"Driver: {self.verified_driver}", (8, 66),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 1)
                 else:
                     # No face detected
                     elapsed_no_face = now - self.last_face_seen
-                    cv2.putText(frame, f"No face ({elapsed_no_face:.0f}s)", (10, 30),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    cv2.putText(frame, f"No face ({elapsed_no_face:.0f}s)", (8, 22),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
                     # Alert if driver face missing for too long
                     if elapsed_no_face >= self.no_face_alert_timeout and not self.no_face_alerted:
@@ -1192,12 +1234,13 @@ class SmartBusPiClient:
                 drive_text = f"{state_label} | Cont:{cont_min:.0f}m Daily:{daily_min:.0f}m"
                 if drv.state == drv.STATE_RESTING and rest_min > 0:
                     drive_text += f" Rest:{rest_min:.0f}m"
-                cv2.putText(frame, drive_text, (10, h - 20),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, drive_color, 2)
+                cv2.putText(frame, drive_text, (8, h - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, drive_color, 1)
 
-                # Show frame (display optional)
+                # Show frame on 3.5" RPi display (480x320)
                 try:
-                    cv2.imshow("Smart Bus - Driver Monitor", frame)
+                    display_frame = cv2.resize(frame, (480, 320))
+                    cv2.imshow("Smart Bus - Driver Monitor", display_frame)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         break
                 except cv2.error:
@@ -1210,7 +1253,7 @@ class SmartBusPiClient:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2.2 - Cross-day tracking)")
+    parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2.3 - 3.5\" display, enhanced logging)")
     parser.add_argument("--backend", required=True, help="Backend URL (e.g. http://192.168.1.100:3000)")
     parser.add_argument("--device-id", required=True, help="Device ID registered in admin panel")
     parser.add_argument("--camera", type=str, default="0", help="Camera index or IP URL")
