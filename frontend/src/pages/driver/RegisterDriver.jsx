@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { UserPlus } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
 
 const RegisterDriver = ({ onSuccess }) => {
     const [formData, setFormData] = useState({
@@ -39,7 +43,7 @@ const RegisterDriver = ({ onSuccess }) => {
         data.append("photo", photo);
 
         try {
-            const token = localStorage.getItem("token"); // Assuming auth token is stored here
+            const token = localStorage.getItem("token");
             const config = {
                 headers: {
                     "Content-Type": "multipart/form-data",
@@ -62,69 +66,60 @@ const RegisterDriver = ({ onSuccess }) => {
     };
 
     return (
-        <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Register New Driver</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Driver Name</label>
-                    <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">License Number</label>
-                    <input
-                        type="text"
-                        name="licenseNumber"
-                        value={formData.licenseNumber}
-                        onChange={handleChange}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Contact Number</label>
-                    <input
-                        type="text"
-                        name="contactNumber"
-                        value={formData.contactNumber}
-                        onChange={handleChange}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Driver Photo (Face ID)</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoChange}
-                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                    {preview && (
-                        <div className="mt-4">
-                            <img src={preview} alt="Driver Preview" className="h-40 w-40 object-cover rounded-full mx-auto" />
+        <div style={{ maxWidth: 640, margin: "0 auto", padding: 24 }}>
+            <Card>
+                <CardHeader>
+                    <CardTitle style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                        <div style={{
+                            padding: 8, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+                            background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+                        }}>
+                            <UserPlus size={20} color="#fff" />
                         </div>
-                    )}
-                </div>
+                        Register New Driver
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)" }}>Driver Name</label>
+                            <Input type="text" name="name" value={formData.name} onChange={handleChange} required placeholder="Enter driver name" />
+                        </div>
 
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${loading ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                >
-                    {loading ? "Registering..." : "Register Driver"}
-                </button>
-            </form>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)" }}>License Number</label>
+                            <Input type="text" name="licenseNumber" value={formData.licenseNumber} onChange={handleChange} required placeholder="Enter license number" />
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)" }}>Contact Number</label>
+                            <Input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} required placeholder="Enter contact number" />
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)" }}>Driver Photo (Face ID)</label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePhotoChange}
+                                style={{
+                                    fontSize: "var(--text-sm)", color: "var(--text-muted)",
+                                    padding: 8, border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)",
+                                }}
+                            />
+                            {preview && (
+                                <div style={{ marginTop: 16, textAlign: "center" }}>
+                                    <img src={preview} alt="Driver Preview" style={{ height: 160, width: 160, objectFit: "cover", borderRadius: "var(--radius-full)", margin: "0 auto", border: "3px solid var(--border-light)" }} />
+                                </div>
+                            )}
+                        </div>
+
+                        <Button type="submit" disabled={loading} style={{ width: "100%", marginTop: 8 }}>
+                            {loading ? "Registering..." : "Register Driver"}
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     );
 };

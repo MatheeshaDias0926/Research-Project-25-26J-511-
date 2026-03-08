@@ -114,9 +114,9 @@ const ConductorDashboard = () => {
   if (!user?.assignedBus) {
       return (
         <div style={{ textAlign: "center", padding: 48 }}>
-            <Bus style={{ height: 48, width: 48, margin: "0 auto 16px", color: "#94a3b8" }} />
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#334155" }}>No Bus Assigned</h2>
-            <p style={{ color: "#64748b" }}>Please contact the authority to assign a bus to your account.</p>
+            <Bus style={{ height: 48, width: 48, margin: "0 auto 16px", color: "var(--text-muted)" }} />
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-secondary)" }}>No Bus Assigned</h2>
+            <p style={{ color: "var(--text-muted)" }}>Please contact the authority to assign a bus to your account.</p>
         </div>
       );
   }
@@ -126,9 +126,17 @@ const ConductorDashboard = () => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>My Bus Dashboard</h1>
-          <p style={{ color: "#64748b" }}>Real-time overview of your vehicle status.</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+          <div style={{
+            padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+            background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+          }}>
+            <Bus size={24} color="#fff" />
+          </div>
+          <div>
+            <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>My Bus Dashboard</h1>
+            <p style={{ color: "var(--text-muted)" }}>Real-time overview of your vehicle status.</p>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 12 }}>
             <Button 
@@ -138,9 +146,9 @@ const ConductorDashboard = () => {
                 display: "flex", 
                 alignItems: "center", 
                 gap: 8,
-                color: "#2563eb", 
+                color: "var(--color-primary-500)", 
                 borderColor: "#bfdbfe", 
-                background: "#eff6ff" 
+                background: "var(--color-primary-50)" 
                 }}
             >
                 <RefreshCw size={16} /> Refresh
@@ -165,29 +173,29 @@ const ConductorDashboard = () => {
                 <h2 style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em", display: "flex", alignItems: "baseline", gap: 12 }}>
                   {myBus?.licensePlate || user.assignedBus.licensePlate}
                   {locationName && (
-                      <span style={{ fontSize: 18, fontWeight: 400, color: "#94a3b8", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 18, fontWeight: 400, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
                           <MapPin size={16} /> {locationName}
                       </span>
                   )}
                 </h2>
-                <p style={{ color: "#94a3b8", fontSize: 18 }}>
+                <p style={{ color: "var(--text-muted)", fontSize: 18 }}>
                   Route {myBus?.routeId || user.assignedBus.routeId}
                 </p>
               </div>
             </div>
             <div style={{ display: "flex", gap: 16 }}>
-              <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
-                <p style={{ fontSize: 14, color: "#94a3b8" }}>Speed</p>
+              <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: "var(--radius-lg)" }}>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Speed</p>
                 <p style={{ fontSize: 20, fontWeight: 700 }}>{myBus?.currentStatus?.speed || 0} km/h</p>
               </div>
-              <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
-                <p style={{ fontSize: 14, color: "#94a3b8" }}>Passengers</p>
+              <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: "var(--radius-lg)" }}>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Passengers</p>
                 <p style={{ fontSize: 20, fontWeight: 700 }}>
-                    {myBus?.currentStatus?.currentOccupancy || 0} <span style={{fontSize: 14, color: "#94a3b8"}}>/ {myBus?.capacity || 55}</span>
+                    {myBus?.currentStatus?.currentOccupancy || 0} <span style={{fontSize: "var(--text-sm)", color: "var(--text-muted)"}}>/ {myBus?.capacity || 55}</span>
                 </p>
               </div>
-              <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
-                <p style={{ fontSize: 14, color: "#94a3b8" }}>Status</p>
+              <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: "var(--radius-lg)" }}>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Status</p>
                 <Badge 
                     variant={myBus?.currentStatus ? "success" : "secondary"}
                 >
@@ -208,18 +216,18 @@ const ConductorDashboard = () => {
             
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {violations.length === 0 ? (
-                  <div style={{ padding: 12, background: "#f0fdf4", color: "#15803d", borderRadius: 8, fontSize: 14, fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ height: 8, width: 8, borderRadius: 9999, background: "#22c55e" }}></div>
+                  <div style={{ padding: 12, background: "var(--color-success-50)", color: "#15803d", borderRadius: 8, fontSize: "var(--text-sm)", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ height: 8, width: 8, borderRadius: "var(--radius-full)", background: "#22c55e" }}></div>
                     No active violations or alerts.
                   </div>
               ) : (
                   violations.map((v) => (
-                    <div key={v._id} style={{ padding: 12, background: "#fef2f2", borderRadius: 8, border: "1px solid #fee2e2" }}>
+                    <div key={v._id} style={{ padding: 12, background: "var(--color-danger-50)", borderRadius: 8, border: "1px solid #fee2e2" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                            <span style={{ color: "#dc2626", fontWeight: 600, fontSize: 14 }}>{v.violationType}</span>
-                            <span style={{ fontSize: 12, color: "#94a3b8" }}>{new Date(v.createdAt).toLocaleTimeString()}</span>
+                            <span style={{ color: "var(--color-danger-500)", fontWeight: 600, fontSize: 14 }}>{v.violationType}</span>
+                            <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{new Date(v.createdAt).toLocaleTimeString()}</span>
                         </div>
-                        <p style={{ fontSize: 13, color: "#64748b" }}>
+                        <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
                             Location: {v.gps?.lat?.toFixed(4)}, {v.gps?.lon?.toFixed(4)}. Speed: {v.speed || 0} km/h
                         </p>
                     </div>
@@ -233,7 +241,7 @@ const ConductorDashboard = () => {
         <Card style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "24px 24px 12px 24px" }}>
                 <h3 style={{ fontWeight: 600, fontSize: 18, display: "flex", alignItems: "center", gap: 8 }}>
-                <MapPin style={{ height: 20, width: 20, color: "#2563eb" }} /> 
+                <MapPin style={{ height: 20, width: 20, color: "var(--color-primary-500)" }} /> 
                 Live Location
                 </h3>
             </div>
@@ -251,9 +259,9 @@ const ConductorDashboard = () => {
                  </MapContainer>
             </div>
 
-            <div style={{ padding: 16, background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
+            <div style={{ padding: 16, background: "var(--bg-muted)", borderTop: "1px solid #e2e8f0" }}>
                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
-                    <span style={{ color: "#64748b" }}>Updated: {lastUpdated.toLocaleTimeString()}</span>
+                    <span style={{ color: "var(--text-muted)" }}>Updated: {lastUpdated.toLocaleTimeString()}</span>
                     <Badge variant="success">Signal: Strong</Badge>
                  </div>
             </div>
@@ -283,7 +291,7 @@ const ConductorDashboard = () => {
                                 tick={{ fill: "#64748b", fontSize: 12 }} 
                             />
                             <Tooltip 
-                                contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                                contentStyle={{ background: "#fff", border: "1px solid var(--border-light)", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
                             />
                             <Area 
                                 type="monotone" 

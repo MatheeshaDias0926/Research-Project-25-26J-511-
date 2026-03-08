@@ -84,7 +84,7 @@ const ReuploadPhoto = ({ driverId, onSuccess, onCancel }) => {
                                 style={previewImgStyle}
                             />
                         ) : (
-                            <div style={{ color: "#64748b", textAlign: "center" }}>
+                            <div style={{ color: "var(--text-muted)", textAlign: "center" }}>
                                 <Camera size={28} style={{ marginBottom: 8, opacity: 0.5 }} />
                                 <p style={{ fontSize: 14 }}>
                                     Click to upload new face photo
@@ -133,7 +133,7 @@ const overlayStyle = {
 const modalStyle = {
     background: "white",
     width: 420,
-    borderRadius: 12,
+    borderRadius: "var(--radius-lg)",
     boxShadow: "0 25px 50px rgba(0,0,0,0.25)",
     overflow: "hidden",
 };
@@ -147,17 +147,20 @@ const headerStyle = {
 };
 
 const iconWrapperStyle = {
-    background: "#eff6ff",
-    color: "#2563eb",
+    background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+    color: "#fff",
     padding: 8,
-    borderRadius: 8,
+    borderRadius: "var(--radius-md)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
 };
 
 const closeBtnStyle = {
     background: "none",
     border: "none",
     cursor: "pointer",
-    color: "#64748b",
+    color: "var(--text-muted)",
 };
 
 const uploadBoxStyle = {
@@ -194,9 +197,9 @@ const footerStyle = {
 const cancelBtnStyle = {
     padding: "10px 16px",
     borderRadius: 8,
-    border: "1px solid #e2e8f0",
-    background: "#f8fafc",
+    border: "1px solid var(--border-light)",
+    background: "var(--bg-muted)",
     cursor: "pointer",
-    color: "#334155",
+    color: "var(--text-secondary)",
     fontWeight: 500,
 };
