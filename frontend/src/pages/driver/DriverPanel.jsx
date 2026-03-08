@@ -14,6 +14,7 @@ import BusLocationMap from "../../components/ui/BusLocationMap";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
+  { key: "live-map", label: "Live Location", icon: MapPin },
   { key: "maintenance", label: "Maintenance", icon: Wrench },
   { key: "alerts", label: "Alert Log", icon: FileWarning },
 ];
@@ -444,6 +445,23 @@ const OverviewTab = ({ user }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// LIVE LOCATION TAB (Driver - assigned bus only)
+// ═══════════════════════════════════════════════════════════════
+const LiveLocationTab = () => {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h2 style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "var(--text-primary)" }}>My Bus Location</h2>
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 4 }}>Real-time location of your assigned bus</p>
+        </div>
+      </div>
+      <BusLocationMap role="driver" height="550px" refreshInterval={10000} />
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
 // MAINTENANCE TAB
 // ═══════════════════════════════════════════════════════════════
 const MaintenanceTab = ({ user }) => {
@@ -739,6 +757,7 @@ const DriverPanel = () => {
   const location = useLocation();
 
   const getActiveTab = () => {
+    if (location.pathname === "/driver/live-map") return "live-map";
     if (location.pathname === "/driver/maintenance") return "maintenance";
     if (location.pathname === "/driver/alerts") return "alerts";
     return "overview";
@@ -749,6 +768,7 @@ const DriverPanel = () => {
   const renderTab = () => {
     switch (activeTab) {
       case "overview": return <OverviewTab user={user} />;
+      case "live-map": return <LiveLocationTab />;
       case "maintenance": return <MaintenanceTab user={user} />;
       case "alerts": return <AlertLogTab user={user} />;
       default: return <OverviewTab user={user} />;
