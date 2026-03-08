@@ -10,7 +10,7 @@ export const busApi = {
     const response = await client.get(`/bus/${id}`);
     return response.data;
   },
-  
+
   getStatus: async (id: string) => {
     const response = await client.get(`/bus/${id}/status`);
     return response.data;
@@ -39,5 +39,20 @@ export const busApi = {
   submitPhysicsCheck: async (payload: any) => {
     const response = await client.post("/bus/physics", payload);
     return response.data;
-  }
+  },
+
+  sendPhoneGPS: async (
+    busId: string,
+    gps: { lat: number; lon: number },
+    speed: number,
+    gpsAccuracy: number,
+  ) => {
+    const response = await client.post("/iot/phone-gps", {
+      busId,
+      gps,
+      speed,
+      gpsAccuracy,
+    });
+    return response.data;
+  },
 };

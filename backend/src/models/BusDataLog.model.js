@@ -13,12 +13,16 @@ const busDataLogSchema = new mongoose.Schema({
     lon: { type: Number, required: true },
   },
   footboardStatus: { type: Boolean, default: false },
-  speed: { type: Number, default: 0 }, // Speed in km/h
-  riskScore: { type: Number, default: 0 }, // ML Calculated Risk (0-1)
-  distToCurve: { type: Number, default: 0 }, // Distance to upcoming sharp curve (meters)
+  speed: { type: Number, default: 0 },
+  riskScore: { type: Number, default: 0 },
+  stoppingDistance: { type: Number, default: 0 },
+  safetyDecision: { type: String, default: "UNKNOWN" },
+  distToCurve: { type: Number, default: 0 },
+  deviceId: { type: String, default: "" },
+  gpsAccuracy: { type: Number, default: 0 },
+  satelliteCount: { type: Number, default: 0 },
 });
 
-// Index for efficient queries
 busDataLogSchema.index({ busId: 1, timestamp: -1 });
 
 const BusDataLog = mongoose.model("BusDataLog", busDataLogSchema);

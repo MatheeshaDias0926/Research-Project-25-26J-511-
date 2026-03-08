@@ -1,5 +1,14 @@
-import React, { useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Platform, Alert, Linking } from "react-native";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  Platform,
+  Alert,
+  Linking,
+} from "react-native";
 import { useRouter } from "expo-router";
 import axios from "axios";
 import { busApi } from "../../src/api/bus";
@@ -10,618 +19,876 @@ import { Ionicons } from "@expo/vector-icons";
 import { storage } from "../../src/utils/storage";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
-
-
+import * as Location from "expo-location";
 
 export default function ConductorDashboard() {
-    const [busId, setBusId] = useState<string | null>(null);
-    const [myBus, setMyBus] = useState<any>(null);
-    const [violations, setViolations] = useState<any[]>([]);
-    
-    // Restored State Variables
-    const [logs, setLogs] = useState<any[]>([]);
-    const [locationName, setLocationName] = useState<string>("Unknown Location");
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [lastUpdated, setLastUpdated] = useState(new Date());
-    
+  const [busId, setBusId] = useState<string | null>(null);
+  const [myBus, setMyBus] = useState<any>(null);
+  const [violations, setViolations] = useState<any[]>([]);
 
-    
-    // Live Simulator Data
-    
-    // Live Simulator Data
-    const [riskScore, setRiskScore] = useState(0);
-    const isCriticalRef = useRef(false);
-    
-    // Track the latest violation ID to detect new ones
-    const latestViolationIdRef = useRef<string | null>(null);
-    const isFirstLoad = useRef(true);
+  // Restored State Variables
+  const [logs, setLogs] = useState<any[]>([]);
+  const [locationName, setLocationName] = useState<string>("Unknown Location");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
-    const router = useRouter();
+  // Live Simulator Data
+  const [riskScore, setRiskScore] = useState(0);
+  const isCriticalRef = useRef(false);
 
-    useEffect(() => {
-        const checkBusSelection = async () => {
-            const id = await storage.getItem("currentBusId");
-            
-            if (!id) {
-                router.replace("/(conductor)/bus-selection");
-            } else {
-                setBusId(id);
-                fetchData(id);
-            }
-        };
-        checkBusSelection();
-        
-        // Polling every 2s for Real-time Simulator Sync
-        const interval = setInterval(() => {
-            if (busId) fetchData(busId);
-        }, 500); // 0.5s polling for ultra-fast warnings
-        
-        return () => clearInterval(interval);
-    }, [busId]);
+  // Track the latest violation ID to detect new ones
+  const latestViolationIdRef = useRef<string | null>(null);
+  const isFirstLoad = useRef(true);
 
-    const fetchData = async (id: string) => {
-        try {
-            // 1. Fetch Status & Bus Details
-            const statusRes : any = await busApi.getStatus(id);
-            const busData = {
-                ...statusRes.bus,
-                currentStatus: statusRes.currentStatus
-            };
-            setMyBus(busData);
+  // Phone GPS Tracking State
+  const [gpsTracking, setGpsTracking] = useState(false);
+  const [phoneLocation, setPhoneLocation] =
+    useState<Location.LocationObject | null>(null);
+  const gpsSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const lastGeocodedRef = useRef<number>(0);
 
-            if (busData.currentStatus) {
-                // Check Risk Score (From Simulator)
-                const currentRisk = busData.currentStatus.riskScore || 0;
-                setRiskScore(currentRisk);
+  const router = useRouter();
 
-                // Audio Alert Logic
-                if (currentRisk > 0.7) {
-                    if (!isCriticalRef.current) {
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                        Speech.speak("Critical Warning! Rollover Risk High! Slow Down!", { rate: 1.1, pitch: 1.2 });
-                        isCriticalRef.current = true;
-                    }
-                } else if (currentRisk > 0.5) {
-                   if (!isCriticalRef.current) {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                        Speech.speak("Warning. Approaching unsafe speed.", { rate: 1.1 });
-                        isCriticalRef.current = true; // Debounce
-                   }
-                } else {
-                    isCriticalRef.current = false; // Reset when safe
-                }
-            }
-            
-            // 2. Reverse Geocode (continued)
-            if (busData.currentStatus?.gps) {
-                const { lat, lon } = busData.currentStatus.gps;
-                try {
-                    // Use a direct axios call for external API
-                    const geoRes = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
-                        headers: { 'User-Agent': 'SmartBusApp/1.0' } // Nominatim requires User-Agent
-                    });
-                    const address = geoRes.data.address;
-                    const city = address.city || address.town || address.village || address.suburb || "Unknown Location";
-                    setLocationName(city);
-                } catch (geoError) {
-                   // Fail silently for geo
-                }
-            }
+  useEffect(() => {
+    const checkBusSelection = async () => {
+      const id = await storage.getItem("currentBusId");
 
-            // 3. Fetch Violations
-            const violationsRes : any = await busApi.getViolations(id, 5);
-            let currentViolations = [];
-            
-            if (violationsRes && Array.isArray(violationsRes.violations)) {
-                 currentViolations = violationsRes.violations;
-                 setViolations(currentViolations);
+      if (!id) {
+        router.replace("/(conductor)/bus-selection");
+      } else {
+        setBusId(id);
+        fetchData(id);
+      }
+    };
+    checkBusSelection();
 
-                 // Check for new violations
-                 if (currentViolations.length > 0) {
-                     const newestViolation = currentViolations[0];
-                     
-                     // If we have a new violation that is different from the last one we saw
-                     if (latestViolationIdRef.current !== newestViolation._id) {
-                         
-                         // Skip alert on the very first load to avoid spamming upon login
-                         if (!isFirstLoad.current) {
-                             triggerViolationAlert(newestViolation);
-                         }
-                         
-                         latestViolationIdRef.current = newestViolation._id;
-                     }
-                 }
-            } else {
-                 setViolations([]);
-            }
-            
-            isFirstLoad.current = false;
+    // Polling every 2s for Real-time Simulator Sync
+    const interval = setInterval(() => {
+      if (busId) fetchData(busId);
+    }, 500); // 0.5s polling for ultra-fast warnings
 
-            // 4. Fetch Logs (for History Trend)
-            const logsRes : any = await busApi.getLogs(id, 10);
-            if (logsRes && Array.isArray(logsRes.logs)) {
-                setLogs(logsRes.logs);
-            }
+    return () => clearInterval(interval);
+  }, [busId]);
 
-            setLastUpdated(new Date());
+  const fetchData = async (id: string) => {
+    try {
+      // 1. Fetch Status & Bus Details
+      const statusRes: any = await busApi.getStatus(id);
+      const busData = {
+        ...statusRes.bus,
+        currentStatus: statusRes.currentStatus,
+      };
+      setMyBus(busData);
 
-        } catch (error) {
-            console.error("Dashboard fetch error", error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
+      if (busData.currentStatus) {
+        // Check Risk Score (From Simulator)
+        const currentRisk = busData.currentStatus.riskScore || 0;
+        setRiskScore(currentRisk);
+
+        // Audio Alert Logic
+        if (currentRisk > 0.7) {
+          if (!isCriticalRef.current) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Speech.speak("Critical Warning! Rollover Risk High! Slow Down!", {
+              rate: 1.1,
+              pitch: 1.2,
+            });
+            isCriticalRef.current = true;
+          }
+        } else if (currentRisk > 0.5) {
+          if (!isCriticalRef.current) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            Speech.speak("Warning. Approaching unsafe speed.", { rate: 1.1 });
+            isCriticalRef.current = true; // Debounce
+          }
+        } else {
+          isCriticalRef.current = false; // Reset when safe
         }
-    };
+      }
 
-    const triggerViolationAlert = async (violation: any) => {
-        // Haptic feedback for immediate attention
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        
-        Alert.alert(
-            "⚠️ CRITICAL VIOLATION DETECTED",
-            `${violation.violationType?.toUpperCase() || "UNKNOWN"} violation detected!\n\nLocation: ${locationName}\nTime: ${new Date(violation.timestamp || violation.createdAt).toLocaleTimeString()}`,
-            [
-                { text: "Acknowledge", style: "cancel" },
-                { text: "View Details", onPress: () => { /* scroll to logs or open details */ } }
-            ]
-        );
-    };
-
-    const onRefresh = () => {
-        if (busId) {
-            setRefreshing(true);
-            fetchData(busId);
+      // 2. Reverse Geocode — prefer phone GPS when tracking is active
+      const gpsSource =
+        gpsTracking && phoneLocation
+          ? {
+              lat: phoneLocation.coords.latitude,
+              lon: phoneLocation.coords.longitude,
+            }
+          : busData.currentStatus?.gps;
+      if (gpsSource) {
+        const { lat, lon } = gpsSource;
+        // Throttle geocode to max once per 10s (Nominatim rate limit)
+        const now = Date.now();
+        if (now - lastGeocodedRef.current > 10000) {
+          lastGeocodedRef.current = now;
+          try {
+            const geoRes = await axios.get(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
+              {
+                headers: { "User-Agent": "SmartBusApp/1.0" },
+              },
+            );
+            const address = geoRes.data.address;
+            const city =
+              address.city ||
+              address.town ||
+              address.village ||
+              address.suburb ||
+              "Unknown Location";
+            setLocationName(city);
+          } catch (geoError) {
+            // Fail silently for geo
+          }
         }
-    };
+      }
 
-    if (loading && !myBus) {
-        return (
-             <View style={[styles.container, styles.center]}>
-                <Text style={{ color: Colors.textSecondary }}>Loading Dashboard...</Text>
-             </View>
-        );
+      // 3. Fetch Violations
+      const violationsRes: any = await busApi.getViolations(id, 5);
+      let currentViolations = [];
+
+      if (violationsRes && Array.isArray(violationsRes.violations)) {
+        currentViolations = violationsRes.violations;
+        setViolations(currentViolations);
+
+        // Check for new violations
+        if (currentViolations.length > 0) {
+          const newestViolation = currentViolations[0];
+
+          // If we have a new violation that is different from the last one we saw
+          if (latestViolationIdRef.current !== newestViolation._id) {
+            // Skip alert on the very first load to avoid spamming upon login
+            if (!isFirstLoad.current) {
+              triggerViolationAlert(newestViolation);
+            }
+
+            latestViolationIdRef.current = newestViolation._id;
+          }
+        }
+      } else {
+        setViolations([]);
+      }
+
+      isFirstLoad.current = false;
+
+      // 4. Fetch Logs (for History Trend)
+      const logsRes: any = await busApi.getLogs(id, 10);
+      if (logsRes && Array.isArray(logsRes.logs)) {
+        setLogs(logsRes.logs);
+      }
+
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error("Dashboard fetch error", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
+  };
 
+  const triggerViolationAlert = async (violation: any) => {
+    // Haptic feedback for immediate attention
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+    Alert.alert(
+      "⚠️ CRITICAL VIOLATION DETECTED",
+      `${violation.violationType?.toUpperCase() || "UNKNOWN"} violation detected!\n\nLocation: ${locationName}\nTime: ${new Date(violation.timestamp || violation.createdAt).toLocaleTimeString()}`,
+      [
+        { text: "Acknowledge", style: "cancel" },
+        {
+          text: "View Details",
+          onPress: () => {
+            /* scroll to logs or open details */
+          },
+        },
+      ],
+    );
+  };
+
+  const onRefresh = () => {
+    if (busId) {
+      setRefreshing(true);
+      fetchData(busId);
+    }
+  };
+
+  // ===== PHONE GPS TRACKING =====
+  const startGpsTracking = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Location permission is needed to track bus GPS from your phone.",
+        );
+        return;
+      }
+
+      setGpsTracking(true);
+
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 3000, // Every 3 seconds
+          distanceInterval: 5, // Or every 5 meters
+        },
+        (location) => {
+          setPhoneLocation(location);
+          // Send to backend
+          if (busId) {
+            const speedKmh = (location.coords.speed || 0) * 3.6; // m/s → km/h
+            busApi
+              .sendPhoneGPS(
+                busId,
+                {
+                  lat: location.coords.latitude,
+                  lon: location.coords.longitude,
+                },
+                Math.max(0, speedKmh),
+                location.coords.accuracy || 0,
+              )
+              .catch((err: any) => console.error("Phone GPS send error:", err));
+          }
+        },
+      );
+
+      gpsSubscriptionRef.current = subscription;
+    } catch (error) {
+      console.error("GPS tracking error:", error);
+      Alert.alert("GPS Error", "Failed to start location tracking.");
+    }
+  }, [busId]);
+
+  const stopGpsTracking = useCallback(() => {
+    if (gpsSubscriptionRef.current) {
+      gpsSubscriptionRef.current.remove();
+      gpsSubscriptionRef.current = null;
+    }
+    setGpsTracking(false);
+    setPhoneLocation(null);
+  }, []);
+
+  // Cleanup GPS on unmount
+  useEffect(() => {
+    return () => {
+      if (gpsSubscriptionRef.current) {
+        gpsSubscriptionRef.current.remove();
+      }
+    };
+  }, []);
+
+  if (loading && !myBus) {
     return (
-        <ScrollView 
-            style={styles.container}
-            contentContainerStyle={styles.content}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        >
-            {/* Header / Title */}
-            <View style={styles.headerRow}>
-                <View>
-                    <Text style={styles.pageTitle}>My Bus Dashboard</Text>
-                    <Text style={styles.pageSubtitle}>Real-time overview</Text>
-                </View>
-                <View style={styles.headerActions}>
-                     <Button 
-                         variant="outline" 
-                         onPress={() => Linking.openURL('tel:911')}
-                         style={[styles.smallBtn, { borderColor: '#ef4444', backgroundColor: '#fef2f2' }]}
-                     >
-                         <Ionicons name="call" size={16} color="#dc2626" />
-                     </Button>
-                     <Button 
-                         variant="outline" 
-                         onPress={() => router.replace("/(conductor)/bus-selection")}
-                         style={styles.smallBtn}
-                     >
-                         <Ionicons name="bus-outline" size={16} color={Colors.primary} />
-                     </Button>
-                     <Button 
-                         variant="outline"
-                         onPress={onRefresh}
-                         style={styles.smallBtn}
-                     >
-                         <Ionicons name="refresh" size={16} color={Colors.primary} />
-                     </Button>
-                </View>
+      <View style={[styles.container, styles.center]}>
+        <Text style={{ color: Colors.textSecondary }}>
+          Loading Dashboard...
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      {/* Header / Title */}
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.pageTitle}>My Bus Dashboard</Text>
+          <Text style={styles.pageSubtitle}>Real-time overview</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <Button
+            variant="outline"
+            onPress={() => Linking.openURL("tel:911")}
+            style={[
+              styles.smallBtn,
+              { borderColor: "#ef4444", backgroundColor: "#fef2f2" },
+            ]}
+          >
+            <Ionicons name="call" size={16} color="#dc2626" />
+          </Button>
+          <Button
+            variant="outline"
+            onPress={() => router.replace("/(conductor)/bus-selection")}
+            style={styles.smallBtn}
+          >
+            <Ionicons name="bus-outline" size={16} color={Colors.primary} />
+          </Button>
+          <Button variant="outline" onPress={onRefresh} style={styles.smallBtn}>
+            <Ionicons name="refresh" size={16} color={Colors.primary} />
+          </Button>
+        </View>
+      </View>
+
+      {/* Phone GPS Tracking Toggle */}
+      <Card style={[styles.gpsCard, gpsTracking && styles.gpsCardActive]}>
+        <View style={styles.gpsRow}>
+          <View style={styles.gpsInfo}>
+            <Ionicons
+              name={gpsTracking ? "navigate" : "navigate-outline"}
+              size={24}
+              color={gpsTracking ? "#22c55e" : Colors.textSecondary}
+            />
+            <View>
+              <Text
+                style={[styles.gpsTitle, gpsTracking && styles.gpsTitleActive]}
+              >
+                Phone GPS {gpsTracking ? "Active" : "Off"}
+              </Text>
+              <Text style={styles.gpsSubtext}>
+                {gpsTracking && phoneLocation
+                  ? `${phoneLocation.coords.latitude.toFixed(4)}, ${phoneLocation.coords.longitude.toFixed(4)} • ${Math.max(0, (phoneLocation.coords.speed || 0) * 3.6).toFixed(0)} km/h`
+                  : "Use phone as GPS until sensor is installed"}
+              </Text>
             </View>
+          </View>
+          <Button
+            variant={gpsTracking ? "outline" : "primary"}
+            onPress={gpsTracking ? stopGpsTracking : startGpsTracking}
+            style={[styles.gpsBtn, gpsTracking && styles.gpsBtnStop]}
+          >
+            <Text
+              style={{
+                color: gpsTracking ? "#ef4444" : "#fff",
+                fontWeight: "600",
+                fontSize: 13,
+              }}
+            >
+              {gpsTracking ? "Stop" : "Start"}
+            </Text>
+          </Button>
+        </View>
+      </Card>
 
+      {/* REAL-TIME SIMULATION ALERT OVERLAY */}
+      {riskScore > 0.4 && (
+        <Card
+          style={{
+            backgroundColor: riskScore > 0.7 ? "#ef4444" : "#f97316",
+            marginBottom: 16,
+            borderWidth: 0,
+          }}
+        >
+          <View style={{ alignItems: "center", padding: 12 }}>
+            <Ionicons name="warning" size={48} color="white" />
+            <Text
+              style={{
+                color: "white",
+                fontWeight: "bold",
+                fontSize: 24,
+                marginVertical: 8,
+              }}
+            >
+              {riskScore > 0.7 ? "CRITICAL RISK" : "WARNING"}
+            </Text>
+            <Text
+              style={{
+                color: "white",
+                fontSize: 16,
+                textAlign: "center",
+                opacity: 0.9,
+              }}
+            >
+              Stability: {Math.max(0, 100 - riskScore * 100).toFixed(0)}%
+            </Text>
 
-
-            {/* REAL-TIME SIMULATION ALERT OVERLAY */}
-            {riskScore > 0.4 && (
-                 <Card style={{ 
-                     backgroundColor: riskScore > 0.7 ? '#ef4444' : '#f97316', 
-                     marginBottom: 16,
-                     borderWidth: 0
-                 }}>
-                      <View style={{ alignItems: 'center', padding: 12 }}>
-                           <Ionicons name="warning" size={48} color="white" />
-                           <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 24, marginVertical: 8 }}>
-                               {riskScore > 0.7 ? "CRITICAL RISK" : "WARNING"}
-                           </Text>
-                           <Text style={{ color: 'white', fontSize: 16, textAlign: 'center', opacity: 0.9 }}>
-                               Stability: {Math.max(0, 100 - (riskScore * 100)).toFixed(0)}%
-                           </Text>
-                           
-                           {/* NEW: CURVE DISTANCE WARNING */}
-                           {myBus?.currentStatus?.distToCurve > 0 && (
-                                <View style={{ marginTop: 12, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                     <Ionicons name="return-up-forward" size={24} color="#fff" />
-                                     <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
-                                         Curve Ahead: {myBus.currentStatus.distToCurve.toFixed(0)} m
-                                     </Text>
-                                </View>
-                           )}
-
-                           <View style={{ marginTop: 12, backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 }}>
-                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
-                                    SLOW DOWN IMMEDIATELY
-                                </Text>
-                           </View>
-                      </View>
-                 </Card>
+            {/* NEW: CURVE DISTANCE WARNING */}
+            {myBus?.currentStatus?.distToCurve > 0 && (
+              <View
+                style={{
+                  marginTop: 12,
+                  backgroundColor: "rgba(0,0,0,0.3)",
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Ionicons name="return-up-forward" size={24} color="#fff" />
+                <Text
+                  style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}
+                >
+                  Curve Ahead: {myBus.currentStatus.distToCurve.toFixed(0)} m
+                </Text>
+              </View>
             )}
 
-            {/* Main Bus Card (Dark Theme like Frontend) */}
-            <Card style={styles.mainCard}>
-                <View style={styles.mainCardContent}>
-                    <View style={styles.busIdentity}>
-                         <View style={styles.busIconContainer}>
-                             <Ionicons name="bus" size={32} color="#fff" />
-                         </View>
-                         <View>
-                             <Text style={styles.licensePlate}>
-                                 {myBus?.licensePlate || myBus?.busNumber || "Unknown"}
-                             </Text>
-                             <View style={styles.locationContainer}>
-                                 <Ionicons name="location-sharp" size={14} color="#94a3b8" />
-                                 <Text style={styles.locationText}>{locationName}</Text>
-                             </View>
-                             <Text style={styles.routeText}>Route {myBus?.routeId || myBus?.routeNumber}</Text>
-                         </View>
-                    </View>
-                    
-                    <View style={styles.statusContainer}>
-                        <View style={styles.statusBadgeContainer}>
-                             <Text style={styles.statusLabel}>Status</Text>
-                             <View style={[styles.badge, myBus?.currentStatus ? styles.badgeSuccess : styles.badgeInactive]}>
-                                 <Text style={[styles.badgeText, myBus?.currentStatus ? styles.textSuccess : styles.textInactive]}>
-                                     {myBus?.currentStatus ? "Active" : "Inactive"}
-                                 </Text>
-                             </View>
-                        </View>
-                        <View style={styles.capacityContainer}>
-                             <Text style={styles.statusLabel}>Capacity</Text>
-                             <Text style={styles.capacityValue}>{myBus?.capacity || 55}</Text>
-                        </View>
-                    </View>
-                </View>
-            </Card>
-
-            {/* Quick Stats Grid */}
-            <View style={styles.grid}>
-                <Card style={styles.statCard}>
-                    <Ionicons name="speedometer" size={24} color={Colors.primary} />
-                    <Text style={styles.statValue}>{myBus?.currentStatus?.speed || 0} km/h</Text>
-                    <Text style={styles.statLabel}>Current Speed</Text>
-                </Card>
-                <Card style={styles.statCard}>
-                    <Ionicons name="people" size={24} color={Colors.success} />
-                    <Text style={styles.statValue}>{myBus?.currentStatus?.currentOccupancy || 0}</Text>
-                    <Text style={styles.statLabel}>Passengers</Text>
-                </Card>
-            </View>
-
-            {/* Recent Violations */}
-            <Card style={styles.sectionCard}>
-                <View style={styles.cardHeader}>
-                    <Ionicons name="alert-circle" size={20} color={Colors.warning} />
-                    <Text style={styles.cardTitle}>Recent Alerts</Text>
-                </View>
-
-                {(!violations || violations.length === 0) ? (
-                    <View style={styles.emptyState}>
-                         <View style={styles.dotSuccess} />
-                         <Text style={styles.emptyStateText}>No active violations or alerts.</Text>
-                    </View>
-                ) : (
-                    violations.map((v, index) => (
-                        <View key={index} style={styles.violationItem}>
-                             <View style={styles.violationHeader}>
-                                 <Text style={styles.violationType}>{v.violationType || v.type}</Text>
-                                 <Text style={styles.violationTime}>{new Date(v.createdAt || v.timestamp).toLocaleTimeString()}</Text>
-                             </View>
-                             <Text style={styles.violationDetail}>
-                                 Speed: {v.speed || 0} km/h • Loc: {v.gps?.lat?.toFixed(4)}, {v.gps?.lon?.toFixed(4)}
-                             </Text>
-                        </View>
-                    ))
-                )}
-            </Card>
-
-            {/* Historical Logs List (Replacing Chart for Mobile) */}
-            <Card style={styles.sectionCard}>
-                <View style={styles.cardHeader}>
-                    <Ionicons name="time" size={20} color={Colors.primary} />
-                    <Text style={styles.cardTitle}>Recent Activity Log</Text>
-                </View>
-                
-                {logs.length === 0 ? (
-                    <Text style={styles.emptyText}>No logs available.</Text>
-                ) : (
-                    logs.slice(0, 5).map((log, index) => (
-                         <View key={index} style={styles.logItem}>
-                             <Text style={styles.logTime}>
-                                 {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                             </Text>
-                             <View style={styles.logStats}>
-                                  <Text style={styles.logStatText}>Occ: {log.currentOccupancy}</Text>
-                                  <Text style={styles.logStatText}>Spd: {log.speed} km/h</Text>
-                             </View>
-                         </View>
-                    ))
-                )}
-            </Card>
-
-            <View style={styles.footerInfo}>
-                 <Text style={styles.lastUpdated}>Updated: {lastUpdated.toLocaleTimeString()}</Text>
-            </View>
-
-            <Button 
-                style={styles.maintenanceButton}
-                onPress={() => router.push("/(conductor)/maintenance")}
+            <View
+              style={{
+                marginTop: 12,
+                backgroundColor: "rgba(0,0,0,0.2)",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 4,
+              }}
             >
-                Report Maintenance Issue
-            </Button>
-            
-            <View style={{ height: 40 }} />
-        </ScrollView>
-    );
+              <Text style={{ color: "#fff", fontSize: 12, fontWeight: "bold" }}>
+                SLOW DOWN IMMEDIATELY
+              </Text>
+            </View>
+          </View>
+        </Card>
+      )}
+
+      {/* Main Bus Card (Dark Theme like Frontend) */}
+      <Card style={styles.mainCard}>
+        <View style={styles.mainCardContent}>
+          <View style={styles.busIdentity}>
+            <View style={styles.busIconContainer}>
+              <Ionicons name="bus" size={32} color="#fff" />
+            </View>
+            <View>
+              <Text style={styles.licensePlate}>
+                {myBus?.licensePlate || myBus?.busNumber || "Unknown"}
+              </Text>
+              <View style={styles.locationContainer}>
+                <Ionicons name="location-sharp" size={14} color="#94a3b8" />
+                <Text style={styles.locationText}>
+                  {locationName}
+                  {gpsTracking && phoneLocation
+                    ? ` (${phoneLocation.coords.latitude.toFixed(4)}, ${phoneLocation.coords.longitude.toFixed(4)})`
+                    : myBus?.currentStatus?.gps
+                      ? ` (${myBus.currentStatus.gps.lat.toFixed(4)}, ${myBus.currentStatus.gps.lon.toFixed(4)})`
+                      : ""}
+                </Text>
+              </View>
+              <Text style={styles.routeText}>
+                Route {myBus?.routeId || myBus?.routeNumber}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.statusContainer}>
+            <View style={styles.statusBadgeContainer}>
+              <Text style={styles.statusLabel}>Status</Text>
+              <View
+                style={[
+                  styles.badge,
+                  myBus?.currentStatus
+                    ? styles.badgeSuccess
+                    : styles.badgeInactive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.badgeText,
+                    myBus?.currentStatus
+                      ? styles.textSuccess
+                      : styles.textInactive,
+                  ]}
+                >
+                  {myBus?.currentStatus ? "Active" : "Inactive"}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.capacityContainer}>
+              <Text style={styles.statusLabel}>Capacity</Text>
+              <Text style={styles.capacityValue}>{myBus?.capacity || 55}</Text>
+            </View>
+          </View>
+        </View>
+      </Card>
+
+      {/* Quick Stats Grid */}
+      <View style={styles.grid}>
+        <Card style={styles.statCard}>
+          <Ionicons name="speedometer" size={24} color={Colors.primary} />
+          <Text style={styles.statValue}>
+            {gpsTracking && phoneLocation
+              ? Math.max(0, (phoneLocation.coords.speed || 0) * 3.6).toFixed(0)
+              : myBus?.currentStatus?.speed || 0}{" "}
+            km/h
+          </Text>
+          <Text style={styles.statLabel}>Current Speed</Text>
+        </Card>
+        <Card style={styles.statCard}>
+          <Ionicons name="people" size={24} color={Colors.success} />
+          <Text style={styles.statValue}>
+            {myBus?.currentStatus?.currentOccupancy || 0}
+          </Text>
+          <Text style={styles.statLabel}>Passengers</Text>
+        </Card>
+      </View>
+
+      {/* Recent Violations */}
+      <Card style={styles.sectionCard}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="alert-circle" size={20} color={Colors.warning} />
+          <Text style={styles.cardTitle}>Recent Alerts</Text>
+        </View>
+
+        {!violations || violations.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.dotSuccess} />
+            <Text style={styles.emptyStateText}>
+              No active violations or alerts.
+            </Text>
+          </View>
+        ) : (
+          violations.map((v, index) => (
+            <View key={index} style={styles.violationItem}>
+              <View style={styles.violationHeader}>
+                <Text style={styles.violationType}>
+                  {v.violationType || v.type}
+                </Text>
+                <Text style={styles.violationTime}>
+                  {new Date(v.createdAt || v.timestamp).toLocaleTimeString()}
+                </Text>
+              </View>
+              <Text style={styles.violationDetail}>
+                Speed: {v.speed || 0} km/h • Loc: {v.gps?.lat?.toFixed(4)},{" "}
+                {v.gps?.lon?.toFixed(4)}
+              </Text>
+            </View>
+          ))
+        )}
+      </Card>
+
+      {/* Historical Logs List (Replacing Chart for Mobile) */}
+      <Card style={styles.sectionCard}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="time" size={20} color={Colors.primary} />
+          <Text style={styles.cardTitle}>Recent Activity Log</Text>
+        </View>
+
+        {logs.length === 0 ? (
+          <Text style={styles.emptyText}>No logs available.</Text>
+        ) : (
+          logs.slice(0, 5).map((log, index) => (
+            <View key={index} style={styles.logItem}>
+              <Text style={styles.logTime}>
+                {new Date(log.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+              <View style={styles.logStats}>
+                <Text style={styles.logStatText}>
+                  Occ: {log.currentOccupancy}
+                </Text>
+                <Text style={styles.logStatText}>Spd: {log.speed} km/h</Text>
+              </View>
+            </View>
+          ))
+        )}
+      </Card>
+
+      <View style={styles.footerInfo}>
+        <Text style={styles.lastUpdated}>
+          Updated: {lastUpdated.toLocaleTimeString()}
+        </Text>
+      </View>
+
+      <Button
+        style={styles.maintenanceButton}
+        onPress={() => router.push("/(conductor)/maintenance")}
+      >
+        Report Maintenance Issue
+      </Button>
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    center: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    content: {
-        padding: 16,
-    },
-    headerRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 20,
-    },
-    pageTitle: {
-        fontSize: 24,
-        fontWeight: "bold",
-        color: Colors.text,
-    },
-    pageSubtitle: {
-        fontSize: 14,
-        color: Colors.textSecondary,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    smallBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        height: 40,
-        minWidth: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    /* Main Dark Card */
-    mainCard: {
-        backgroundColor: "#0f172a", // Dark Blue/Slate
-        padding: 0, // Reset padding for custom layout
-        overflow: 'hidden',
-        marginBottom: 24,
-        borderWidth: 0,
-    },
-    mainCardContent: {
-        padding: 20,
-    },
-    busIdentity: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 24, 
-    },
-    busIconContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: "rgba(255,255,255,0.1)",
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    licensePlate: {
-        fontSize: 24,
-        fontWeight: "bold",
-        color: "#fff",
-        marginBottom: 4,
-    },
-    locationContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        marginBottom: 4,
-    },
-    locationText: {
-        fontSize: 16,
-        color: "#94a3b8",
-    },
-    routeText: {
-        fontSize: 16,
-        color: "#94a3b8",
-    },
-    statusContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    statusBadgeContainer: {
-        alignItems: 'flex-start',
-    },
-    capacityContainer: {
-        alignItems: 'center',
-        backgroundColor: "rgba(255,255,255,0.1)",
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-    },
-    statusLabel: {
-        fontSize: 12,
-        color: "#94a3b8",
-        marginBottom: 4,
-    },
-    capacityValue: {
-        fontSize: 18,
-        fontWeight: "bold",
-        color: "#fff",
-    },
-    badge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
-        backgroundColor: "rgba(255,255,255,0.1)",
-    },
-    badgeSuccess: {
-        backgroundColor: "rgba(34, 197, 94, 0.2)",
-    },
-    badgeInactive: {
-        backgroundColor: "rgba(148, 163, 184, 0.2)",
-    },
-    badgeText: {
-        fontSize: 14,
-        fontWeight: "600",
-    },
-    textSuccess: {
-        color: "#4ade80",
-    },
-    textInactive: {
-        color: "#cbd5e1",
-    },
-    /* Grid Stats */
-    grid: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 24,
-    },
-    statCard: {
-        flex: 1,
-        padding: 16,
-        alignItems: 'center',
-    },
-    statValue: {
-        fontSize: 24,
-        fontWeight: "bold",
-        color: Colors.text,
-        marginVertical: 4,
-    },
-    statLabel: {
-        fontSize: 12,
-        color: Colors.textSecondary,
-    },
-    /* Section Cards */
-    sectionCard: {
-        marginBottom: 16,
-        padding: 16,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-        gap: 8,
-    },
-    cardTitle: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: Colors.text,
-    },
-    /* Violations */
-    emptyState: {
-        backgroundColor: "#f0fdf4",
-        padding: 12,
-        borderRadius: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    dotSuccess: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: "#22c55e",
-    },
-    emptyStateText: {
-        color: "#15803d",
-        fontWeight: "500",
-        fontSize: 14,
-    },
-    violationItem: {
-        backgroundColor: "#fef2f2",
-        padding: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: "#fee2e2",
-        marginBottom: 8,
-    },
-    violationHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
-    violationType: {
-        color: "#dc2626",
-        fontWeight: "600",
-        fontSize: 14,
-    },
-    violationTime: {
-        fontSize: 12,
-        color: "#94a3b8",
-    },
-    violationDetail: {
-        fontSize: 12,
-        color: "#64748b",
-    },
-    maintenanceButton: {
-        backgroundColor: "#0f172a", // Dark styling for action button
-        marginTop: 8,
-    },
-    /* Logs */
-    logItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-    },
-    logTime: {
-        color: Colors.text,
-        fontWeight: "500",
-    },
-    logStats: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    logStatText: {
-        color: Colors.textSecondary,
-        fontSize: 12,
-    },
-    emptyText: {
-        color: Colors.textSecondary,
-        fontStyle: 'italic',
-    },
-    footerInfo: {
-        marginTop: 16,
-        alignItems: 'center',
-    },
-    lastUpdated: {
-        color: Colors.textSecondary,
-        fontSize: 12,
-    }
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  center: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  content: {
+    padding: 16,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: Colors.text,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  smallBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    height: 40,
+    minWidth: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  /* Main Dark Card */
+  mainCard: {
+    backgroundColor: "#0f172a", // Dark Blue/Slate
+    padding: 0, // Reset padding for custom layout
+    overflow: "hidden",
+    marginBottom: 24,
+    borderWidth: 0,
+  },
+  mainCardContent: {
+    padding: 20,
+  },
+  busIdentity: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  busIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  licensePlate: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 4,
+  },
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 4,
+  },
+  locationText: {
+    fontSize: 16,
+    color: "#94a3b8",
+  },
+  routeText: {
+    fontSize: 16,
+    color: "#94a3b8",
+  },
+  statusContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  statusBadgeContainer: {
+    alignItems: "flex-start",
+  },
+  capacityContainer: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  statusLabel: {
+    fontSize: 12,
+    color: "#94a3b8",
+    marginBottom: 4,
+  },
+  capacityValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  badgeSuccess: {
+    backgroundColor: "rgba(34, 197, 94, 0.2)",
+  },
+  badgeInactive: {
+    backgroundColor: "rgba(148, 163, 184, 0.2)",
+  },
+  badgeText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  textSuccess: {
+    color: "#4ade80",
+  },
+  textInactive: {
+    color: "#cbd5e1",
+  },
+  /* Grid Stats */
+  grid: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    padding: 16,
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: Colors.text,
+    marginVertical: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  /* Section Cards */
+  sectionCard: {
+    marginBottom: 16,
+    padding: 16,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 8,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  /* Violations */
+  emptyState: {
+    backgroundColor: "#f0fdf4",
+    padding: 12,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dotSuccess: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#22c55e",
+  },
+  emptyStateText: {
+    color: "#15803d",
+    fontWeight: "500",
+    fontSize: 14,
+  },
+  violationItem: {
+    backgroundColor: "#fef2f2",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#fee2e2",
+    marginBottom: 8,
+  },
+  violationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  violationType: {
+    color: "#dc2626",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  violationTime: {
+    fontSize: 12,
+    color: "#94a3b8",
+  },
+  violationDetail: {
+    fontSize: 12,
+    color: "#64748b",
+  },
+  maintenanceButton: {
+    backgroundColor: "#0f172a", // Dark styling for action button
+    marginTop: 8,
+  },
+  /* Logs */
+  logItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  logTime: {
+    color: Colors.text,
+    fontWeight: "500",
+  },
+  logStats: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  logStatText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+  },
+  emptyText: {
+    color: Colors.textSecondary,
+    fontStyle: "italic",
+  },
+  footerInfo: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  lastUpdated: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+  },
+  /* Phone GPS Tracking */
+  gpsCard: {
+    marginBottom: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  gpsCardActive: {
+    borderColor: "#22c55e",
+    backgroundColor: "#f0fdf4",
+  },
+  gpsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  gpsInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  gpsTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  gpsTitleActive: {
+    color: "#15803d",
+  },
+  gpsSubtext: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  gpsBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    height: 36,
+    minWidth: 60,
+  },
+  gpsBtnStop: {
+    borderColor: "#ef4444",
+  },
 });

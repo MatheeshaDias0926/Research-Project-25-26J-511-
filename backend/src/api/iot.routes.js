@@ -1,25 +1,35 @@
 import express from "express";
-import { ingestMockData } from "../controllers/iot.controller.js";
+import {
+  ingestIoTData,
+  updatePhoneGPS,
+} from "../controllers/iot.controller.js";
+import { verifyApiKey } from "../middleware/apikey.middleware.js";
+import {
+  protect,
+  isConductorOrAuthority,
+} from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
 /**
  * @route   POST /api/iot/iot-data
  * @desc    Ingest real-time IoT data from ESP32 device
- * @access  Public (for now - consider adding API key authentication)
- *
- * Note: In production, you should secure this endpoint with:
- * - API key authentication
- * - IP whitelisting
- * - Rate limiting
+ * @access  Protected by API key (X-API-Key header)
  */
-router.post("/iot-data", ingestMockData);
+router.post("/iot-data", verifyApiKey, ingestIoTData);
 
 /**
  * @route   POST /api/iot/mock-data
  * @desc    Ingest mock IoT data for testing (legacy endpoint)
- * @access  Public
+ * @access  Protected by API key
  */
-router.post("/mock-data", ingestMockData);
+router.post("/mock-data", verifyApiKey, ingestIoTData);
+
+/**
+ * @route   POST /api/iot/phone-gps
+ * @desc    Update bus GPS from conductor's phone (fallback for no GPS sensor)
+ * @access  Protected by JWT (conductor/authority)
+ */
+router.post("/phone-gps", protect, isConductorOrAuthority, updatePhoneGPS);
 
 export default router;

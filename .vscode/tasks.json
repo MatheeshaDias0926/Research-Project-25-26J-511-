@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start Expo Dev Server",
+			"type": "shell",
+			"command": "cd /Users/matheeshadias/Documents/Research-Project-25-26J-511-/mobile-app && npx expo start --clear",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Restart Backend",
+			"type": "shell",
+			"command": "cd /Users/matheeshadias/Documents/Research-Project-25-26J-511-/backend && npm run dev",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

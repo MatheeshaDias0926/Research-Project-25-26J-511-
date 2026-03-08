@@ -19,10 +19,10 @@ export const getOccupancyPrediction = async (
   stopId,
   dayOfWeek,
   timeOfDay,
-  weather
+  weather,
 ) => {
   console.log(
-    `[ML Service] Requesting prediction for route ${routeId}, stop ${stopId}, ${dayOfWeek} at ${timeOfDay}, weather: ${weather}`
+    `[ML Service] Requesting prediction for route ${routeId}, stop ${stopId}, ${dayOfWeek} at ${timeOfDay}, weather: ${weather}`,
   );
 
   try {
@@ -41,7 +41,7 @@ export const getOccupancyPrediction = async (
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     // Return the prediction data from Python service
@@ -60,7 +60,7 @@ export const getOccupancyPrediction = async (
     // Check if it's a network/connection error
     if (error.code === "ECONNREFUSED") {
       console.error(
-        "[ML Service] Cannot connect to Python ML service. Make sure it is running on port 5001."
+        "[ML Service] Cannot connect to Python ML service. Make sure it is running on port 5001.",
       );
     }
 
@@ -95,7 +95,7 @@ export const getSafetyPrediction = async (features) => {
       {
         timeout: 2000, // Fast timeout for real-time safety
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
     return response.data;
   } catch (error) {

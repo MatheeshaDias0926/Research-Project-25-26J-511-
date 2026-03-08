@@ -16,7 +16,6 @@ import Profile from "./pages/auth/Profile";
 
 // Passenger Pages
 import PassengerDashboard from "./pages/passenger/PassengerDashboard";
-import Prediction from "./pages/passenger/Prediction";
 import PhysicsCheck from "./pages/passenger/PhysicsCheck";
 
 // Authority Pages
@@ -65,8 +64,6 @@ function App() {
             {/* Role Protected Routes */}
             <Route element={<PrivateRoutes roles={["passenger"]} />}>
               <Route path="/passenger" element={<PassengerDashboard />} />
-              <Route path="/passenger/prediction" element={<Prediction />} />
-
             </Route>
 
             <Route element={<PrivateRoutes roles={["conductor"]} />}>
@@ -97,10 +94,7 @@ function App() {
                 path="/authority/safety"
                 element={<AuthorityPhysicsCheck />}
               />
-              <Route
-                path="/authority/theories"
-                element={<SafetyTheories />}
-              />
+              <Route path="/authority/theories" element={<SafetyTheories />} />
               <Route
                 path="/authority/simulator"
                 element={<AuthorityScenarioSimulator />}
