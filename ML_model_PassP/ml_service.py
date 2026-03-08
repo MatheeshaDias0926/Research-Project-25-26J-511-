@@ -72,7 +72,8 @@ else:
     print("[WARN] FaceLandmarkRecognition class not loaded -- drowsiness stream unavailable.")
 
 # 4. Occupancy Model
-MODEL_PATH = 'xgb_bus_model.joblib'
+_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(_DIR, 'xgb_bus_model.joblib')
 occupancy_model = None
 if os.path.exists(MODEL_PATH):
     try:
@@ -84,7 +85,7 @@ else:
     print(f"[INFO] Occupancy Model not found ({MODEL_PATH}). Service will run in Safety-Only mode.")
 
 # 5. Safety Model
-SAFETY_MODEL_PATH = 'safety_model.joblib'
+SAFETY_MODEL_PATH = os.path.join(_DIR, 'safety_model.joblib')
 safety_model = None
 if os.path.exists(SAFETY_MODEL_PATH):
     try:
