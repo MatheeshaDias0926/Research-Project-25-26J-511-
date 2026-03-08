@@ -497,6 +497,85 @@ router.post("/heartbeat", authenticateDevice, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/edge-devices/gps-update
+ * @desc    Receive GPS location from a mobile phone app (e.g. GPSLogger).
+ *          Updates the assigned bus's liveLocation.
+ *          URL query params accepted: lat, lon, speed, accuracy, deviceId
+ *          OR JSON/form body with the same fields.
+ * @access  Public (identified by deviceId param)
+ */
+router.post("/gps-update", async (req, res) => {
+    try {
+        // Accept from query string OR body (GPSLogger / Traccar Client)
+        const lat = parseFloat(req.query.lat ?? req.body.lat);
+        const lon = parseFloat(req.query.lon ?? req.body.lon);
+        const rawSpeed = parseFloat(req.query.speed ?? req.body.speed ?? 0);
+        // Traccar Client sends speed in knots – convert to km/h
+        const speed = isNaN(rawSpeed) ? 0 : rawSpeed * 1.852;
+        // Traccar uses "id", GPSLogger uses "deviceId"
+        const deviceId = req.query.deviceId ?? req.query.id ?? req.body.deviceId ?? req.body.id ?? req.headers["x-device-id"];
+
+        if (!deviceId) {
+            return res.status(400).json({ message: "deviceId is required (query param, body, or x-device-id header)" });
+        }
+        if (isNaN(lat) || isNaN(lon)) {
+            return res.status(400).json({ message: "Valid lat and lon are required" });
+        }
+
+        const device = await EdgeDevice.findOne({ deviceId });
+        if (!device) {
+            return res.status(404).json({ message: `Device not found: ${deviceId}` });
+        }
+        if (!device.assignedBus) {
+            return res.status(400).json({ message: "Device has no assigned bus" });
+        }
+
+        await Bus.findByIdAndUpdate(device.assignedBus, {
+            "liveLocation.lat": lat,
+            "liveLocation.lon": lon,
+            "liveLocation.speed": speed,
+            "liveLocation.updatedAt": new Date(),
+        });
+
+        res.json({ ok: true, lat, lon, speed });
+    } catch (error) {
+        console.error("[GPS-Update] Error:", error.message);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+// Also accept GET (Traccar Client and other GPS apps use GET with query params)
+router.get("/gps-update", async (req, res) => {
+    try {
+        const lat = parseFloat(req.query.lat);
+        const lon = parseFloat(req.query.lon);
+        const rawSpeed = parseFloat(req.query.speed ?? 0);
+        // Traccar Client sends speed in knots – convert to km/h
+        const speed = isNaN(rawSpeed) ? 0 : rawSpeed * 1.852;
+        // Traccar uses "id", GPSLogger uses "deviceId"
+        const deviceId = req.query.deviceId ?? req.query.id;
+
+        if (!deviceId) return res.status(400).json({ message: "deviceId query param required" });
+        if (isNaN(lat) || isNaN(lon)) return res.status(400).json({ message: "Valid lat and lon required" });
+
+        const device = await EdgeDevice.findOne({ deviceId });
+        if (!device) return res.status(404).json({ message: `Device not found: ${deviceId}` });
+        if (!device.assignedBus) return res.status(400).json({ message: "Device has no assigned bus" });
+
+        await Bus.findByIdAndUpdate(device.assignedBus, {
+            "liveLocation.lat": lat,
+            "liveLocation.lon": lon,
+            "liveLocation.speed": speed,
+            "liveLocation.updatedAt": new Date(),
+        });
+
+        res.json({ ok: true, lat, lon, speed });
+    } catch (error) {
+        console.error("[GPS-Update GET] Error:", error.message);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
+/**
  * @route   POST /api/edge-devices/driver-alert
  * @desc    Pi reports driver verification or drowsiness alert
  * @access  Device (x-device-id header)

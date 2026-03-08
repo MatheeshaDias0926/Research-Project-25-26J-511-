@@ -238,29 +238,51 @@ class AlertQueue:
 # ═══════════════════════════════════════════════════════════════════════
 
 class MobileGPSReceiver:
-    """Receives GPS data from the driver's mobile phone over a local WiFi
-    socket connection.  The phone runs a companion app that connects to
-    this server and streams JSON GPS packets:
-        {"lat": 6.9271, "lon": 79.8612, "speed": 52.3, "accuracy": 3.2}
+    """Receives GPS data from the driver's mobile phone.
+
+    Supports TWO modes simultaneously:
+      1. **TCP socket** (port 5555) — raw JSON packets from a custom companion app:
+           {"lat": 6.9271, "lon": 79.8612, "speed": 52.3, "accuracy": 3.2}
+      2. **HTTP server** (port 8080) — Traccar Client (Android/iOS) sends
+           GET/POST with query params: ?id=DEVICE&lat=X&lon=Y&speed=Z
+           Speed from Traccar is in **knots** and is converted to km/h.
 
     Works fully offline — the phone and Pi are on the same local WiFi
     hotspot (no internet required).
     """
 
-    def __init__(self, host="0.0.0.0", port=5555):
+    def __init__(self, host="0.0.0.0", tcp_port=5555, http_port=8080):
         self._host = host
-        self._port = port
+        self._tcp_port = tcp_port
+        self._http_port = http_port
         self._lock = threading.Lock()
         self._latest: dict | None = None
         self._running = False
         self._server_sock: socket.socket | None = None
+        self._http_server = None
+
+    def _update_gps(self, lat, lon, speed, accuracy=0):
+        """Thread-safe update of the latest GPS reading."""
+        with self._lock:
+            self._latest = {
+                "lat": float(lat),
+                "lon": float(lon),
+                "speed": float(speed),
+                "accuracy": float(accuracy),
+                "timestamp": time.time(),
+            }
 
     def start(self):
-        """Start the GPS socket server in a background thread."""
+        """Start both GPS receiver threads."""
         self._running = True
-        t = threading.Thread(target=self._listen_loop, daemon=True)
-        t.start()
-        log.info(f"[GPS] Socket server started on {self._host}:{self._port}")
+        # TCP socket (legacy / companion app)
+        t1 = threading.Thread(target=self._tcp_listen_loop, daemon=True)
+        t1.start()
+        log.info(f"[GPS] TCP socket server started on {self._host}:{self._tcp_port}")
+        # HTTP server (Traccar Client)
+        t2 = threading.Thread(target=self._http_listen_loop, daemon=True)
+        t2.start()
+        log.info(f"[GPS] HTTP server started on {self._host}:{self._http_port}  (Traccar Client)")
 
     def stop(self):
         self._running = False
@@ -269,30 +291,104 @@ class MobileGPSReceiver:
                 self._server_sock.close()
             except Exception:
                 pass
+        if self._http_server:
+            try:
+                self._http_server.shutdown()
+            except Exception:
+                pass
 
-    def _listen_loop(self):
+    # ── HTTP server for Traccar Client ──
+
+    def _http_listen_loop(self):
+        """Run a minimal HTTP server that accepts Traccar Client location updates."""
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        from urllib.parse import urlparse, parse_qs
+
+        receiver = self  # closure reference
+
+        class TraccarHandler(BaseHTTPRequestHandler):
+            """Handle Traccar Client OsmAnd-protocol requests."""
+
+            def _handle_request(self):
+                qs = parse_qs(urlparse(self.path).query)
+                lat_str = qs.get("lat", [None])[0]
+                lon_str = qs.get("lon", [None])[0]
+                speed_str = qs.get("speed", ["0"])[0]
+                accuracy_str = qs.get("hdop", qs.get("accuracy", ["0"]))[0]
+
+                if lat_str is None or lon_str is None:
+                    self.send_response(400)
+                    self.end_headers()
+                    self.wfile.write(b"Missing lat/lon")
+                    return
+
+                try:
+                    lat = float(lat_str)
+                    lon = float(lon_str)
+                    raw_speed = float(speed_str)
+                    # Traccar Client sends speed in knots → convert to km/h
+                    speed_kmh = raw_speed * 1.852
+                    accuracy = float(accuracy_str)
+                except (ValueError, TypeError):
+                    self.send_response(400)
+                    self.end_headers()
+                    self.wfile.write(b"Invalid numeric values")
+                    return
+
+                receiver._update_gps(lat, lon, speed_kmh, accuracy)
+                log.info(f"[GPS-HTTP] Traccar: lat={lat:.6f}, lon={lon:.6f}, "
+                         f"speed={speed_kmh:.1f} km/h")
+
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"OK")
+
+            def do_GET(self):
+                self._handle_request()
+
+            def do_POST(self):
+                self._handle_request()
+
+            def log_message(self, fmt, *args):
+                """Suppress default HTTP logging (we use our own logger)."""
+                pass
+
+        try:
+            self._http_server = HTTPServer((self._host, self._http_port), TraccarHandler)
+            self._http_server.timeout = 2
+            log.info(f"[GPS-HTTP] Traccar receiver ready on port {self._http_port}")
+            while self._running:
+                self._http_server.handle_request()
+        except OSError as e:
+            log.error(f"[GPS-HTTP] Failed to start HTTP server on port {self._http_port}: {e}")
+        except Exception as e:
+            log.error(f"[GPS-HTTP] Unexpected error: {e}")
+
+    # ── TCP socket (legacy companion app) ──
+
+    def _tcp_listen_loop(self):
         """Accept one mobile client at a time and read GPS packets."""
         self._server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._server_sock.settimeout(2.0)
-        self._server_sock.bind((self._host, self._port))
+        self._server_sock.bind((self._host, self._tcp_port))
         self._server_sock.listen(1)
-        log.info(f"[GPS] Waiting for mobile phone connection on port {self._port}...")
+        log.info(f"[GPS-TCP] Waiting for mobile phone connection on port {self._tcp_port}...")
 
         while self._running:
             try:
                 conn, addr = self._server_sock.accept()
-                log.info(f"[GPS] Mobile phone connected from {addr}")
-                self._handle_client(conn)
+                log.info(f"[GPS-TCP] Mobile phone connected from {addr}")
+                self._handle_tcp_client(conn)
             except socket.timeout:
                 continue
             except OSError:
                 break
             except Exception as e:
-                log.warning(f"[GPS] Accept error: {e}")
+                log.warning(f"[GPS-TCP] Accept error: {e}")
                 time.sleep(1)
 
-    def _handle_client(self, conn: socket.socket):
+    def _handle_tcp_client(self, conn: socket.socket):
         """Read newline-delimited JSON GPS packets from the mobile phone."""
         conn.settimeout(5.0)
         buf = b""
@@ -313,23 +409,20 @@ class MobileGPSReceiver:
                     try:
                         gps = json.loads(line.decode("utf-8"))
                         if "lat" in gps and "lon" in gps:
-                            with self._lock:
-                                self._latest = {
-                                    "lat": float(gps["lat"]),
-                                    "lon": float(gps["lon"]),
-                                    "speed": float(gps.get("speed", 0)),
-                                    "accuracy": float(gps.get("accuracy", 0)),
-                                    "timestamp": time.time(),
-                                }
-                            log.debug(f"[GPS] Received: lat={gps['lat']}, lon={gps['lon']}, "
+                            self._update_gps(
+                                gps["lat"], gps["lon"],
+                                gps.get("speed", 0),
+                                gps.get("accuracy", 0),
+                            )
+                            log.debug(f"[GPS-TCP] Received: lat={gps['lat']}, lon={gps['lon']}, "
                                       f"speed={gps.get('speed', 0)}")
                     except (json.JSONDecodeError, ValueError) as e:
-                        log.warning(f"[GPS] Bad packet: {e}")
+                        log.warning(f"[GPS-TCP] Bad packet: {e}")
         except Exception as e:
-            log.warning(f"[GPS] Client disconnected: {e}")
+            log.warning(f"[GPS-TCP] Client disconnected: {e}")
         finally:
             conn.close()
-            log.info("[GPS] Mobile phone disconnected")
+            log.info("[GPS-TCP] Mobile phone disconnected")
 
     @property
     def latest(self) -> dict | None:
@@ -832,7 +925,7 @@ class SmartBusPiClient:
                  no_face_alert_timeout=30,
                  rest_timeout=60, max_continuous_driving=360,
                  max_daily_driving=480, required_rest=360,
-                 cooldown=0):
+                 cooldown=0, http_gps_port=8080):
         self.backend_url = backend_url.rstrip("/")
         self.device_id = device_id
         # --- FIX: Handle both Int (local) and Str (URL) ---
@@ -875,8 +968,8 @@ class SmartBusPiClient:
         # Load previously verified driver from disk (offline resilience)
         self._load_verified_driver_cache()
 
-        # GPS from mobile phone
-        self.gps_receiver = MobileGPSReceiver()
+        # GPS from mobile phone (TCP socket + HTTP for Traccar Client)
+        self.gps_receiver = MobileGPSReceiver(http_port=http_gps_port)
         self.latest_gps = None  # {lat, lon, speed, accuracy, timestamp}
 
         # Sub-systems
@@ -1232,7 +1325,7 @@ class SmartBusPiClient:
         log.info(f"  Headers : x-device-id={self.headers['x-device-id']}")
         log.info(f"  Camera  : {self.camera_index}")
         log.info(f"  Display : 480x320 (3.5\" RPi touch display)")
-        log.info(f"  GPS     : Socket server on port 5555 (mobile phone)")
+        log.info(f"  GPS     : TCP port 5555 + HTTP port {self.gps_receiver._http_port} (Traccar Client)")
         log.info(f"  Face DB : pickle={os.path.exists(FACE_PICKLE_PATH)}, "
                  f"json={os.path.exists(FACE_CACHE_PATH)}, "
                  f"loaded={len(self.face_verifier.encodings)} encodings")
@@ -1491,6 +1584,7 @@ def main():
     parser.add_argument("--max-daily-driving", type=int, default=480, help="Max daily driving minutes (default 8h)")
     parser.add_argument("--required-rest", type=int, default=360, help="Required rest minutes after max continuous driving (default 6h)")
     parser.add_argument("--cooldown", type=int, default=0, help="Extra cooldown minutes after rest before next drive (default 0)")
+    parser.add_argument("--http-gps-port", type=int, default=8080, help="HTTP port for Traccar Client GPS (default 8080)")
     args = parser.parse_args()
 
     client = SmartBusPiClient(
@@ -1509,6 +1603,7 @@ def main():
         max_daily_driving=args.max_daily_driving,
         required_rest=args.required_rest,
         cooldown=args.cooldown,
+        http_gps_port=args.http_gps_port,
     )
     client.run()
 
