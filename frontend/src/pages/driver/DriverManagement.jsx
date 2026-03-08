@@ -145,12 +145,22 @@ const DriverManagement = () => {
         <div style={{ maxWidth: 1400, margin: "0 auto", paddingBottom: 40 }}>
             {/* Header Section */}
             <div style={{ marginBottom: 32 }}>
-                <h1 style={{ fontSize: 32, fontWeight: 700, color: "#1e293b" }}>
-                    Manage Drivers
-                </h1>
-                <p style={{ color: "#64748b", marginTop: 4 }}>
-                    Register new drivers, manage fleet personnel, and verified Face ID status.
-                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: 4 }}>
+                  <div style={{
+                    padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+                  }}>
+                    <UserPlus size={24} color="#fff" />
+                  </div>
+                  <div>
+                    <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+                        Manage Drivers
+                    </h1>
+                    <p style={{ color: "var(--text-muted)", marginTop: 4 }}>
+                        Register new drivers, manage fleet personnel, and verified Face ID status.
+                    </p>
+                  </div>
+                </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, alignItems: "start" }}>
@@ -167,7 +177,7 @@ const DriverManagement = () => {
                                     {editingDriverId ? "Edit Driver Details" : "Register New Driver"}
                                 </div>
                                 {editingDriverId && (
-                                    <button onClick={handleCancelEdit} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+                                    <button onClick={handleCancelEdit} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
                                         <X size={20} />
                                     </button>
                                 )}
@@ -176,7 +186,7 @@ const DriverManagement = () => {
                         <CardContent style={{ paddingTop: 24 }}>
                             <form onSubmit={handleSubmit} style={{ display: "grid", gap: 20 }}>
                                 <div>
-                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#334155" }}>
+                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: "var(--text-sm)", color: "var(--text-secondary)" }}>
                                         Full Name
                                     </label>
                                     <Input
@@ -190,7 +200,7 @@ const DriverManagement = () => {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#334155" }}>
+                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: "var(--text-sm)", color: "var(--text-secondary)" }}>
                                         License Number
                                     </label>
                                     <Input
@@ -204,7 +214,7 @@ const DriverManagement = () => {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#334155" }}>
+                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: "var(--text-sm)", color: "var(--text-secondary)" }}>
                                         Contact Number
                                     </label>
                                     <Input
@@ -218,7 +228,7 @@ const DriverManagement = () => {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#334155" }}>
+                                    <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: "var(--text-sm)", color: "var(--text-secondary)" }}>
                                         Driver Photo {editingDriverId && "(Leave empty to keep current)"}
                                     </label>
                                     <div style={{ border: "2px dashed #e2e8f0", borderRadius: 8, padding: 20, textAlign: "center", cursor: "pointer", position: "relative" }}>
@@ -232,7 +242,7 @@ const DriverManagement = () => {
                                         {photoPreview ? (
                                             <img src={photoPreview} alt="Preview" style={{ maxHeight: 150, margin: "0 auto", borderRadius: 8 }} />
                                         ) : (
-                                            <div style={{ color: "#64748b" }}>
+                                            <div style={{ color: "var(--text-muted)" }}>
                                                 <Camera style={{ margin: "0 auto", marginBottom: 8, opacity: 0.5 }} />
                                                 <span style={{ fontSize: 14 }}>Click to upload photo</span>
                                             </div>
@@ -255,10 +265,10 @@ const DriverManagement = () => {
                 {/* Right Column: Driver List */}
                 <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 140px)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                        <h2 style={{ fontSize: 20, fontWeight: 600, color: "#1e293b", display: "flex", alignItems: "center", gap: 8 }}>
+                        <h2 style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
                             <User size={20} />
                             Driver Fleet
-                            <span style={{ fontSize: 14, background: "#e2e8f0", padding: "2px 8px", borderRadius: 12, color: "#475569" }}>
+                            <span style={{ fontSize: 14, background: "#e2e8f0", padding: "2px 8px", borderRadius: "var(--radius-lg)", color: "var(--text-secondary)" }}>
                                 {drivers.length}
                             </span>
                         </h2>
@@ -267,7 +277,7 @@ const DriverManagement = () => {
                     <Card style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                         <div style={{ padding: 16, borderBottom: "1px solid #f1f5f9" }}>
                             <div style={{ position: "relative" }}>
-                                <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+                                <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                                 <Input
                                     placeholder="Search by name or license..."
                                     value={searchTerm}
@@ -277,11 +287,11 @@ const DriverManagement = () => {
                             </div>
                         </div>
 
-                        <div style={{ flex: 1, overflowY: "auto", padding: 16, background: "#f8fafc" }}>
+                        <div style={{ flex: 1, overflowY: "auto", padding: 16, background: "var(--bg-muted)" }}>
                             {loading ? (
-                                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>Loading fleet...</div>
+                                <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>Loading fleet...</div>
                             ) : filteredDrivers.length === 0 ? (
-                                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
+                                <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
                                     {searchTerm ? "No matching drivers found." : "No drivers registered yet."}
                                 </div>
                             ) : (
@@ -293,7 +303,7 @@ const DriverManagement = () => {
                                                 background: "white",
                                                 padding: 16,
                                                 borderRadius: 8,
-                                                border: "1px solid #e2e8f0",
+                                                border: "1px solid var(--border-light)",
                                                 display: "flex",
                                                 justifyContent: "space-between",
                                                 alignItems: "center",
@@ -316,10 +326,10 @@ const DriverManagement = () => {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                                                    <p style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text-primary)" }}>
                                                         {driver.name}
                                                     </p>
-                                                    <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                                                    <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 2 }}>
                                                         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                                                             <FileText size={12} /> {driver.licenseNumber}
                                                         </span>
@@ -335,7 +345,7 @@ const DriverManagement = () => {
                                                     {driver.faceEncoding && driver.faceEncoding.length > 0 ? (
                                                         <div style={{
                                                             fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 20,
-                                                            background: "#f0fdf4", color: "#166534", display: "flex", alignItems: "center", gap: 4
+                                                            background: "var(--color-success-50)", color: "#166534", display: "flex", alignItems: "center", gap: 4
                                                         }}>
                                                             <CheckCircle size={12} /> Active
                                                         </div>
@@ -344,14 +354,14 @@ const DriverManagement = () => {
                                                             fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 20,
                                                             background: "#fefce8", color: "#854d0e", display: "flex", alignItems: "center", gap: 4
                                                         }}>
-                                                            <AlertTriangle size={12} /> Pending
+                                                            <AlertTriangle size={12} /> Fail
                                                         </div>
                                                     )}
 
                                                     <button
                                                         onClick={() => setReuploadDriverId(driver._id)}
                                                         style={{
-                                                            fontSize: 12, color: "#4f46e5", background: "none", border: "none",
+                                                            fontSize: "var(--text-xs)", color: "#4f46e5", background: "none", border: "none",
                                                             cursor: "pointer", textDecoration: "underline", display: "flex", alignItems: "center", gap: 4
                                                         }}
                                                     >
@@ -362,14 +372,14 @@ const DriverManagement = () => {
                                                 <div style={{ display: "flex", gap: 4 }}>
                                                     <button
                                                         onClick={() => handleEditClick(driver)}
-                                                        style={{ padding: 8, borderRadius: 6, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", color: "#64748b" }}
+                                                        style={{ padding: 8, borderRadius: 6, border: "1px solid var(--border-light)", background: "white", cursor: "pointer", color: "var(--text-muted)" }}
                                                         title="Edit Driver"
                                                     >
                                                         <Edit size={16} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteClick(driver._id)}
-                                                        style={{ padding: 8, borderRadius: 6, border: "1px solid #fee2e2", background: "#fef2f2", cursor: "pointer", color: "#ef4444" }}
+                                                        style={{ padding: 8, borderRadius: 6, border: "1px solid #fee2e2", background: "var(--color-danger-50)", cursor: "pointer", color: "#ef4444" }}
                                                         title="Delete Driver"
                                                     >
                                                         <Trash2 size={16} />

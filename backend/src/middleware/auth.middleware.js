@@ -70,15 +70,37 @@ export const isConductor = (req, res, next) => {
 };
 
 /**
- * @desc    Check if user is an authority
+ * @desc    Check if user is an authority (admin)
  */
 export const isAuthority = (req, res, next) => {
-  if (req.user && req.user.role === "authority") {
+  if (req.user && (req.user.role === "authority" || req.user.role === "admin")) {
     next();
   } else {
     res
       .status(403)
-      .json({ message: "Access denied. Authority role required." });
+      .json({ message: "Access denied. Admin role required." });
+  }
+};
+
+/**
+ * @desc    Check if user is an admin
+ */
+export const isAdmin = (req, res, next) => {
+  if (req.user && (req.user.role === "admin" || req.user.role === "authority")) {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied. Admin role required." });
+  }
+};
+
+/**
+ * @desc    Check if user is a driver
+ */
+export const isDriver = (req, res, next) => {
+  if (req.user && req.user.role === "driver") {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied. Driver role required." });
   }
 };
 
@@ -88,15 +110,29 @@ export const isAuthority = (req, res, next) => {
 export const isConductorOrAuthority = (req, res, next) => {
   if (
     req.user &&
-    (req.user.role === "conductor" || req.user.role === "authority")
+    (req.user.role === "conductor" || req.user.role === "authority" || req.user.role === "admin")
   ) {
     next();
   } else {
     res
       .status(403)
       .json({
-        message: "Access denied. Conductor or Authority role required.",
+        message: "Access denied. Conductor or Admin role required.",
       });
+  }
+};
+
+/**
+ * @desc    Check if user is driver, conductor or admin
+ */
+export const isDriverConductorOrAdmin = (req, res, next) => {
+  if (
+    req.user &&
+    (req.user.role === "driver" || req.user.role === "conductor" || req.user.role === "authority" || req.user.role === "admin")
+  ) {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied." });
   }
 };
 

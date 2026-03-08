@@ -62,10 +62,17 @@ const Settings = () => {
 
     return (
         <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, display: "flex", alignItems: "center", gap: 12 }}>
-                <Sliders size={24} />
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: 24 }}>
+              <div style={{
+                padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+                background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+              }}>
+                <Sliders size={24} color="#fff" />
+              </div>
+              <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
                 Face ID System Settings
-            </h1>
+              </h1>
+            </div>
 
             <Card>
                 <CardHeader>

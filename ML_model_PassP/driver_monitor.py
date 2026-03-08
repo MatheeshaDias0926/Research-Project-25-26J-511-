@@ -5,21 +5,16 @@ import mediapipe as mp
 from scipy.spatial import distance as dist
 import logging
 
-# Disable face_recognition for now due to missing models/git
-FACE_REC_AVAILABLE = False
-print("Warning: face_recognition module disabled due to missing dependencies. Face ID features will not work.")
-
-"""
+# Try to import face_recognition (dlib-based, 128-d encodings)
 try:
-    import face_recognition
+    import face_recognition as face_rec_lib
     FACE_REC_AVAILABLE = True
+    print("[OK] face_recognition library loaded successfully.")
 except ImportError:
     FACE_REC_AVAILABLE = False
-    print("Warning: face_recognition module not found. Face ID features will be disabled.")
-except Exception as e:
-    FACE_REC_AVAILABLE = False
-    print(f"Warning: face_recognition error: {e}")
-"""
+    face_rec_lib = None
+    print("Warning: face_recognition module not installed. Face ID features will use fallback.")
+
 
 class DriverMonitor:
     def __init__(self):
@@ -50,23 +45,30 @@ class DriverMonitor:
             return None
 
     def get_face_encoding(self, image_url):
-        """Get face encoding (Real or Pixel-based Fallback)"""
+        """Get 128-d face encoding using face_recognition library (or pixel fallback)."""
         print(f"Processing image for encoding: {image_url}")
         image = self._url_to_image(image_url)
         if image is None:
-            print("❌ Error: Could not download/decode image from URL")
+            print("Error: Could not download/decode image from URL")
             return None
 
-        # 1. Try real Face Recognition if available
+        # 1. Use face_recognition library (128-d dlib encoding)
         if FACE_REC_AVAILABLE:
             try:
                 rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                encodings = face_recognition.face_encodings(rgb_image)
-                if len(encodings) > 0:
-                    return encodings[0].tolist()
+                face_locations = face_rec_lib.face_locations(rgb_image, model="hog")
+                if face_locations:
+                    encodings = face_rec_lib.face_encodings(rgb_image, face_locations)
+                    if len(encodings) > 0:
+                        print(f"[OK] 128-d face encoding extracted via face_recognition library")
+                        return encodings[0].tolist()
+                    else:
+                        print("[WARN] face_recognition found face but could not extract encoding")
+                else:
+                    print("[WARN] face_recognition detected no faces")
             except Exception as e:
-                print(f"Face Recognition failed: {e}")
-        
+                print(f"face_recognition failed: {e}")
+
         # 2. Fallback: Use OpenCV Haar Cascade + Pixel Template
         try:
             print("Attempting Haar Cascade + Pixel Encoding...")
@@ -90,22 +92,56 @@ class DriverMonitor:
                 
                 return encoding
             else:
-                print("⚠️ No faces detected by Haar Cascade")
+                print("[WARN] No faces detected by Haar Cascade")
         except Exception as e:
             print(f"Haar Cascade detection failed: {e}")
 
         return None
 
-    def verify_face(self, image_url, known_encoding, tolerance=0.6):
-        """Verify if the face in URL matches the known encoding"""
-        # Check if it's our pixel-based encoding (length 1024)
+    def verify_face(self, image_url, known_encoding, tolerance=0.45):
+        """Verify if the face in URL matches the known encoding using face_recognition library."""
+        # Detect encoding dimension to choose strategy
+        is_128d = (len(known_encoding) == 128)
         is_pixel_encoding = (len(known_encoding) == 1024)
-        
+
         image = self._url_to_image(image_url)
         if image is None:
-             return {"match": False, "message": "Image load error"}
+            return {"match": False, "message": "Image load error"}
 
-        if not FACE_REC_AVAILABLE or is_pixel_encoding:
+        # --- 128-d dlib encoding comparison (preferred) ---
+        if is_128d and FACE_REC_AVAILABLE:
+            try:
+                rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                face_locs = face_rec_lib.face_locations(rgb, model="hog")
+                if not face_locs:
+                    return {"match": False, "message": "No face detected in verification image"}
+
+                probe_encodings = face_rec_lib.face_encodings(rgb, face_locs)
+                if not probe_encodings:
+                    return {"match": False, "message": "Could not extract face encoding"}
+
+                probe = np.array(probe_encodings[0])
+                known = np.array(known_encoding)
+                distance = float(np.linalg.norm(probe - known))
+                is_match = distance <= tolerance
+                confidence = max(0, round((1.0 - distance) * 100, 1))
+
+                if is_match:
+                    return {
+                        "match": True,
+                        "message": "Face verified (face_recognition 128-d)",
+                        "confidence": confidence,
+                        "distance": round(distance, 4),
+                        "driverName": "Verified Driver"
+                    }
+                else:
+                    return {"match": False, "message": f"Face mismatch. Dist: {distance:.4f}"}
+
+            except Exception as e:
+                return {"match": False, "message": f"face_recognition verify error: {e}"}
+
+        # --- Pixel-based fallback (1024-d) ---
+        if is_pixel_encoding or not FACE_REC_AVAILABLE:
             try:
                 # Get encoding for the verification image
                 probe_encoding = self.get_face_encoding(image_url)
