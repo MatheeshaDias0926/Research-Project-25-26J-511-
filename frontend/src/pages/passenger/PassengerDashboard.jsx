@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "../../components/ui/Card";
 import Badge from "../../components/ui/Badge";
 import { Bus, MapPin, Users, Activity, AlertTriangle, Gauge, Route } from "lucide-react";
+import BusLocationMap from "../../components/ui/BusLocationMap";
 
 const PassengerDashboard = () => {
   const [buses, setBuses] = useState([]);
@@ -82,6 +83,9 @@ const PassengerDashboard = () => {
           {buses.length} Active Buses
         </Badge>
       </div>
+
+      {/* Live Bus Map */}
+      <BusLocationMap role="passenger" height="400px" refreshInterval={15000} />
 
       <div
         style={{

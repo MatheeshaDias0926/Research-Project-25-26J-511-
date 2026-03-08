@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import api from "../../api/axios";
-import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 import { Card, CardContent } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
@@ -11,21 +10,7 @@ import {
   LayoutDashboard, User, Clock, Timer, Siren, FileWarning, Eye,
   Shield, Activity,
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
-import L from "leaflet";
-
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-});
-
-const RecenterMap = ({ position }) => {
-  const map = useMap();
-  useEffect(() => { if (position) map.flyTo(position, map.getZoom()); }, [position, map]);
-  return null;
-};
+import BusLocationMap from "../../components/ui/BusLocationMap";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
@@ -81,7 +66,6 @@ const OverviewTab = ({ user }) => {
   const [busStatus, setBusStatus] = useState(null);
   const [violations, setViolations] = useState([]);
   const [conductorInfo, setConductorInfo] = useState(null);
-  const [locationName, setLocationName] = useState("");
   const [piSession, setPiSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -105,14 +89,6 @@ const OverviewTab = ({ user }) => {
           }
           if (statusRes?.data) {
             setBusStatus(statusRes.data.currentStatus);
-            if (statusRes.data.currentStatus?.gps) {
-              const { lat, lon } = statusRes.data.currentStatus.gps;
-              try {
-                const geoRes = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                const addr = geoRes.data.address;
-                setLocationName(addr.city || addr.town || addr.village || addr.suburb || "Unknown");
-              } catch (e) { /* */ }
-            }
           }
 
           // Fetch violations
@@ -148,11 +124,6 @@ const OverviewTab = ({ user }) => {
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData]);
-
-  const busLocation = busStatus?.gps
-    ? [busStatus.gps.lat, busStatus.gps.lon]
-    : [6.9271, 79.8612];
-  const hasLocation = !!busStatus?.gps;
 
   if (loading && !busInfo) return <div style={{ padding: 32 }}>Loading...</div>;
 
@@ -467,24 +438,7 @@ const OverviewTab = ({ user }) => {
       </Card>
 
       {/* Map */}
-      <Card style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "16px 24px" }}>
-            <h3 style={{ fontWeight: 600, fontSize: "var(--text-lg)", display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
-              <MapPin size={20} color="var(--color-primary-500)" /> Bus Live Location
-            {locationName && <span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-muted)" }}>— {locationName}</span>}
-          </h3>
-        </div>
-        <div style={{ height: 300 }}>
-          <MapContainer center={busLocation} zoom={15} style={{ height: "100%", width: "100%" }}>
-            <TileLayer url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" maxZoom={20} subdomains={["mt0", "mt1", "mt2", "mt3"]} />
-            {hasLocation && <Marker position={busLocation} />}
-            <RecenterMap position={busLocation} />
-          </MapContainer>
-        </div>
-        <div style={{ padding: 12, background: "var(--bg-muted)", borderTop: "1px solid var(--border-light)", display: "flex", justifyContent: "space-between", fontSize: "var(--text-xs)" }}>
-          <span style={{ color: "var(--text-muted)" }}>Updated: {lastUpdated.toLocaleTimeString()}</span>
-        </div>
-      </Card>
+      <BusLocationMap role="driver" height="300px" refreshInterval={15000} />
     </div>
   );
 };

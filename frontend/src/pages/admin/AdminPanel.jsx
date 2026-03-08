@@ -14,8 +14,9 @@ import {
   Bus, AlertTriangle, CheckCircle, Wrench, UserPlus, Users, Cpu,
   Plus, RefreshCw, Link2, ArrowRight, Edit, Trash2, Eye, Siren,
   LayoutDashboard, Shield, User, X, Camera, Scan, Upload, XCircle, VideoOff,
-  Settings, Wifi, WifiOff, Play,
+  Settings, Wifi, WifiOff, Play, MapPin, EyeOff,
 } from "lucide-react";
+import BusLocationMap from "../../components/ui/BusLocationMap";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area, ScatterChart, Scatter, ZAxis, Cell,
@@ -24,6 +25,7 @@ import {
 // ─── Tab Navigation ────────────────────────────────────────
 const TABS = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
+  { key: "live-map", label: "Live Map", icon: MapPin },
   { key: "fleet", label: "Fleet Management", icon: Bus },
   { key: "assignments", label: "Bus Assignments", icon: Link2 },
   { key: "employees", label: "Employee Management", icon: Users },
@@ -1740,6 +1742,98 @@ const FaceRecognitionTab = () => {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// LIVE MAP TAB (Admin — all buses with visibility toggle)
+// ═══════════════════════════════════════════════════════════════
+const LiveMapTab = () => {
+  const [busVisibility, setBusVisibility] = useState([]);
+  const [loadingVis, setLoadingVis] = useState(true);
+
+  const fetchVisibility = useCallback(async () => {
+    try {
+      const res = await api.get("/bus");
+      setBusVisibility(res.data.map((b) => ({ _id: b._id, licensePlate: b.licensePlate, routeId: b.routeId, locationVisibleToPassengers: b.locationVisibleToPassengers ?? true })));
+    } catch (err) {
+      console.error("Failed to fetch bus visibility", err);
+    } finally {
+      setLoadingVis(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchVisibility(); }, [fetchVisibility]);
+
+  const toggleVisibility = async (busId, visible) => {
+    try {
+      await api.patch(`/bus/locations/${busId}/visibility`, { visible });
+      setBusVisibility((prev) => prev.map((b) => b._id === busId ? { ...b, locationVisibleToPassengers: visible } : b));
+    } catch (err) {
+      console.error("Toggle failed", err);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h2 style={sectionTitle}>Live Bus Locations</h2>
+      </div>
+
+      <BusLocationMap role="admin" height="550px" refreshInterval={10000} />
+
+      {/* Passenger Visibility Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Eye size={20} color="var(--color-primary-500)" />
+            Passenger Location Visibility
+          </CardTitle>
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
+            Control which buses are visible on the passenger live map.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {loadingVis ? (
+            <p style={{ color: "var(--text-muted)" }}>Loading...</p>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+              {busVisibility.map((bus) => (
+                <div
+                  key={bus._id}
+                  style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "12px 16px", borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--border-light)", background: "var(--bg-muted)",
+                  }}
+                >
+                  <div>
+                    <span style={{ fontWeight: 600, fontSize: "var(--text-base)" }}>{bus.licensePlate}</span>
+                    <span style={{ marginLeft: 8, fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Route {bus.routeId}</span>
+                  </div>
+                  <button
+                    onClick={() => toggleVisibility(bus._id, !bus.locationVisibleToPassengers)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      padding: "6px 14px", borderRadius: "var(--radius-md)",
+                      border: "1px solid",
+                      borderColor: bus.locationVisibleToPassengers ? "var(--color-success-500)" : "var(--color-danger-500)",
+                      background: bus.locationVisibleToPassengers ? "var(--color-success-50)" : "var(--color-danger-50)",
+                      color: bus.locationVisibleToPassengers ? "var(--color-success-700)" : "var(--color-danger-700)",
+                      cursor: "pointer", fontWeight: 600, fontSize: "var(--text-sm)",
+                      transition: "var(--transition-fast)",
+                    }}
+                  >
+                    {bus.locationVisibleToPassengers ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {bus.locationVisibleToPassengers ? "ON" : "OFF"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN ADMIN PANEL
 // ═══════════════════════════════════════════════════════════════
 const AdminPanel = () => {
@@ -1753,6 +1847,7 @@ const AdminPanel = () => {
     if (path === "/admin/edge-devices") return "edge-devices";
     if (path === "/admin/sos") return "sos";
     if (path === "/admin/face-recognition") return "face-recognition";
+    if (path === "/admin/live-map") return "live-map";
     return "overview";
   };
 
@@ -1761,6 +1856,7 @@ const AdminPanel = () => {
   const renderTab = () => {
     switch (activeTab) {
       case "overview": return <OverviewTab />;
+      case "live-map": return <LiveMapTab />;
       case "fleet": return <FleetTab />;
       case "assignments": return <AssignmentsTab />;
       case "employees": return <EmployeeTab />;

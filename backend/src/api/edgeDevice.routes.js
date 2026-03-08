@@ -9,6 +9,7 @@ import {
 } from "../controllers/edgeDevice.controller.js";
 import { protect, isAdmin } from "../middleware/auth.middleware.js";
 import EdgeDevice from "../models/EdgeDevice.model.js";
+import Bus from "../models/Bus.model.js";
 import DriverSession from "../models/DriverSession.model.js";
 import Driver from "../models/Driver.model.js";
 import ViolationLog from "../models/ViolationLog.model.js";
@@ -367,6 +368,17 @@ router.post("/heartbeat", authenticateDevice, async (req, res) => {
         device.lastPing = new Date();
         device.status = "active";
         if (req.body.firmwareVersion) device.firmwareVersion = req.body.firmwareVersion;
+
+        // ── Save GPS location to the assigned bus (from mobile phone → Pi) ──
+        const { gps } = req.body;
+        if (gps && gps.lat && gps.lon && device.assignedBus) {
+            await Bus.findByIdAndUpdate(device.assignedBus, {
+                "liveLocation.lat": gps.lat,
+                "liveLocation.lon": gps.lon,
+                "liveLocation.speed": gps.speed || 0,
+                "liveLocation.updatedAt": new Date(),
+            });
+        }
 
         // Drain pending commands
         const commands = device.pendingCommands.map(c => c.command);

@@ -33,6 +33,9 @@ import time
 import base64
 import json
 import os
+import pickle
+import socket
+import struct
 import argparse
 import threading
 import logging
@@ -81,6 +84,7 @@ MOUTH = [61, 291, 39, 181, 0, 17, 269, 405]
 # Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FACE_CACHE_PATH = os.path.join(SCRIPT_DIR, "face_cache.json")
+FACE_PICKLE_PATH = os.path.join(SCRIPT_DIR, "face_Recognition.pickle")
 ALERT_QUEUE_PATH = os.path.join(SCRIPT_DIR, "alert_queue.json")
 ALARM_SOUND_PATH = os.path.join(SCRIPT_DIR, "alarm.wav")
 VERIFIED_DRIVER_CACHE_PATH = os.path.join(SCRIPT_DIR, "verified_driver_cache.json")
@@ -230,21 +234,170 @@ class AlertQueue:
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# Mobile GPS receiver (socket server over local WiFi)
+# ═══════════════════════════════════════════════════════════════════════
+
+class MobileGPSReceiver:
+    """Receives GPS data from the driver's mobile phone over a local WiFi
+    socket connection.  The phone runs a companion app that connects to
+    this server and streams JSON GPS packets:
+        {"lat": 6.9271, "lon": 79.8612, "speed": 52.3, "accuracy": 3.2}
+
+    Works fully offline — the phone and Pi are on the same local WiFi
+    hotspot (no internet required).
+    """
+
+    def __init__(self, host="0.0.0.0", port=5555):
+        self._host = host
+        self._port = port
+        self._lock = threading.Lock()
+        self._latest: dict | None = None
+        self._running = False
+        self._server_sock: socket.socket | None = None
+
+    def start(self):
+        """Start the GPS socket server in a background thread."""
+        self._running = True
+        t = threading.Thread(target=self._listen_loop, daemon=True)
+        t.start()
+        log.info(f"[GPS] Socket server started on {self._host}:{self._port}")
+
+    def stop(self):
+        self._running = False
+        if self._server_sock:
+            try:
+                self._server_sock.close()
+            except Exception:
+                pass
+
+    def _listen_loop(self):
+        """Accept one mobile client at a time and read GPS packets."""
+        self._server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._server_sock.settimeout(2.0)
+        self._server_sock.bind((self._host, self._port))
+        self._server_sock.listen(1)
+        log.info(f"[GPS] Waiting for mobile phone connection on port {self._port}...")
+
+        while self._running:
+            try:
+                conn, addr = self._server_sock.accept()
+                log.info(f"[GPS] Mobile phone connected from {addr}")
+                self._handle_client(conn)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            except Exception as e:
+                log.warning(f"[GPS] Accept error: {e}")
+                time.sleep(1)
+
+    def _handle_client(self, conn: socket.socket):
+        """Read newline-delimited JSON GPS packets from the mobile phone."""
+        conn.settimeout(5.0)
+        buf = b""
+        try:
+            while self._running:
+                try:
+                    data = conn.recv(1024)
+                except socket.timeout:
+                    continue
+                if not data:
+                    break
+                buf += data
+                while b"\n" in buf:
+                    line, buf = buf.split(b"\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        gps = json.loads(line.decode("utf-8"))
+                        if "lat" in gps and "lon" in gps:
+                            with self._lock:
+                                self._latest = {
+                                    "lat": float(gps["lat"]),
+                                    "lon": float(gps["lon"]),
+                                    "speed": float(gps.get("speed", 0)),
+                                    "accuracy": float(gps.get("accuracy", 0)),
+                                    "timestamp": time.time(),
+                                }
+                            log.debug(f"[GPS] Received: lat={gps['lat']}, lon={gps['lon']}, "
+                                      f"speed={gps.get('speed', 0)}")
+                    except (json.JSONDecodeError, ValueError) as e:
+                        log.warning(f"[GPS] Bad packet: {e}")
+        except Exception as e:
+            log.warning(f"[GPS] Client disconnected: {e}")
+        finally:
+            conn.close()
+            log.info("[GPS] Mobile phone disconnected")
+
+    @property
+    def latest(self) -> dict | None:
+        """Return the most recent GPS reading, or None."""
+        with self._lock:
+            return self._latest.copy() if self._latest else None
+
+    @property
+    def age_seconds(self) -> float:
+        """Seconds since last GPS update (inf if none received)."""
+        with self._lock:
+            if self._latest and "timestamp" in self._latest:
+                return time.time() - self._latest["timestamp"]
+        return float("inf")
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Local face verification (cached encodings)
 # ═══════════════════════════════════════════════════════════════════════
 
 class LocalFaceVerifier:
-    """Verify drivers locally using cached face encodings from the ML service."""
+    """Verify drivers locally using cached face encodings.
+
+    Supports two encoding sources (checked in priority order):
+      1. ``face_Recognition.pickle`` — custom file generated via Google Colab
+         Expected format: {"encodings": [...], "names": [...]}
+      2. ``face_cache.json`` — downloaded from the backend ML service
+
+    STRICT TOLERANCE: A face must be within MATCH_TOLERANCE distance to be
+    considered a match.  Faces beyond this threshold are labelled 'Unknown'
+    and trigger an unregistered-driver violation.
+    """
 
     MATCH_TOLERANCE = 0.45
 
-    def __init__(self, cache_path=FACE_CACHE_PATH):
+    def __init__(self, cache_path=FACE_CACHE_PATH, pickle_path=FACE_PICKLE_PATH):
         self._cache_path = cache_path
+        self._pickle_path = pickle_path
         self._lock = threading.Lock()
         self.encodings: list[np.ndarray] = []
         self.names: list[str] = []
         self.driver_ids: list[str] = []
-        self._load_cache()
+        self._load_pickle()   # priority: custom Colab-generated file
+        if len(self.encodings) == 0:
+            self._load_cache()  # fallback: backend JSON cache
+
+    def _load_pickle(self):
+        """Load face encodings from face_Recognition.pickle (Google Colab format)."""
+        if not os.path.exists(self._pickle_path):
+            log.info(f"[FACE DB] No pickle file at {self._pickle_path}")
+            return
+        try:
+            with open(self._pickle_path, "rb") as f:
+                data = pickle.load(f)
+            enc_list = data.get("encodings", [])
+            name_list = data.get("names", [])
+            if len(enc_list) == 0:
+                log.warning("[FACE DB] Pickle file has no encodings")
+                return
+            self.encodings = [np.array(e) for e in enc_list]
+            self.names = name_list
+            # Pickle may not have driver_ids — use names as fallback IDs
+            self.driver_ids = data.get("driver_ids", list(name_list))
+            log.info(f"[FACE DB] Loaded {len(self.encodings)} encodings from "
+                     f"{os.path.basename(self._pickle_path)} "
+                     f"(unique drivers: {len(set(self.names))})")
+        except Exception as e:
+            log.error(f"[FACE DB] Failed to load pickle: {e}")
 
     def _load_cache(self):
         if not os.path.exists(self._cache_path):
@@ -256,9 +409,9 @@ class LocalFaceVerifier:
             self.encodings = [np.array(e) for e in data.get("encodings", [])]
             self.names = data.get("names", [])
             self.driver_ids = data.get("driver_ids", [])
-            log.info(f"Face cache loaded: {len(self.encodings)} encodings")
+            log.info(f"[FACE DB] JSON cache loaded: {len(self.encodings)} encodings")
         except Exception as e:
-            log.warning(f"Face cache load error: {e}")
+            log.warning(f"[FACE DB] JSON cache load error: {e}")
 
     def update_cache(self, data: dict):
         """Update local cache from backend /face-cache response."""
@@ -273,18 +426,24 @@ class LocalFaceVerifier:
                         "names": self.names,
                         "driver_ids": self.driver_ids,
                     }, f)
-                log.info(f"Face cache updated: {len(self.encodings)} encodings")
+                log.info(f"[FACE DB] Cache updated: {len(self.encodings)} encodings")
             except Exception as e:
-                log.error(f"Face cache save error: {e}")
+                log.error(f"[FACE DB] Cache save error: {e}")
 
     def verify(self, frame) -> dict:
-        """Verify the face in ``frame`` locally against cached encodings."""
+        """Verify the face in ``frame`` against known encodings.
+
+        STRICT matching: only returns verified=True if the best distance
+        is within MATCH_TOLERANCE (0.45).  Otherwise the person is
+        labelled 'Unknown' — this prevents the bug where any unrecognised
+        face was incorrectly assigned to the first registered driver.
+        """
         if not FACE_REC_AVAILABLE:
             return {"verified": False, "message": "face_recognition library not available"}
 
         with self._lock:
             if len(self.encodings) == 0:
-                return {"verified": False, "message": "No face encodings cached"}
+                return {"verified": False, "message": "No face encodings loaded"}
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         face_locations = face_rec_lib.face_locations(rgb, model="hog")
@@ -295,23 +454,45 @@ class LocalFaceVerifier:
         if not probe:
             return {"verified": False, "message": "Failed to extract face encoding"}
 
-        probe = probe[0]
+        probe_encoding = probe[0]
         with self._lock:
-            distances = face_rec_lib.face_distance(self.encodings, probe)
+            distances = face_rec_lib.face_distance(self.encodings, probe_encoding)
 
         best_idx = int(np.argmin(distances))
         best_dist = float(distances[best_idx])
         confidence = round(max(0.0, (1.0 - best_dist)) * 100, 1)
+
+        # ── STRICT threshold check ──
+        # If distance > MATCH_TOLERANCE the person is unknown.
+        # Do NOT fall back to returning the closest name — that was the old bug.
         is_match = best_dist <= self.MATCH_TOLERANCE
 
-        return {
-            "verified": is_match,
-            "driver": self.names[best_idx] if is_match else None,
-            "driver_id": self.driver_ids[best_idx] if is_match else None,
-            "confidence": confidence,
-            "distance": round(best_dist, 4),
-            "local": True,
-        }
+        if is_match:
+            matched_name = self.names[best_idx]
+            matched_id = self.driver_ids[best_idx] if best_idx < len(self.driver_ids) else None
+            log.info(f"[FACE VERIFY] MATCH: {matched_name} (dist={best_dist:.4f}, "
+                     f"confidence={confidence}%, threshold={self.MATCH_TOLERANCE})")
+            return {
+                "verified": True,
+                "driver": matched_name,
+                "driver_id": matched_id,
+                "confidence": confidence,
+                "distance": round(best_dist, 4),
+                "local": True,
+            }
+        else:
+            log.warning(f"[FACE VERIFY] UNKNOWN PERSON — best distance {best_dist:.4f} > "
+                        f"threshold {self.MATCH_TOLERANCE} (closest registered: "
+                        f"{self.names[best_idx]}, confidence would be {confidence}%)")
+            return {
+                "verified": False,
+                "driver": None,
+                "driver_id": None,
+                "confidence": confidence,
+                "distance": round(best_dist, 4),
+                "local": True,
+                "message": "Unknown person — face does not match any registered driver",
+            }
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -694,6 +875,10 @@ class SmartBusPiClient:
         # Load previously verified driver from disk (offline resilience)
         self._load_verified_driver_cache()
 
+        # GPS from mobile phone
+        self.gps_receiver = MobileGPSReceiver()
+        self.latest_gps = None  # {lat, lon, speed, accuracy, timestamp}
+
         # Sub-systems
         self.alarm = LocalAlarm(gpio_pin=gpio_pin)
         self.alert_queue = AlertQueue()
@@ -775,8 +960,11 @@ class SmartBusPiClient:
             return False
 
     def send_heartbeat(self):
+        # Include GPS data in heartbeat if available
+        gps = self.gps_receiver.latest
+        self.latest_gps = gps
         payload = {
-            "firmwareVersion": "pi-2.1.0",
+            "firmwareVersion": "pi-2.3.0",
             "alertnessScore": round(self.alertness.score, 1),
             "alertnessLevel": self.alertness.level,
             "verifiedDriver": self.verified_driver,
@@ -785,6 +973,7 @@ class SmartBusPiClient:
             "continuousDrivingMinutes": round(self.driving_tracker.continuous_driving_minutes, 1),
             "totalDailyDrivingMinutes": round(self.driving_tracker.total_daily_driving_minutes, 1),
             "currentRestMinutes": round(self.driving_tracker.current_rest_minutes, 1),
+            "gps": {"lat": gps["lat"], "lon": gps["lon"], "speed": gps["speed"]} if gps else None,
         }
         try:
             log.info(f"[HEARTBEAT] Sending to {self.backend_url}/api/edge-devices/heartbeat ...")
@@ -952,7 +1141,7 @@ class SmartBusPiClient:
             self.verified_driver = result.get("driver", "Unknown")
             self.verified_driver_id = result.get("driver_id")
             self.verified_driver_confidence = result.get("confidence", 0)
-            log.info(f"[LOCAL VERIFY] Driver: {self.verified_driver} "
+            log.info(f"[LOCAL VERIFY] ✓ Driver: {self.verified_driver} "
                      f"({self.verified_driver_confidence:.1f}%)")
             self._save_verified_driver_cache()
             self.send_alert("verification", verified=True,
@@ -961,16 +1150,28 @@ class SmartBusPiClient:
                             confidence=self.verified_driver_confidence,
                             local=True)
         else:
-            log.info(f"[LOCAL VERIFY] No match: {result.get('message')}")
-            # Fallback: try server-side verification if network is up
+            log.warning(f"[LOCAL VERIFY] ✗ UNKNOWN PERSON: {result.get('message')}")
+
+            # ── Unknown / unregistered driver violation ──
+            # Send violation alert immediately — this is a critical safety event
+            self.send_alert("verification", verified=False,
+                            driverName="Unknown",
+                            driverId="",
+                            confidence=result.get("confidence", 0),
+                            distance=result.get("distance", 0),
+                            local=True,
+                            message="Unknown person — face does not match any registered driver")
+            self.alarm.trigger("UNREGISTERED DRIVER")
+
+            # Also try server-side verification as fallback
             remote_ok = self._verify_driver_remote(frame)
             if not remote_ok and self.verified_driver:
-                # Offline or remote also failed — keep previously verified driver
                 log.info(f"[LOCAL VERIFY] Keeping previously verified driver: "
                          f"{self.verified_driver} (offline/fallback)")
             elif not remote_ok:
-                # No previous driver either — nothing to show
-                log.info("[LOCAL VERIFY] No previously verified driver available")
+                # Clear — genuinely unknown person
+                self._clear_verified_driver_cache()
+                log.warning("[LOCAL VERIFY] No registered driver identified — violation logged")
         return result
 
     def _verify_driver_remote(self, frame) -> bool:
@@ -1025,12 +1226,16 @@ class SmartBusPiClient:
     # ── Main loop ──
 
     def run(self):
-        log.info("Smart Bus Pi Client  v2.3 (offline-capable, cross-day tracking, 3.5\" display)")
+        log.info("Smart Bus Pi Client  v2.4 (GPS socket, face pickle, strict verification)")
         log.info(f"  Backend : {self.backend_url}")
         log.info(f"  Device  : {self.device_id}")
         log.info(f"  Headers : x-device-id={self.headers['x-device-id']}")
         log.info(f"  Camera  : {self.camera_index}")
         log.info(f"  Display : 480x320 (3.5\" RPi touch display)")
+        log.info(f"  GPS     : Socket server on port 5555 (mobile phone)")
+        log.info(f"  Face DB : pickle={os.path.exists(FACE_PICKLE_PATH)}, "
+                 f"json={os.path.exists(FACE_CACHE_PATH)}, "
+                 f"loaded={len(self.face_verifier.encodings)} encodings")
         log.info(f"  EAR thr : {self.ear_threshold}")
         log.info(f"  MAR thr : {self.mar_threshold}")
         log.info(f"  Driving : rest_timeout={self.driving_tracker.rest_timeout}s, "
@@ -1069,6 +1274,9 @@ class SmartBusPiClient:
         # 3.5-inch RPi touch display resolution: 480x320
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320)
+
+        # Start mobile GPS socket server
+        self.gps_receiver.start()
 
         # Initial sync
         self.send_heartbeat()
@@ -1184,21 +1392,34 @@ class SmartBusPiClient:
                         status_text += "  ! YAWNING !"
                         color = (0, 165, 255)
 
-                    cv2.putText(frame, status_text, (8, 22),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-                    cv2.putText(frame, score_text, (8, 44),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.45,
+                    cv2.putText(frame, status_text, (10, 30),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                    cv2.putText(frame, score_text, (10, 60),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                                 (0, 255, 0) if self.alertness.level == "ALERT"
                                 else (0, 165, 255) if self.alertness.level == "TIRED"
-                                else (0, 0, 255), 1)
+                                else (0, 0, 255), 2)
                     if self.verified_driver:
-                        cv2.putText(frame, f"Driver: {self.verified_driver}", (8, 66),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 1)
+                        cv2.putText(frame, f"Driver: {self.verified_driver}", (10, 90),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    else:
+                        cv2.putText(frame, "Driver: UNKNOWN", (10, 90),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+                    # Show GPS status on overlay
+                    gps = self.gps_receiver.latest
+                    if gps and self.gps_receiver.age_seconds < 10:
+                        gps_text = f"GPS: {gps['lat']:.4f},{gps['lon']:.4f} {gps['speed']:.0f}km/h"
+                        cv2.putText(frame, gps_text, (10, h - 40),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 200, 0), 2)
+                    else:
+                        cv2.putText(frame, "GPS: No signal", (10, h - 40),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 100), 2)
                 else:
                     # No face detected
                     elapsed_no_face = now - self.last_face_seen
-                    cv2.putText(frame, f"No face ({elapsed_no_face:.0f}s)", (8, 22),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                    cv2.putText(frame, f"No face ({elapsed_no_face:.0f}s)", (10, 30),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
                     # Alert if driver face missing for too long
                     if elapsed_no_face >= self.no_face_alert_timeout and not self.no_face_alerted:
@@ -1234,8 +1455,8 @@ class SmartBusPiClient:
                 drive_text = f"{state_label} | Cont:{cont_min:.0f}m Daily:{daily_min:.0f}m"
                 if drv.state == drv.STATE_RESTING and rest_min > 0:
                     drive_text += f" Rest:{rest_min:.0f}m"
-                cv2.putText(frame, drive_text, (8, h - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, drive_color, 1)
+                cv2.putText(frame, drive_text, (10, h - 15),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, drive_color, 2)
 
                 # Show frame on 3.5" RPi display (480x320)
                 try:
@@ -1247,13 +1468,14 @@ class SmartBusPiClient:
                     pass  # headless
 
         self.alarm.stop()
+        self.gps_receiver.stop()
         cap.release()
         cv2.destroyAllWindows()
         log.info("Client stopped.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2.3 - 3.5\" display, enhanced logging)")
+    parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2.4 - GPS socket, face pickle, strict verify)")
     parser.add_argument("--backend", required=True, help="Backend URL (e.g. http://192.168.1.100:3000)")
     parser.add_argument("--device-id", required=True, help="Device ID registered in admin panel")
     parser.add_argument("--camera", type=str, default="0", help="Camera index or IP URL")

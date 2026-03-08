@@ -53,6 +53,7 @@ function App() {
             <Route element={<PrivateRoutes roles={["passenger"]} />}>
               <Route path="/passenger" element={<PassengerDashboard />} />
               <Route path="/passenger/prediction" element={<Prediction />} />
+              <Route path="/passenger/live-map" element={<PassengerDashboard />} />
             </Route>
 
             {/* Conductor Routes */}
@@ -77,6 +78,7 @@ function App() {
               <Route path="/admin/edge-devices" element={<AdminPanel />} />
               <Route path="/admin/sos" element={<AdminPanel />} />
               <Route path="/admin/face-recognition" element={<AdminPanel />} />
+              <Route path="/admin/live-map" element={<AdminPanel />} />
             </Route>
 
             {/* Legacy authority routes redirect to admin */}

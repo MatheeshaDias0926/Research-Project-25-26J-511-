@@ -31,6 +31,17 @@ const busSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "BusDataLog",
     },
+
+    // ── Live GPS location (updated from Pi heartbeat via mobile phone GPS) ──
+    liveLocation: {
+      lat: { type: Number, default: null },
+      lon: { type: Number, default: null },
+      speed: { type: Number, default: 0 },
+      updatedAt: { type: Date, default: null },
+    },
+
+    // Admin toggle: whether passengers can see this bus's live location
+    locationVisibleToPassengers: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
