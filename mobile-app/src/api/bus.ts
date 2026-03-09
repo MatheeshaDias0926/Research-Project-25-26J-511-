@@ -55,4 +55,30 @@ export const busApi = {
     });
     return response.data;
   },
+
+  /**
+   * Send GPS directly to ESP32 on local WiFi.
+   * ESP32 runs ML model and returns risk data instantly.
+   * @param esp32Ip - ESP32's local IP (e.g. "192.168.1.50")
+   */
+  sendGPSToESP32: async (
+    esp32Ip: string,
+    lat: number,
+    lon: number,
+    speed: number,
+    accuracy: number,
+  ) => {
+    const response = await fetch(`http://${esp32Ip}:8080/gps`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat, lon, speed, accuracy }),
+    });
+    return response.json();
+  },
+
+  /** Get ESP32 current status (passenger count, risk, etc.) */
+  getESP32Status: async (esp32Ip: string) => {
+    const response = await fetch(`http://${esp32Ip}:8080/status`);
+    return response.json();
+  },
 };

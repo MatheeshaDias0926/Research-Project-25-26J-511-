@@ -48,6 +48,11 @@ export default function ConductorDashboard() {
   const gpsSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const lastGeocodedRef = useRef<number>(0);
 
+  // ESP32 Direct Connection
+  const [esp32Ip, setEsp32Ip] = useState<string | null>(null);
+  const [esp32Connected, setEsp32Connected] = useState(false);
+  const [esp32PassengerCount, setEsp32PassengerCount] = useState(0);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -211,6 +216,62 @@ export default function ConductorDashboard() {
     }
   };
 
+  // ===== ESP32 CONNECTION =====
+  const connectToESP32 = useCallback(async () => {
+    const ip = await storage.getItem("esp32Ip");
+    if (!ip) {
+      Alert.prompt(
+        "ESP32 IP Address",
+        "Enter the ESP32's WiFi IP address (shown on ESP32 serial monitor):",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Connect",
+            onPress: async (value?: string) => {
+              if (value) {
+                const trimmedIp = value.trim();
+                try {
+                  const status = await busApi.getESP32Status(trimmedIp);
+                  if (status.deviceId) {
+                    await storage.setItem("esp32Ip", trimmedIp);
+                    setEsp32Ip(trimmedIp);
+                    setEsp32Connected(true);
+                    Alert.alert(
+                      "Connected",
+                      `Connected to ${status.deviceId} (${status.licensePlate})`,
+                    );
+                  }
+                } catch {
+                  Alert.alert(
+                    "Failed",
+                    "Cannot reach ESP32 at that IP. Make sure you're on the same WiFi.",
+                  );
+                }
+              }
+            },
+          },
+        ],
+        "plain-text",
+      );
+    } else {
+      try {
+        const status = await busApi.getESP32Status(ip);
+        if (status.deviceId) {
+          setEsp32Ip(ip);
+          setEsp32Connected(true);
+        }
+      } catch {
+        setEsp32Connected(false);
+        await storage.deleteItem("esp32Ip");
+      }
+    }
+  }, []);
+
+  // Try to reconnect to ESP32 on mount
+  useEffect(() => {
+    connectToESP32();
+  }, [connectToESP32]);
+
   // ===== PHONE GPS TRACKING =====
   const startGpsTracking = useCallback(async () => {
     try {
@@ -228,24 +289,70 @@ export default function ConductorDashboard() {
       const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          timeInterval: 3000, // Every 3 seconds
-          distanceInterval: 5, // Or every 5 meters
+          timeInterval: 500, // Every 0.5 seconds as user requested
+          distanceInterval: 2, // Or every 2 meters
         },
-        (location) => {
+        async (location) => {
           setPhoneLocation(location);
-          // Send to backend
-          if (busId) {
-            const speedKmh = (location.coords.speed || 0) * 3.6; // m/s → km/h
+          const speedKmh = Math.max(0, (location.coords.speed || 0) * 3.6);
+          const lat = location.coords.latitude;
+          const lon = location.coords.longitude;
+          const acc = location.coords.accuracy || 0;
+
+          // Priority: Send to ESP32 if connected (instant ML response)
+          if (esp32Ip && esp32Connected) {
+            try {
+              const espResponse = await busApi.sendGPSToESP32(
+                esp32Ip,
+                lat,
+                lon,
+                speedKmh,
+                acc,
+              );
+              // Use ESP32's ML result directly — no backend round-trip needed
+              if (espResponse.riskScore !== undefined) {
+                setRiskScore(espResponse.riskScore);
+                setEsp32PassengerCount(espResponse.passengerCount || 0);
+
+                // Trigger alerts based on ESP32's ML result
+                if (espResponse.riskScore > 0.7) {
+                  if (!isCriticalRef.current) {
+                    Haptics.notificationAsync(
+                      Haptics.NotificationFeedbackType.Error,
+                    );
+                    Speech.speak(
+                      "Critical Warning! Rollover Risk High! Slow Down!",
+                      { rate: 1.1, pitch: 1.2 },
+                    );
+                    isCriticalRef.current = true;
+                  }
+                } else if (espResponse.riskScore > 0.5) {
+                  if (!isCriticalRef.current) {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                    Speech.speak("Warning. Approaching unsafe speed.", {
+                      rate: 1.1,
+                    });
+                    isCriticalRef.current = true;
+                  }
+                } else {
+                  isCriticalRef.current = false;
+                }
+              }
+            } catch {
+              setEsp32Connected(false);
+              // Fallback: send to backend
+              if (busId) {
+                busApi
+                  .sendPhoneGPS(busId, { lat, lon }, speedKmh, acc)
+                  .catch((err: any) =>
+                    console.error("Phone GPS send error:", err),
+                  );
+              }
+            }
+          } else if (busId) {
+            // No ESP32 — send to backend (ML runs there)
             busApi
-              .sendPhoneGPS(
-                busId,
-                {
-                  lat: location.coords.latitude,
-                  lon: location.coords.longitude,
-                },
-                Math.max(0, speedKmh),
-                location.coords.accuracy || 0,
-              )
+              .sendPhoneGPS(busId, { lat, lon }, speedKmh, acc)
               .catch((err: any) => console.error("Phone GPS send error:", err));
           }
         },
@@ -265,6 +372,14 @@ export default function ConductorDashboard() {
     }
     setGpsTracking(false);
     setPhoneLocation(null);
+    isCriticalRef.current = false;
+  }, []);
+
+  const disconnectESP32 = useCallback(async () => {
+    await storage.deleteItem("esp32Ip");
+    setEsp32Ip(null);
+    setEsp32Connected(false);
+    setEsp32PassengerCount(0);
   }, []);
 
   // Cleanup GPS on unmount
@@ -324,8 +439,60 @@ export default function ConductorDashboard() {
         </View>
       </View>
 
-      {/* Phone GPS Tracking Toggle */}
+      {/* ESP32 Connection + Phone GPS Tracking */}
       <Card style={[styles.gpsCard, gpsTracking && styles.gpsCardActive]}>
+        {/* ESP32 Connection Status */}
+        <View
+          style={[
+            styles.gpsRow,
+            {
+              marginBottom: esp32Connected ? 12 : 0,
+              paddingBottom: esp32Connected ? 12 : 0,
+              borderBottomWidth: esp32Connected ? 1 : 0,
+              borderBottomColor: "#e2e8f0",
+            },
+          ]}
+        >
+          <View style={styles.gpsInfo}>
+            <Ionicons
+              name={esp32Connected ? "hardware-chip" : "hardware-chip-outline"}
+              size={24}
+              color={esp32Connected ? "#22c55e" : Colors.textSecondary}
+            />
+            <View>
+              <Text
+                style={[
+                  styles.gpsTitle,
+                  esp32Connected && styles.gpsTitleActive,
+                ]}
+              >
+                ESP32 {esp32Connected ? "Connected" : "Not Connected"}
+              </Text>
+              <Text style={styles.gpsSubtext}>
+                {esp32Connected
+                  ? `${esp32Ip} • Passengers: ${esp32PassengerCount} • ML on-device`
+                  : "Connect to ESP32 for real-time ML inference"}
+              </Text>
+            </View>
+          </View>
+          <Button
+            variant={esp32Connected ? "outline" : "primary"}
+            onPress={esp32Connected ? disconnectESP32 : connectToESP32}
+            style={[styles.gpsBtn, esp32Connected && styles.gpsBtnStop]}
+          >
+            <Text
+              style={{
+                color: esp32Connected ? "#ef4444" : "#fff",
+                fontWeight: "600",
+                fontSize: 13,
+              }}
+            >
+              {esp32Connected ? "Disconnect" : "Connect"}
+            </Text>
+          </Button>
+        </View>
+
+        {/* Phone GPS Toggle */}
         <View style={styles.gpsRow}>
           <View style={styles.gpsInfo}>
             <Ionicons
@@ -342,7 +509,9 @@ export default function ConductorDashboard() {
               <Text style={styles.gpsSubtext}>
                 {gpsTracking && phoneLocation
                   ? `${phoneLocation.coords.latitude.toFixed(4)}, ${phoneLocation.coords.longitude.toFixed(4)} • ${Math.max(0, (phoneLocation.coords.speed || 0) * 3.6).toFixed(0)} km/h`
-                  : "Use phone as GPS until sensor is installed"}
+                  : esp32Connected
+                    ? "Send GPS to ESP32 for ML inference"
+                    : "Use phone as GPS source"}
               </Text>
             </View>
           </View>
@@ -510,7 +679,9 @@ export default function ConductorDashboard() {
         <Card style={styles.statCard}>
           <Ionicons name="people" size={24} color={Colors.success} />
           <Text style={styles.statValue}>
-            {myBus?.currentStatus?.currentOccupancy || 0}
+            {esp32Connected
+              ? esp32PassengerCount
+              : myBus?.currentStatus?.currentOccupancy || 0}
           </Text>
           <Text style={styles.statLabel}>Passengers</Text>
         </Card>
