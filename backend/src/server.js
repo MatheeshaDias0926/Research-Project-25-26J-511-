@@ -2,8 +2,12 @@ import "dotenv/config"; // Must be first — loads .env before other imports
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import { fileURLToPath } from "url";
+import path from "path";
 import connectDB from "./config/db.js";
 import { notFound, errorHandler } from "./middleware/error.middleware.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Import Routes
 import authRoutes from "./api/auth.routes.js";
@@ -16,8 +20,13 @@ import sosRoutes from "./api/sos.routes.js";
 import attendanceRoutes from "./api/attendance.routes.js";
 import assignmentRoutes from "./api/assignment.routes.js";
 
-// Connect to Database
+// Connect to Database (non-blocking — server starts even if DB is temporarily down)
 connectDB();
+
+// Keep server alive on unhandled MongoDB/network errors
+process.on("unhandledRejection", (err) => {
+  console.error(`[Unhandled Rejection] ${err.message}`);
+});
 
 const app = express();
 
@@ -35,6 +44,14 @@ app.use((req, res, next) => {
     req.url = "/api/edge-devices/gps-update" + (req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "");
   }
   next();
+});
+
+// Serve static files (GPS tracker page, etc.)
+app.use(express.static(path.join(__dirname, "public")));
+
+// Shortcut: /tracker → gps-tracker.html
+app.get("/tracker", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "gps-tracker.html"));
 });
 
 // API Routes
