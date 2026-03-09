@@ -17,12 +17,25 @@ MODEL_PATH = 'xgb_bus_model.joblib'
 PORT = 5001
 
 # Load the trained model at startup
-print(f"Loading model from {MODEL_PATH}...")
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Model file {MODEL_PATH} not found. Please train the model first.")
+# Load the trained model at startup (Optional)
+occupancy_model = None
+if os.path.exists(MODEL_PATH):
+    try:
+        occupancy_model = joblib.load(MODEL_PATH)
+        print("✓ Occupancy Model loaded successfully!")
+    except Exception as e:
+         print(f"⚠️ Failed to load Occupancy Model: {e}")
+else:
+    print(f"ℹ️ Occupancy Model not found. Service will run in Safety-Only mode.")
 
-model = joblib.load(MODEL_PATH)
-print("✓ Model loaded successfully!")
+SAFETY_MODEL_PATH = 'safety_model.joblib'
+print(f"Loading safety model from {SAFETY_MODEL_PATH}...")
+if os.path.exists(SAFETY_MODEL_PATH):
+    safety_model = joblib.load(SAFETY_MODEL_PATH)
+    print("✓ Safety Model loaded successfully!")
+else:
+    print("⚠️ Safety model not found. /predict-safety endpoint will fail.")
+    safety_model = None
 
 # Define the feature columns (must match training data)
 categorical_features = ['route_id', 'day_of_week', 'time_of_day', 'weather']
@@ -151,29 +164,80 @@ def predict():
         features = prepare_features(route_id, stop_id, day_of_week, time_of_day, weather)
         
         # Make prediction
-        prediction = model.predict(features)[0]
-        
-        # Ensure prediction is within reasonable bounds (0 to bus capacity + standing)
-        prediction = max(0, min(prediction, 75))
-        
-        # Return response
-        response = {
-            'predicted_occupancy': round(float(prediction), 1),
-            'route_id': route_id,
-            'stop_id': stop_id,
-            'day_of_week': day_of_week,
-            'time_of_day': time_of_day,
-            'weather': weather,
-            'confidence': 0.92  # You can calculate this from model metrics if needed
-        }
-        
-        return jsonify(response), 200
+        if occupancy_model:
+            prediction = occupancy_model.predict(features)[0]
+            # Ensure prediction is within reasonable bounds (0 to bus capacity + standing)
+            prediction = max(0, min(prediction, 75))
+            
+            response = {
+                'predicted_occupancy': round(float(prediction), 1),
+                'route_id': route_id,
+                'stop_id': stop_id,
+                'day_of_week': day_of_week,
+                'time_of_day': time_of_day,
+                'weather': weather,
+                'confidence': 0.92
+            }
+            return jsonify(response), 200
+        else:
+             return jsonify({'error': 'Occupancy model is disabled or missing'}), 503
         
     except ValueError as e:
         return jsonify({'error': f'Invalid input value: {str(e)}'}), 400
     except Exception as e:
         print(f"Error during prediction: {str(e)}")
         return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
+
+
+@app.route('/predict-safety', methods=['POST'])
+def predict_safety():
+    """
+    Safety Prediction endpoint.
+    Predicts rollover risk and stopping distance.
+    """
+    if not safety_model:
+        return jsonify({'error': 'Safety model not loaded'}), 503
+
+    try:
+        data = request.get_json()
+        
+        # Features: n_seated, n_standing, speed_kmh, radius_m, is_wet, gradient_deg, dist_to_curve_m
+        required = ['n_seated', 'n_standing', 'speed_kmh', 'radius_m', 'is_wet', 'gradient_deg']
+        # optional: dist_to_curve_m (default to 0 if missing for backward compatibility)
+        missing = [f for f in required if f not in data]
+        if missing:
+             return jsonify({'error': f'Missing fields: {missing}'}), 400
+
+        # Construct DataFrame in exact order
+        input_data = {
+            'n_seated': float(data['n_seated']),
+            'n_standing': float(data['n_standing']),
+            'speed_kmh': float(data['speed_kmh']),
+            'radius_m': float(data['radius_m']),
+            'is_wet': float(data['is_wet']),
+            'gradient_deg': float(data['gradient_deg']),
+            'dist_to_curve_m': float(data.get('dist_to_curve_m', 0.0)) # Default 0 (max risk) if not provided
+        }
+        df = pd.DataFrame([input_data])
+        
+        # Predict: Returns Risk Score, Stopping Dist
+        prediction = safety_model.predict(df)[0]
+        
+        risk_score = float(prediction[0])
+        stopping_dist = float(prediction[1])
+        
+        return jsonify({
+            'risk_score': risk_score,
+            'stopping_distance': stopping_dist,
+            'source': 'ML_RandomForest'
+        })
+
+    except Exception as e:
+        print(f"Error safety prediction: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+
 
 
 @app.route('/model-info', methods=['GET'])

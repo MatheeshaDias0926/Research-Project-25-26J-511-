@@ -138,6 +138,8 @@ const AuthorityPhysicsCheck = () => {
         }
     };
 
+    // Retrain function removed (moved to Simulator)
+
     return (
         <div
             style={{

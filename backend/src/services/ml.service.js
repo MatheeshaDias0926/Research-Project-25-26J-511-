@@ -81,3 +81,31 @@ export const getOccupancyPrediction = async (
     };
   }
 };
+
+/**
+ * @desc    Call the Python ML model for Safety Prediction (Rollover/Stopping).
+ * @param   {object} features - { n_seated, n_standing, speed_kmh, radius_m, is_wet, gradient_deg }
+ * @returns {Promise<object>} - { risk_score, stopping_distance, source }
+ */
+export const getSafetyPrediction = async (features) => {
+  try {
+    const response = await axios.post(
+      `${ML_SERVICE_URL.replace("/predict", "/predict-safety")}`,
+      features,
+      {
+        timeout: 2000, // Fast timeout for real-time safety
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`[ML Service] Safety Predict Error: ${error.message}`);
+    // Fallback: Safe values if ML fails
+    return {
+      risk_score: 0.1,
+      stopping_distance: 30, // Default safe distance
+      source: "Fallback_Default",
+      error: error.message,
+    };
+  }
+};

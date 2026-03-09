@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getCrashes, getSystemStats, updateCrashStatus } from '../services/crashService';
 import { Card, CardContent } from '../components/ui/Card';
-import { Shield, AlertTriangle, Clock, CheckCircle, Bus, MapPin, ChevronRight, Activity } from 'lucide-react';
+import { Shield, AlertTriangle, Clock, CheckCircle, Bus, MapPin, ChevronRight, Activity, ChevronDown, Flame, Loader, Check, Ban } from 'lucide-react';
 
 const severityConfig = {
   critical: { bg: "#fee2e2", text: "#dc2626" },
@@ -11,10 +11,92 @@ const severityConfig = {
 };
 
 const statusConfig = {
-  active: { bg: "#fee2e2", text: "#dc2626", dot: "#dc2626" },
-  in_progress: { bg: "#ffedd5", text: "#ea580c", dot: "#ea580c" },
-  resolved: { bg: "#dcfce7", text: "#16a34a", dot: "#16a34a" },
-  false_positive: { bg: "#f1f5f9", text: "#64748b", dot: "#64748b" },
+  active: { bg: "#fee2e2", text: "#dc2626", dot: "#dc2626", label: "Active", icon: Flame },
+  in_progress: { bg: "#ffedd5", text: "#ea580c", dot: "#ea580c", label: "In Progress", icon: Loader },
+  resolved: { bg: "#dcfce7", text: "#16a34a", dot: "#16a34a", label: "Resolved", icon: Check },
+  false_positive: { bg: "#f1f5f9", text: "#64748b", dot: "#64748b", label: "False Positive", icon: Ban },
+};
+
+const StatusDropdown = ({ value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const current = statusConfig[value] || statusConfig.active;
+  const CurrentIcon = current.icon;
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "7px 14px", borderRadius: 10,
+          border: `1.5px solid ${open ? current.text : "var(--border-primary)"}`,
+          background: current.bg, cursor: "pointer",
+          fontSize: 13, fontWeight: 700, color: current.text,
+          outline: "none", transition: "all 0.2s",
+          boxShadow: open ? `0 0 0 3px ${current.text}18` : "none",
+          minWidth: 150,
+        }}
+      >
+        <CurrentIcon style={{ height: 14, width: 14 }} />
+        <span style={{ flex: 1, textAlign: "left" }}>{current.label}</span>
+        <ChevronDown style={{ height: 14, width: 14, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0)" }} />
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+          background: "var(--bg-card)", borderRadius: 12,
+          border: "1px solid var(--border-primary)",
+          boxShadow: "0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06)",
+          zIndex: 50, overflow: "hidden",
+          animation: "dropdownFadeIn 0.15s ease-out",
+          minWidth: 180,
+        }}>
+          {Object.entries(statusConfig).map(([key, cfg]) => {
+            const Icon = cfg.icon;
+            const isSelected = key === value;
+            return (
+              <button
+                key={key}
+                onClick={() => { onChange(key); setOpen(false); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  width: "100%", padding: "10px 14px", border: "none",
+                  background: isSelected ? cfg.bg : "transparent",
+                  cursor: "pointer", fontSize: 13, fontWeight: isSelected ? 700 : 500,
+                  color: isSelected ? cfg.text : "var(--text-body)",
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "var(--bg-muted)"; }}
+                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8,
+                  background: isSelected ? `${cfg.text}18` : "var(--bg-muted)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: isSelected ? cfg.text : "var(--text-muted)",
+                }}>
+                  <Icon style={{ height: 14, width: 14 }} />
+                </div>
+                <span style={{ flex: 1, textAlign: "left" }}>{cfg.label}</span>
+                {isSelected && (
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot }} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const AdminDashboard = () => {
@@ -76,6 +158,7 @@ const AdminDashboard = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      <style>{`@keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
       {/* Header */}
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
@@ -189,29 +272,10 @@ const AdminDashboard = () => {
                         </div>
                       </td>
                       <td>
-                        <select
+                        <StatusDropdown
                           value={crash.status}
-                          onChange={(e) => handleStatusChange(crash._id, e.target.value)}
-                          style={{
-                            padding: "7px 12px",
-                            borderRadius: 8,
-                            border: "1.5px solid var(--border-primary)",
-                            background: "var(--bg-card)",
-                            cursor: "pointer",
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: "var(--text-body)",
-                            outline: "none",
-                            transition: "border-color 0.2s",
-                          }}
-                          onFocus={e => { e.target.style.borderColor = "#7c3aed"; }}
-                          onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; }}
-                        >
-                          <option value="active">Active</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="resolved">Resolved</option>
-                          <option value="false_positive">False Positive</option>
-                        </select>
+                          onChange={(newStatus) => handleStatusChange(crash._id, newStatus)}
+                        />
                       </td>
                     </tr>
                   );

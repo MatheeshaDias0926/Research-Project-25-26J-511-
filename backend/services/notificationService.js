@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const PoliceStation = require('../models/PoliceStation');
+const Hospital = require('../models/Hospital');
 const twilio = require('twilio');
 
 // Twilio configuration
@@ -62,32 +64,48 @@ const broadcastEmergency = async (crash, alerts) => {
 
     const message = `CRASH DETECTED! Bus ${crash.bus_id} at ${locationStr}${address}. Severity: ${crash.severity.toUpperCase()}. Please respond immediately.`;
 
-    // Find all authorities (police, hospital, ministry, admin)
+    // Collect all unique phone numbers
+    const recipientPhones = new Set();
+
+    // 1. Get phone numbers from PoliceStation collection
+    const policeStations = await PoliceStation.find({ status: 'active' }).select('phone emergency_hotline name');
+    policeStations.forEach(station => {
+      if (station.phone) recipientPhones.add(station.phone);
+      if (station.emergency_hotline) recipientPhones.add(station.emergency_hotline);
+    });
+    console.log(`Found ${policeStations.length} police stations.`);
+
+    // 2. Get phone numbers from Hospital collection
+    const hospitals = await Hospital.find({ status: 'active' }).select('phone emergency_hotline name');
+    hospitals.forEach(hospital => {
+      if (hospital.phone) recipientPhones.add(hospital.phone);
+      if (hospital.emergency_hotline) recipientPhones.add(hospital.emergency_hotline);
+    });
+    console.log(`Found ${hospitals.length} hospitals.`);
+
+    // 3. Get phone numbers from User collection (admin, police, hospital, ministry roles)
     const authorities = await User.find({
       role: { $in: ['admin', 'police', 'hospital', 'ministry'] }
     });
-
-    console.log(`Found ${authorities.length} authorities to notify.`);
-
-    const promises = authorities.map(user => {
-      if (user.phone) {
-        return sendSMS(user.phone, message);
-      }
-      return Promise.resolve();
+    authorities.forEach(user => {
+      if (user.phone) recipientPhones.add(user.phone);
     });
 
-    // Also notify Bus Owner
+    // 4. Notify Bus Owner
     const Bus = require('../models/Bus');
     const bus = await Bus.findOne({ bus_id: crash.bus_id });
-
     if (bus && bus.owner_id) {
       const owner = await User.findById(bus.owner_id);
       if (owner && owner.phone) {
-        console.log("Notifying Bus Owner...");
-        promises.push(sendSMS(owner.phone, message));
+        recipientPhones.add(owner.phone);
       }
     }
 
+    // Send SMS to all unique recipients
+    const recipients = Array.from(recipientPhones);
+    console.log(`Sending SMS to ${recipients.length} recipients: ${recipients.join(', ')}`);
+
+    const promises = recipients.map(phone => sendSMS(phone, message));
     await Promise.all(promises);
     console.log("All SMS notifications sent.");
 

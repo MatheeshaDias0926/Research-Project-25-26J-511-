@@ -17,6 +17,7 @@ import {
   Hospital,
   CarFront,
   Building2,
+  Navigation,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -104,6 +105,12 @@ const Sidebar = () => {
         name: "Safety Logic",
         href: "/authority/theories",
         icon: BookOpen,
+        roles: ["authority"],
+    },
+    {
+        name: "Scenario Simulator",
+        href: "/authority/simulator",
+        icon: Navigation,
         roles: ["authority"],
     },
 

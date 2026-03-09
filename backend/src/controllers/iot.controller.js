@@ -16,7 +16,7 @@ import { checkAndLogViolation } from "../services/violation.service.js";
  * }
  */
 export const ingestMockData = async (req, res, next) => {
-  const { licensePlate, currentOccupancy, gps, footboardStatus, speed } =
+  const { licensePlate, currentOccupancy, gps, footboardStatus, speed, riskScore } =
     req.body;
 
   try {
@@ -47,6 +47,9 @@ export const ingestMockData = async (req, res, next) => {
       gps,
       footboardStatus: footboardStatus || false,
       speed: speed || 0,
+      // Store the HIGHEST risk (Current vs Future) to trigger early warning
+      riskScore: Math.max(parseFloat(riskScore || 0), parseFloat(req.body.futureRiskScore || 0)),
+      distToCurve: req.body.distToCurve || 0, // Store distance to curve
     });
     await newLog.save();
 
@@ -54,7 +57,6 @@ export const ingestMockData = async (req, res, next) => {
     bus.currentStatus = newLog._id;
     await bus.save();
 
-    // 4. **Service Layer:** Check for violations
     // This abstracts the violation logic from the controller
     await checkAndLogViolation(bus._id, newLog);
 

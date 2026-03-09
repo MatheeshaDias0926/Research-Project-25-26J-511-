@@ -1,25 +1,36 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Image, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useAuth } from "../src/context/AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Input } from "../src/components/ui/Input";
+import { Button } from "../src/components/ui/Button";
+import { Card } from "../src/components/ui/Card";
+import { Colors } from "../constants/Colors";
+import { Link, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function LoginScreen() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState("");
     const { login } = useAuth();
+    const router = useRouter();
 
     const handleLogin = async () => {
         if (!username || !password) {
-            Alert.alert("Error", "Please enter both username and password");
+            setError("Please enter both username and password");
             return;
         }
 
         setIsLoading(true);
+        setError("");
         try {
             await login(username, password);
-        } catch (error) {
-            Alert.alert("Login Failed", error.response?.data?.message || "Invalid credentials");
+            // Navigation handled by AuthContext
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Invalid credentials");
         } finally {
             setIsLoading(false);
         }
@@ -27,50 +38,64 @@ export default function LoginScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.content}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>Smart Bus Driver</Text>
-                    <Text style={styles.subtitle}>Sign in to continue</Text>
-                </View>
+            <StatusBar style="dark" />
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.keyboardView}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                    <View style={styles.content}>
+                        <Card style={styles.card}>
+                            <View style={styles.header}>
+                                <View style={styles.iconContainer}>
+                                    <Ionicons name="bus" size={32} color={Colors.iconColor} />
+                                </View>
+                                <Text style={styles.title}>Welcome Back</Text>
+                                <Text style={styles.subtitle}>Sign in to your account</Text>
+                            </View>
 
-                <View style={styles.form}>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Username</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter your username"
-                            value={username}
-                            onChangeText={setUsername}
-                            autoCapitalize="none"
-                            placeholderTextColor="#999"
-                        />
+                            <View style={styles.form}>
+                                {error ? (
+                                    <View style={styles.errorContainer}>
+                                        <Text style={styles.errorText}>{error}</Text>
+                                    </View>
+                                ) : null}
+
+                                <Input
+                                    label="Username"
+                                    placeholder="Enter your username"
+                                    value={username}
+                                    onChangeText={setUsername}
+                                    autoCapitalize="none"
+                                />
+
+                                <Input
+                                    label="Password"
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry
+                                />
+
+                                <Button 
+                                    onPress={handleLogin} 
+                                    isLoading={isLoading} 
+                                    style={styles.button}
+                                >
+                                    Sign In
+                                </Button>
+
+                                <View style={styles.footer}>
+                                    <Text style={styles.footerText}>Don't have an account? </Text>
+                                    <Link href="/register" asChild>
+                                        <Text style={styles.link}>Register as Passenger</Text>
+                                    </Link>
+                                </View>
+                            </View>
+                        </Card>
                     </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Password</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter your password"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                            placeholderTextColor="#999"
-                        />
-                    </View>
-
-                    <TouchableOpacity
-                        style={styles.button}
-                        onPress={handleLogin}
-                        disabled={isLoading}
-                    >
-                        {isLoading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text style={styles.buttonText}>Sign In</Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -78,65 +103,76 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: Colors.background,
+    },
+    keyboardView: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: "center",
+        padding: 20,
     },
     content: {
-        flex: 1,
-        padding: 24,
-        justifyContent: "center",
+        width: "100%",
+        maxWidth: 400,
+        alignSelf: "center",
+    },
+    card: {
+        borderRadius: 16,
     },
     header: {
-        marginBottom: 40,
         alignItems: "center",
+        marginBottom: 24,
+    },
+    iconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: Colors.iconBackground,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 16,
     },
     title: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: "bold",
-        color: "#1a1a1a",
+        color: Colors.text,
         marginBottom: 8,
     },
     subtitle: {
-        fontSize: 16,
-        color: "#666",
+        fontSize: 14,
+        color: Colors.textSecondary,
     },
     form: {
         width: "100%",
     },
-    inputGroup: {
-        marginBottom: 20,
+    errorContainer: {
+        backgroundColor: Colors.errorBg,
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 16,
     },
-    label: {
+    errorText: {
+        color: Colors.error,
         fontSize: 14,
-        fontWeight: "600",
-        color: "#333",
-        marginBottom: 8,
-    },
-    input: {
-        backgroundColor: "#f5f5f5",
-        borderRadius: 12,
-        padding: 16,
-        fontSize: 16,
-        borderWidth: 1,
-        borderColor: "#e0e0e0",
     },
     button: {
-        backgroundColor: "#2563eb",
-        padding: 18,
-        borderRadius: 12,
-        alignItems: "center",
-        marginTop: 20,
-        shadowColor: "#2563eb",
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 4.65,
-        elevation: 8,
+        marginTop: 8,
     },
-    buttonText: {
-        color: "#fff",
-        fontSize: 18,
-        fontWeight: "bold",
+    footer: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        marginTop: 24,
+    },
+    footerText: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+    },
+    link: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: Colors.primary,
     },
 });

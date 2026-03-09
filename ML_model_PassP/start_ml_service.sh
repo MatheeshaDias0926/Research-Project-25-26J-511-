@@ -13,14 +13,21 @@ cd "$(dirname "$0")"
 echo "Activating virtual environment..."
 source venv/bin/activate
 
-# Check if model file exists
-if [ ! -f "xgb_bus_model.joblib" ]; then
-    echo "❌ Model file not found!"
-    echo "Please train the model first."
-    exit 1
+# Check if safety model file exists (Mandatory)
+if [ ! -f "safety_model.joblib" ]; then
+    echo "❌ Safety Model (safety_model.joblib) not found!"
+    echo "Running training script..."
+    python train_safety_model.py
 fi
 
-echo "✓ Model file found"
+echo "✓ Safety Model found"
+
+# Check for occupancy model (Optional)
+if [ ! -f "xgb_bus_model.joblib" ]; then
+    echo "⚠️ Occupancy Model not found (Running in Safety-Only mode)"
+else
+    echo "✓ Occupancy Model found"
+fi
 echo ""
 
 # Kill any existing service on port 5001

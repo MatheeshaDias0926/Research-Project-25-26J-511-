@@ -8,6 +8,11 @@ import {
   getPrediction,
   createBus,
   getAvailableBuses,
+  predictBusSafety,
+  getRouteWeather,
+  getViolationAnalytics,
+  getViolationTrends,
+  getFleetOccupancy,
 } from "../controllers/bus.controller.js";
 import { getPhysicsModel } from "../controllers/physics.controller.js";
 import {
@@ -41,6 +46,27 @@ router.post("/", protect, isAuthority, createBus);
 router.get("/available", protect, isAuthority, getAvailableBuses);
 
 /**
+ * @route   GET /api/bus/analytics/violations
+ * @desc    Get aggregated violation analytics (Top offenders)
+ * @access  Private (Authority only)
+ */
+router.get("/analytics/violations", protect, isAuthority, getViolationAnalytics);
+
+/**
+ * @route   GET /api/bus/analytics/trends
+ * @desc    Get violation trends (last 7 days)
+ * @access  Private (Authority only)
+ */
+router.get("/analytics/trends", protect, isAuthority, getViolationTrends);
+
+/**
+ * @route   GET /api/bus/analytics/occupancy
+ * @desc    Get fleet occupancy distribution
+ * @access  Private (Authority only)
+ */
+router.get("/analytics/occupancy", protect, isAuthority, getFleetOccupancy);
+
+/**
  * @route   GET /api/bus/predict/:routeId
  * @desc    Get ML-based occupancy prediction for a route (Passenger App)
  * @access  Private (Passenger)
@@ -48,11 +74,25 @@ router.get("/available", protect, isAuthority, getAvailableBuses);
 router.get("/predict/:routeId", protect, isPassenger, getPrediction);
 
 /**
+ * @route   POST /api/bus/predict-safety
+ * @desc    Get ML-based safety prediction (Rollover/Stopping)
+ * @access  Private (All authenticated users)
+ */
+router.post("/predict-safety", protect, predictBusSafety);
+
+/**
  * @route   POST /api/bus/physics
  * @desc    Get physics model result (rollover, stopping distance, etc.)
  * @access  Private (All authenticated users)
  */
 router.post("/physics", protect, getPhysicsModel);
+
+/**
+ * @route   GET /api/bus/weather
+ * @desc    Get real-time weather for location
+ * @access  Private
+ */
+router.get("/weather", protect, getRouteWeather);
 
 /**
  * @route   GET /api/bus/plate/:licensePlate

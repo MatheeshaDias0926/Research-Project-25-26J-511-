@@ -177,16 +177,22 @@ const ConductorDashboard = () => {
             </div>
             <div style={{ display: "flex", gap: 16 }}>
               <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
+                <p style={{ fontSize: 14, color: "#94a3b8" }}>Speed</p>
+                <p style={{ fontSize: 20, fontWeight: 700 }}>{myBus?.currentStatus?.speed || 0} km/h</p>
+              </div>
+              <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
+                <p style={{ fontSize: 14, color: "#94a3b8" }}>Passengers</p>
+                <p style={{ fontSize: 20, fontWeight: 700 }}>
+                    {myBus?.currentStatus?.currentOccupancy || 0} <span style={{fontSize: 14, color: "#94a3b8"}}>/ {myBus?.capacity || 55}</span>
+                </p>
+              </div>
+              <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
                 <p style={{ fontSize: 14, color: "#94a3b8" }}>Status</p>
                 <Badge 
                     variant={myBus?.currentStatus ? "success" : "secondary"}
                 >
                     {myBus?.currentStatus ? "Active" : "Inactive"}
                 </Badge>
-              </div>
-              <div style={{ textAlign: "center", padding: "8px 24px", background: "rgba(255,255,255,0.1)", borderRadius: 12 }}>
-                <p style={{ fontSize: 14, color: "#94a3b8" }}>Capacity</p>
-                <p style={{ fontSize: 20, fontWeight: 700 }}>{myBus?.capacity || 55}</p>
               </div>
             </div>
           </CardContent>

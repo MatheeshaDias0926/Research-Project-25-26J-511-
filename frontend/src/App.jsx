@@ -30,6 +30,7 @@ import ConductorManagement from "./pages/authority/ConductorManagement";
 import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
 import AuthorityPhysicsCheck from "./pages/authority/AuthorityPhysicsCheck";
 import SafetyTheories from "./pages/authority/SafetyTheories";
+import AuthorityScenarioSimulator from "./pages/authority/AuthorityScenarioSimulator";
 
 // Conductor Pages
 import ConductorDashboard from "./pages/conductor/ConductorDashboard";
@@ -91,6 +92,7 @@ function App() {
                   <Route path="/authority/iot" element={<IoTSimulator />} />
                   <Route path="/authority/safety" element={<AuthorityPhysicsCheck />} />
                   <Route path="/authority/theories" element={<SafetyTheories />} />
+                  <Route path="/authority/simulator" element={<AuthorityScenarioSimulator />} />
                 </Route>
 
                 {/* Admin */}
