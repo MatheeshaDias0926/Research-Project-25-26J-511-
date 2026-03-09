@@ -47,12 +47,33 @@ export default function ConductorDashboard() {
     useEffect(() => {
         const checkBusSelection = async () => {
             const id = await storage.getItem("currentBusId");
+            const plate = await storage.getItem("currentBusPlate");
             
             if (!id) {
                 router.replace("/(conductor)/bus-selection");
             } else {
                 setBusId(id);
                 fetchData(id);
+
+                // Start GPS feed immediately using stored license plate
+                if (plate && !gpsFeedActive) {
+                    console.log("[GPS Feed] Starting for plate:", plate);
+                    startGpsFeed(
+                        plate,
+                        (data) => {
+                            setGpsData({ lat: data.lat, lon: data.lon, speed: data.speed });
+                        },
+                        3000
+                    ).then((result) => {
+                        if (result.success) {
+                            setGpsFeedActive(true);
+                            console.log("[GPS Feed] ✅ Active for", plate);
+                        } else {
+                            console.error("[GPS Feed] ❌ Failed:", result.error);
+                            Alert.alert("GPS Permission Required", result.error || "Unable to access location.");
+                        }
+                    });
+                }
             }
         };
         checkBusSelection();
@@ -60,34 +81,13 @@ export default function ConductorDashboard() {
         // Polling for real-time data
         const interval = setInterval(() => {
             if (busId) fetchData(busId);
-        }, 2000); // 2s polling
+        }, 2000);
         
         return () => {
             clearInterval(interval);
-            stopGpsFeed(); // Stop GPS feed when leaving dashboard
+            stopGpsFeed();
         };
     }, [busId]);
-
-    // Auto-start GPS feed when bus is selected
-    useEffect(() => {
-        if (myBus?.licensePlate && !gpsFeedActive) {
-            startGpsFeed(
-                myBus.licensePlate,
-                (data) => {
-                    setGpsData({ lat: data.lat, lon: data.lon, speed: data.speed });
-                },
-                3000 // Every 3 seconds
-            ).then((result) => {
-                if (result.success) {
-                    setGpsFeedActive(true);
-                    console.log("GPS Feed started for", myBus.licensePlate);
-                } else {
-                    console.error("GPS Feed failed:", result.error);
-                    Alert.alert("GPS Permission Required", result.error || "Unable to access location.");
-                }
-            });
-        }
-    }, [myBus?.licensePlate]);
 
     const fetchData = async (id: string) => {
         try {
