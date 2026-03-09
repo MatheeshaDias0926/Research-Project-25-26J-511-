@@ -19,6 +19,18 @@ export const protect = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+      // Handle dev/hardcoded users (IDs starting with "dev_")
+      if (typeof decoded.id === "string" && decoded.id.startsWith("dev_")) {
+        const devUsers = {
+          dev_admin_001: { _id: "dev_admin_001", username: "admin", role: "authority" },
+          dev_conductor_001: { _id: "dev_conductor_001", username: "conductor", role: "conductor" },
+          dev_driver_001: { _id: "dev_driver_001", username: "driver", role: "driver" },
+          dev_passenger_001: { _id: "dev_passenger_001", username: "passenger", role: "passenger" },
+        };
+        req.user = devUsers[decoded.id];
+        if (req.user) return next();
+      }
+
       // Get user from token (exclude password)
       req.user = await User.findById(decoded.id).select("-password");
 
@@ -70,17 +82,37 @@ export const isConductor = (req, res, next) => {
 };
 
 /**
- * @desc    Check if user is an authority
+ * @desc    Check if user is an authority (admin)
  */
-const AUTHORITY_ROLES = ["authority", "police", "hospital", "bus_owner", "admin"];
-
 export const isAuthority = (req, res, next) => {
-  if (req.user && AUTHORITY_ROLES.includes(req.user.role)) {
+  if (req.user && (req.user.role === "authority" || req.user.role === "admin")) {
     next();
   } else {
     res
       .status(403)
-      .json({ message: "Access denied. Authority role required." });
+      .json({ message: "Access denied. Admin role required." });
+  }
+};
+
+/**
+ * @desc    Check if user is an admin
+ */
+export const isAdmin = (req, res, next) => {
+  if (req.user && (req.user.role === "admin" || req.user.role === "authority")) {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied. Admin role required." });
+  }
+};
+
+/**
+ * @desc    Check if user is a driver
+ */
+export const isDriver = (req, res, next) => {
+  if (req.user && req.user.role === "driver") {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied. Driver role required." });
   }
 };
 
@@ -90,14 +122,46 @@ export const isAuthority = (req, res, next) => {
 export const isConductorOrAuthority = (req, res, next) => {
   if (
     req.user &&
-    (req.user.role === "conductor" || AUTHORITY_ROLES.includes(req.user.role))
+    (req.user.role === "conductor" || req.user.role === "authority" || req.user.role === "admin")
   ) {
     next();
   } else {
     res
       .status(403)
       .json({
-        message: "Access denied. Conductor or Authority role required.",
+        message: "Access denied. Conductor or Admin role required.",
       });
   }
+};
+
+/**
+ * @desc    Check if user is driver, conductor or admin
+ */
+export const isDriverConductorOrAdmin = (req, res, next) => {
+  if (
+    req.user &&
+    (req.user.role === "driver" || req.user.role === "conductor" || req.user.role === "authority" || req.user.role === "admin")
+  ) {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied." });
+  }
+};
+
+/**
+ * @desc    Check if user has one of the required roles
+ * @param   {...String} roles
+ */
+export const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: `User role ${req.user.role} is not authorized to access this route`,
+      });
+    }
+    next();
+  };
 };

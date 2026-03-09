@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartBus Safety - System Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0a0f1e; color: #e2e8f0; min-height: 100vh; padding: 40px 20px; }
+
+  h1 { text-align: center; font-size: 28px; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { text-align: center; color: #64748b; font-size: 14px; margin-bottom: 40px; }
+
+  .diagram { max-width: 1200px; margin: 0 auto; position: relative; }
+
+  /* Layer labels */
+  .layer { margin-bottom: 32px; }
+  .layer-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; color: #475569; margin-bottom: 12px; padding-left: 8px; border-left: 3px solid #334155; }
+
+  /* Component boxes */
+  .row { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-bottom: 16px; }
+
+  .box { border-radius: 12px; padding: 20px; position: relative; min-width: 200px; flex: 1; max-width: 380px; border: 1px solid rgba(255,255,255,0.06); transition: transform 0.2s, box-shadow 0.2s; }
+  .box:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+
+  .box-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .box-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .box-title { font-size: 15px; font-weight: 700; }
+  .box-tech { font-size: 11px; color: #94a3b8; font-weight: 500; }
+  .box-desc { font-size: 12px; color: #94a3b8; line-height: 1.6; margin-top: 8px; }
+  .box-port { position: absolute; top: 12px; right: 14px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+
+  .box-features { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+
+  /* Color themes */
+  .blue { background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(37,99,235,0.04)); border-color: rgba(59,130,246,0.2); }
+  .blue .box-icon { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .blue .box-port { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .blue .tag { background: rgba(59,130,246,0.1); color: #93bbfd; }
+  .blue .box-title { color: #93c5fd; }
+
+  .green { background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04)); border-color: rgba(16,185,129,0.2); }
+  .green .box-icon { background: rgba(16,185,129,0.15); color: #34d399; }
+  .green .box-port { background: rgba(16,185,129,0.15); color: #34d399; }
+  .green .tag { background: rgba(16,185,129,0.1); color: #6ee7b7; }
+  .green .box-title { color: #6ee7b7; }
+
+  .purple { background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.04)); border-color: rgba(139,92,246,0.2); }
+  .purple .box-icon { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .purple .box-port { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .purple .tag { background: rgba(139,92,246,0.1); color: #c4b5fd; }
+  .purple .box-title { color: #c4b5fd; }
+
+  .orange { background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04)); border-color: rgba(245,158,11,0.2); }
+  .orange .box-icon { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .orange .box-port { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .orange .tag { background: rgba(245,158,11,0.1); color: #fcd34d; }
+  .orange .box-title { color: #fcd34d; }
+
+  .red { background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04)); border-color: rgba(239,68,68,0.2); }
+  .red .box-icon { background: rgba(239,68,68,0.15); color: #f87171; }
+  .red .box-port { background: rgba(239,68,68,0.15); color: #f87171; }
+  .red .tag { background: rgba(239,68,68,0.1); color: #fca5a5; }
+  .red .box-title { color: #fca5a5; }
+
+  .cyan { background: linear-gradient(135deg, rgba(6,182,212,0.12), rgba(6,182,212,0.04)); border-color: rgba(6,182,212,0.2); }
+  .cyan .box-icon { background: rgba(6,182,212,0.15); color: #22d3ee; }
+  .cyan .box-port { background: rgba(6,182,212,0.15); color: #22d3ee; }
+  .cyan .tag { background: rgba(6,182,212,0.1); color: #67e8f9; }
+  .cyan .box-title { color: #67e8f9; }
+
+  .pink { background: linear-gradient(135deg, rgba(236,72,153,0.12), rgba(236,72,153,0.04)); border-color: rgba(236,72,153,0.2); }
+  .pink .box-icon { background: rgba(236,72,153,0.15); color: #f472b6; }
+  .pink .box-port { background: rgba(236,72,153,0.15); color: #f472b6; }
+  .pink .tag { background: rgba(236,72,153,0.1); color: #f9a8d4; }
+  .pink .box-title { color: #f9a8d4; }
+
+  /* Arrows / Connectors */
+  .connectors { display: flex; justify-content: center; margin: 8px 0; gap: 60px; }
+  .arrow { display: flex; flex-direction: column; align-items: center; color: #334155; }
+  .arrow-line { width: 2px; height: 20px; background: linear-gradient(180deg, #334155, #475569); }
+  .arrow-head { font-size: 10px; color: #475569; }
+  .arrow-label { font-size: 9px; color: #64748b; margin-top: 2px; font-weight: 500; }
+
+  .connector-row { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 12px 0; }
+  .connector-line { height: 2px; width: 60px; background: linear-gradient(90deg, transparent, #334155, transparent); }
+  .connector-text { font-size: 10px; color: #64748b; font-weight: 600; white-space: nowrap; padding: 3px 10px; border: 1px solid #1e293b; border-radius: 20px; background: #0f172a; }
+
+  /* Flow section */
+  .flow-section { margin-top: 48px; }
+  .flow-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; text-align: center; color: #cbd5e1; }
+
+  .flow-container { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+  .flow-card { background: rgba(15,23,42,0.8); border: 1px solid #1e293b; border-radius: 12px; padding: 20px; min-width: 280px; flex: 1; max-width: 360px; }
+  .flow-card-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .flow-step { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .flow-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .flow-arrow-down { text-align: center; color: #475569; font-size: 10px; margin: 2px 0; padding-left: 4px; }
+  .flow-text { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+
+  /* Database section */
+  .db-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-top: 12px; }
+  .db-item { font-size: 11px; padding: 8px 12px; background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.12); border-radius: 6px; }
+  .db-item-name { font-weight: 600; color: #c4b5fd; }
+  .db-item-desc { color: #64748b; font-size: 10px; margin-top: 2px; }
+
+  /* Roles section */
+  .roles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 20px; }
+  .role-badge { font-size: 11px; padding: 4px 12px; border-radius: 20px; font-weight: 600; border: 1px solid; }
+
+  @media (max-width: 768px) {
+    .box { min-width: 100%; }
+    .flow-card { min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<h1>SmartBus Safety System Architecture</h1>
+<p class="subtitle">Sri Lanka Intelligent Bus Safety & Crash Management Platform</p>
+
+<div class="diagram">
+
+  <!-- Client Layer -->
+  <div class="layer">
+    <div class="layer-label">Client Layer</div>
+    <div class="row">
+      <div class="box blue">
+        <span class="box-port">:5173</span>
+        <div class="box-header">
+          <div class="box-icon">&#x1f310;</div>
+          <div>
+            <div class="box-title">Web Frontend</div>
+            <div class="box-tech">React 19 &bull; Vite &bull; Leaflet &bull; Recharts</div>
+          </div>
+        </div>
+        <div class="box-desc">Multi-role dashboard with real-time monitoring, map visualization, crash alerts, and analytics.</div>
+        <div class="box-features">
+          <span class="tag">Admin Dashboard</span>
+          <span class="tag">Police Dashboard</span>
+          <span class="tag">Hospital Dashboard</span>
+          <span class="tag">Bus Owner</span>
+          <span class="tag">Authority</span>
+          <span class="tag">Passenger</span>
+          <span class="tag">Conductor</span>
+          <span class="tag">Dark Mode</span>
+        </div>
+      </div>
+
+      <div class="box cyan">
+        <div class="box-header">
+          <div class="box-icon">&#x1f4f1;</div>
+          <div>
+            <div class="box-title">Mobile App</div>
+            <div class="box-tech">React Native 0.81 &bull; Expo 54 &bull; TypeScript</div>
+          </div>
+        </div>
+        <div class="box-desc">Cross-platform (iOS/Android) app with role-based screens for passengers, conductors, and authorities.</div>
+        <div class="box-features">
+          <span class="tag">Authority Fleet</span>
+          <span class="tag">Conductor Panel</span>
+          <span class="tag">Passenger Safety</span>
+          <span class="tag">Predictions</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connection arrows -->
+  <div class="connectors">
+    <div class="arrow">
+      <div class="arrow-line"></div>
+      <div class="arrow-head">&#x25BC;</div>
+      <div class="arrow-label">REST API / HTTP</div>
+    </div>
+    <div class="arrow">
+      <div class="arrow-line"></div>
+      <div class="arrow-head">&#x25BC;</div>
+      <div class="arrow-label">REST API / HTTP</div>
+    </div>
+  </div>
+
+  <!-- Backend Layer -->
+  <div class="layer">
+    <div class="layer-label">Backend Services</div>
+    <div class="row">
+      <div class="box green">
+        <span class="box-port">:5001</span>
+        <div class="box-header">
+          <div class="box-icon">&#x2699;</div>
+          <div>
+            <div class="box-title">Node.js Backend API</div>
+            <div class="box-tech">Express 4.18 &bull; JWT Auth &bull; Mongoose &bull; Helmet</div>
+          </div>
+        </div>
+        <div class="box-desc">Core API server handling authentication, bus management, IoT data ingestion, crash management, and SMS notifications.</div>
+        <div class="box-features">
+          <span class="tag">/api/auth</span>
+          <span class="tag">/api/crashes</span>
+          <span class="tag">/api/buses</span>
+          <span class="tag">/api/iot</span>
+          <span class="tag">/api/alerts</span>
+          <span class="tag">/api/analytics</span>
+          <span class="tag">/api/police-stations</span>
+          <span class="tag">/api/hospitals</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connectors">
+    <div class="arrow">
+      <div class="arrow-line"></div>
+      <div class="arrow-head">&#x25BC;</div>
+      <div class="arrow-label">HTTP / Subprocess</div>
+    </div>
+  </div>
+
+  <!-- ML & AI Layer -->
+  <div class="layer">
+    <div class="layer-label">ML / AI Services</div>
+    <div class="row">
+      <div class="box red">
+        <span class="box-port">:8001</span>
+        <div class="box-header">
+          <div class="box-icon">&#x1f6a8;</div>
+          <div>
+            <div class="box-title">Crash Detection API</div>
+            <div class="box-tech">FastAPI &bull; TensorFlow/Keras &bull; Motor (async MongoDB)</div>
+          </div>
+        </div>
+        <div class="box-desc">Real-time crash detection using ML autoencoder model. Analyzes accelerometer & gyroscope sensor batches.</div>
+        <div class="box-features">
+          <span class="tag">Autoencoder Model</span>
+          <span class="tag">Anomaly Detection</span>
+          <span class="tag">Batch Processing</span>
+        </div>
+      </div>
+
+      <div class="box purple">
+        <span class="box-port">Flask</span>
+        <div class="box-header">
+          <div class="box-icon">&#x1f9e0;</div>
+          <div>
+            <div class="box-title">ML Safety Service</div>
+            <div class="box-tech">Flask &bull; scikit-learn &bull; XGBoost &bull; joblib</div>
+          </div>
+        </div>
+        <div class="box-desc">Predicts rollover risk, stopping distance, and passenger occupancy using Random Forest & XGBoost models.</div>
+        <div class="box-features">
+          <span class="tag">Random Forest</span>
+          <span class="tag">XGBoost</span>
+          <span class="tag">Safety Prediction</span>
+          <span class="tag">Occupancy Forecast</span>
+        </div>
+      </div>
+
+      <div class="box orange">
+        <div class="box-header">
+          <div class="box-icon">&#x1f4d0;</div>
+          <div>
+            <div class="box-title">Physics Engine</div>
+            <div class="box-tech">Python &bull; OSMnx &bull; OpenStreetMap</div>
+          </div>
+        </div>
+        <div class="box-desc">Calculates rollover threshold, stopping distance, and max safe speed using real road geometry data.</div>
+        <div class="box-features">
+          <span class="tag">Road Lookahead</span>
+          <span class="tag">Curve Radius</span>
+          <span class="tag">Friction Model</span>
+          <span class="tag">Subprocess Call</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connectors">
+    <div class="arrow">
+      <div class="arrow-line"></div>
+      <div class="arrow-head">&#x25BC;</div>
+      <div class="arrow-label">Mongoose / Motor</div>
+    </div>
+  </div>
+
+  <!-- IoT Layer -->
+  <div class="layer">
+    <div class="layer-label">IoT / Hardware Layer</div>
+    <div class="row">
+      <div class="box pink">
+        <div class="box-header">
+          <div class="box-icon">&#x1f4e1;</div>
+          <div>
+            <div class="box-title">ESP32 IoT Device</div>
+            <div class="box-tech">Arduino C++ &bull; WiFi &bull; IR Sensors &bull; TM1637 Display</div>
+          </div>
+        </div>
+        <div class="box-desc">Onboard bus device with 2x IR sensors for passenger counting, footboard detection, GPS, and speed monitoring.</div>
+        <div class="box-features">
+          <span class="tag">Passenger Count</span>
+          <span class="tag">Footboard Detection</span>
+          <span class="tag">GPS Tracking</span>
+          <span class="tag">Speed Monitor</span>
+          <span class="tag">WiFi POST</span>
+        </div>
+      </div>
+
+      <!-- Database box side by side -->
+      <div class="box purple" style="min-width: 320px;">
+        <div class="box-header">
+          <div class="box-icon">&#x1f4be;</div>
+          <div>
+            <div class="box-title">MongoDB Atlas</div>
+            <div class="box-tech">Cloud Database &bull; Mongoose &bull; Motor</div>
+          </div>
+        </div>
+        <div class="db-grid">
+          <div class="db-item"><div class="db-item-name">User</div><div class="db-item-desc">Auth & roles</div></div>
+          <div class="db-item"><div class="db-item-name">Bus</div><div class="db-item-desc">Fleet info</div></div>
+          <div class="db-item"><div class="db-item-name">BusDataLog</div><div class="db-item-desc">Sensor data</div></div>
+          <div class="db-item"><div class="db-item-name">Crash</div><div class="db-item-desc">Incidents</div></div>
+          <div class="db-item"><div class="db-item-name">Alert</div><div class="db-item-desc">Notifications</div></div>
+          <div class="db-item"><div class="db-item-name">ViolationLog</div><div class="db-item-desc">Safety violations</div></div>
+          <div class="db-item"><div class="db-item-name">PoliceStation</div><div class="db-item-desc">Emergency contacts</div></div>
+          <div class="db-item"><div class="db-item-name">Hospital</div><div class="db-item-desc">Medical facilities</div></div>
+          <div class="db-item"><div class="db-item-name">PhysicsTraining</div><div class="db-item-desc">Simulation data</div></div>
+          <div class="db-item"><div class="db-item-name">MaintenanceLog</div><div class="db-item-desc">Service records</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- External Services -->
+  <div class="layer" style="margin-top: 32px;">
+    <div class="layer-label">External Services</div>
+    <div class="row">
+      <div class="box green" style="max-width: 220px;">
+        <div class="box-header">
+          <div class="box-icon">&#x1f4ac;</div>
+          <div>
+            <div class="box-title">Twilio SMS</div>
+            <div class="box-tech">Emergency Alerts</div>
+          </div>
+        </div>
+        <div class="box-desc">Sends crash alerts to police stations, hospitals, and bus owners.</div>
+      </div>
+
+      <div class="box green" style="max-width: 220px;">
+        <div class="box-header">
+          <div class="box-icon">&#x26c5;</div>
+          <div>
+            <div class="box-title">Open-Meteo</div>
+            <div class="box-tech">Weather API (Free)</div>
+          </div>
+        </div>
+        <div class="box-desc">Real-time weather for road friction coefficient calculation.</div>
+      </div>
+
+      <div class="box green" style="max-width: 220px;">
+        <div class="box-header">
+          <div class="box-icon">&#x1f5fa;</div>
+          <div>
+            <div class="box-title">OpenStreetMap</div>
+            <div class="box-tech">OSMnx Road Data</div>
+          </div>
+        </div>
+        <div class="box-desc">Road geometry and curve data for physics-based safety calculations.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Flow Section -->
+  <div class="flow-section">
+    <div class="flow-title">Key Data Flows</div>
+    <div class="flow-container">
+
+      <!-- Crash Detection Flow -->
+      <div class="flow-card">
+        <div class="flow-card-title" style="color: #f87171;">&#x1f6a8; Crash Detection & Alert Flow</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #f472b6;"></div><div class="flow-text">ESP32 sensors collect accelerometer data</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #f87171;"></div><div class="flow-text">Crash Detection API (FastAPI) analyzes batch via autoencoder</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #34d399;"></div><div class="flow-text">Node.js Backend creates crash record & alerts</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #60a5fa;"></div><div class="flow-text">SMS sent to Police Stations, Hospitals via Twilio</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #60a5fa;"></div><div class="flow-text">Real-time crash banner appears on all dashboards</div></div>
+      </div>
+
+      <!-- IoT Data Flow -->
+      <div class="flow-card">
+        <div class="flow-card-title" style="color: #f472b6;">&#x1f4e1; IoT Real-Time Monitoring Flow</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #f472b6;"></div><div class="flow-text">ESP32 counts passengers via IR sensors</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #34d399;"></div><div class="flow-text">POST /api/iot/iot-data (every 5 min)</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #a78bfa;"></div><div class="flow-text">BusDataLog stored in MongoDB</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #34d399;"></div><div class="flow-text">Violation detection (footboard, overcrowding)</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #60a5fa;"></div><div class="flow-text">Dashboard updates + SMS warnings</div></div>
+      </div>
+
+      <!-- Physics Prediction Flow -->
+      <div class="flow-card">
+        <div class="flow-card-title" style="color: #fbbf24;">&#x1f4d0; Physics Safety Prediction Flow</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #60a5fa;"></div><div class="flow-text">User requests safety check (speed, load, GPS)</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #34d399;"></div><div class="flow-text">Backend spawns Python physics subprocess</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #fbbf24;"></div><div class="flow-text">OSMnx fetches real road curve ahead</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #fbbf24;"></div><div class="flow-text">Physics engine calculates rollover risk & stopping distance</div></div>
+        <div class="flow-arrow-down">&#x25BC;</div>
+        <div class="flow-step"><div class="flow-dot" style="background: #60a5fa;"></div><div class="flow-text">Returns decision: Safe / Warning / Critical</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- User Roles -->
+  <div style="margin-top: 40px; text-align: center;">
+    <div class="layer-label" style="text-align: center; border-left: none; padding-left: 0;">User Roles (JWT Authentication)</div>
+    <div class="roles">
+      <span class="role-badge" style="background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #f87171;">Admin</span>
+      <span class="role-badge" style="background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: #60a5fa;">Police</span>
+      <span class="role-badge" style="background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #34d399;">Hospital</span>
+      <span class="role-badge" style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #fbbf24;">Bus Owner</span>
+      <span class="role-badge" style="background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.3); color: #a78bfa;">Authority</span>
+      <span class="role-badge" style="background: rgba(236,72,153,0.1); border-color: rgba(236,72,153,0.3); color: #f472b6;">Conductor</span>
+      <span class="role-badge" style="background: rgba(6,182,212,0.1); border-color: rgba(6,182,212,0.3); color: #22d3ee;">Passenger</span>
+    </div>
+  </div>
+
+  <!-- Tech Stack Summary -->
+  <div style="margin-top: 40px; text-align: center; padding: 20px; border-top: 1px solid #1e293b;">
+    <div class="layer-label" style="text-align: center; border-left: none; padding-left: 0; margin-bottom: 16px;">Technology Stack</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+      <span class="tag" style="background: rgba(59,130,246,0.1); color: #93bbfd; padding: 4px 12px; border-radius: 6px; font-size: 11px;">React 19</span>
+      <span class="tag" style="background: rgba(59,130,246,0.1); color: #93bbfd; padding: 4px 12px; border-radius: 6px; font-size: 11px;">React Native</span>
+      <span class="tag" style="background: rgba(16,185,129,0.1); color: #6ee7b7; padding: 4px 12px; border-radius: 6px; font-size: 11px;">Node.js</span>
+      <span class="tag" style="background: rgba(16,185,129,0.1); color: #6ee7b7; padding: 4px 12px; border-radius: 6px; font-size: 11px;">Express</span>
+      <span class="tag" style="background: rgba(139,92,246,0.1); color: #c4b5fd; padding: 4px 12px; border-radius: 6px; font-size: 11px;">MongoDB Atlas</span>
+      <span class="tag" style="background: rgba(245,158,11,0.1); color: #fcd34d; padding: 4px 12px; border-radius: 6px; font-size: 11px;">FastAPI</span>
+      <span class="tag" style="background: rgba(245,158,11,0.1); color: #fcd34d; padding: 4px 12px; border-radius: 6px; font-size: 11px;">Flask</span>
+      <span class="tag" style="background: rgba(239,68,68,0.1); color: #fca5a5; padding: 4px 12px; border-radius: 6px; font-size: 11px;">TensorFlow</span>
+      <span class="tag" style="background: rgba(239,68,68,0.1); color: #fca5a5; padding: 4px 12px; border-radius: 6px; font-size: 11px;">scikit-learn</span>
+      <span class="tag" style="background: rgba(239,68,68,0.1); color: #fca5a5; padding: 4px 12px; border-radius: 6px; font-size: 11px;">XGBoost</span>
+      <span class="tag" style="background: rgba(236,72,153,0.1); color: #f9a8d4; padding: 4px 12px; border-radius: 6px; font-size: 11px;">ESP32</span>
+      <span class="tag" style="background: rgba(236,72,153,0.1); color: #f9a8d4; padding: 4px 12px; border-radius: 6px; font-size: 11px;">Arduino C++</span>
+      <span class="tag" style="background: rgba(6,182,212,0.1); color: #67e8f9; padding: 4px 12px; border-radius: 6px; font-size: 11px;">Twilio</span>
+      <span class="tag" style="background: rgba(6,182,212,0.1); color: #67e8f9; padding: 4px 12px; border-radius: 6px; font-size: 11px;">OSMnx</span>
+      <span class="tag" style="background: rgba(6,182,212,0.1); color: #67e8f9; padding: 4px 12px; border-radius: 6px; font-size: 11px;">JWT</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -5,11 +5,11 @@
 #include <TM1637Display.h>
 
 // WiFi credentials
-const char* ssid = "Matheesha";
-const char* password = "DewshiD#0926";
+const char* ssid = "Wi-fi";
+const char* password = "123456788";
 
 // Backend API endpoint - Use your Mac's IP address
-const char* serverUrl = "http://172.20.10.2:3000/api/iot/iot-data";
+const char* serverUrl = "http://192.168.43.31:5001/api/iot/iot-data";
 
 // IR Sensor pins
 #define SENSOR1_PIN 18  // Outer sensor
@@ -64,7 +64,24 @@ const unsigned long debounceDelay = 50;  // Stable debounce
 unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 300000;  // 5 minutes (300000ms)
 
+// GPS simulation data
+struct GPSLocation {
+  const char* name;
+  float lat;
+  float lng;
+};
 
+GPSLocation gpsLocations[] = {
+  {"Bandarawela Stand", 6.8258, 80.9982},
+  {"Bindunuwewa", 6.8448, 80.9997},
+  {"Dhowa Temple", 6.8556, 81.0208},
+  {"Kinigama", 6.8620, 81.0300},
+  {"Ella Town", 6.8756, 81.0463}
+};
+
+int currentGPSIndex = 0;
+unsigned long lastGPSUpdateTime = 0;
+const unsigned long gpsUpdateInterval = 600000;  // 10 minutes (600000ms)
 
 // Fixed values
 const char* licensePlate = "NP-1234";
@@ -78,7 +95,7 @@ void connectWiFi();
 void readSensors();
 void processCountingLogic();
 void checkFootboardDetection();
-
+void updateGPSLocation();
 void sendDataToBackend();
 void sendDataToBackend(bool isFootboardViolation);
 void sendFootboardViolation();
@@ -141,7 +158,8 @@ void loop() {
   // Check for footboard detection
   checkFootboardDetection();
 
-
+  // Update GPS location every 10 minutes
+  updateGPSLocation();
 
   // Send data periodically (every 5 minutes)
   if (millis() - lastSendTime >= sendInterval) {
@@ -350,8 +368,8 @@ void sendDataToBackend(bool isFootboardViolation) {
   
   // Add GPS location
   JsonObject gps = jsonDoc["gps"].to<JsonObject>();
-  gps["lat"] = 6.9155;
-  gps["lon"] = 79.9739;
+  gps["lat"] = gpsLocations[currentGPSIndex].lat;
+  gps["lon"] = gpsLocations[currentGPSIndex].lng;
   
   jsonDoc["footboardStatus"] = isFootboardViolation;
   jsonDoc["speed"] = fixedSpeed;
@@ -362,7 +380,8 @@ void sendDataToBackend(bool isFootboardViolation) {
   Serial.println("\n--- Sending Data to Backend ---");
   Serial.print("URL: ");
   Serial.println(serverUrl);
-
+  Serial.print("Location: ");
+  Serial.println(gpsLocations[currentGPSIndex].name);
   Serial.print("JSON: ");
   Serial.println(jsonString);
 
@@ -473,7 +492,25 @@ void checkFootboardDetection() {
   }
 }
 
-
+void updateGPSLocation() {
+  unsigned long currentTime = millis();
+  
+  // Check if 10 minutes have elapsed
+  if (currentTime - lastGPSUpdateTime >= gpsUpdateInterval) {
+    // Move to next location
+    currentGPSIndex = (currentGPSIndex + 1) % 5;  // Wrap around after last location
+    lastGPSUpdateTime = currentTime;
+    
+    Serial.println("\n--- GPS Location Updated ---");
+    Serial.print("New Location: ");
+    Serial.println(gpsLocations[currentGPSIndex].name);
+    Serial.print("Coordinates: ");
+    Serial.print(gpsLocations[currentGPSIndex].lat, 4);
+    Serial.print(", ");
+    Serial.println(gpsLocations[currentGPSIndex].lng, 4);
+    Serial.println("----------------------------\n");
+  }
+}
 
 void sendFootboardViolation() {
   Serial.println("\n--- FOOTBOARD VIOLATION DETECTED ---");

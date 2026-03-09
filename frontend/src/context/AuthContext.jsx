@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { jwtDecode } from "jwt-decode";
 import api from "../api/axios";
 
 const AuthContext = createContext();
@@ -7,72 +8,84 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [token, setToken] = useState(localStorage.getItem("token"));
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const checkAuth = () => {
-            const token = localStorage.getItem("token");
-            const storedUser = localStorage.getItem("user");
-            if (token && storedUser) {
-                try {
-                    const userData = JSON.parse(storedUser);
-                    setUser(userData);
-                    setIsAuthenticated(true);
-                } catch {
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("user");
+        if (token) {
+            try {
+                const decoded = jwtDecode(token);
+                // Check if token is expired
+                if (decoded.exp * 1000 < Date.now()) {
+                    logout();
+                } else {
+                    // If we have a user object in storage, use it, otherwise decoding gives us minimal info
+                    // Depending on backend, we might need to fetch profile explicitly
+                    // For now, let's assume we store the user info or just use decoded if sufficient
+                    const storedUser = localStorage.getItem("user");
+                    if (storedUser) {
+                        setUser(JSON.parse(storedUser));
+                    } else {
+                        setUser({ ...decoded });
+                    }
                 }
+            } catch (error) {
+                logout();
             }
-            setLoading(false);
-        };
-        checkAuth();
-    }, []);
+        }
+        setLoading(false);
+    }, [token]);
 
-    const login = async (email, password) => {
+    const login = async (username, password) => {
         try {
-            const res = await api.post("/auth/login", { email, password });
-            const data = res.data;
+            const response = await api.post("/auth/login", { username, password });
+            const { token: newToken, ...userData } = response.data;
+            const newUser = { ...userData };
 
-            const token = data.token;
-            const userData = data.user || {
-                _id: data._id,
-                name: data.name,
-                email: data.email,
-                role: data.role,
-            };
+            localStorage.setItem("token", newToken);
+            localStorage.setItem("user", JSON.stringify(newUser));
 
-            localStorage.setItem("token", token);
-            localStorage.setItem("user", JSON.stringify(userData));
-            setUser(userData);
-            setIsAuthenticated(true);
-
+            setToken(newToken);
+            setUser(newUser);
             return { success: true };
         } catch (error) {
-            const message =
-                error.response?.data?.error || error.response?.data?.message || "Invalid credentials";
-            return { success: false, error: message };
+            return {
+                success: false,
+                error: error.response?.data?.message || "Login failed"
+            };
+        }
+    };
+
+    const register = async (username, password) => {
+        try {
+            await api.post("/auth/register", { username, password, role: "passenger" });
+            // Auto login after register
+            return await login(username, password);
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.message || "Registration failed"
+            };
         }
     };
 
     const logout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        setToken(null);
         setUser(null);
-        setIsAuthenticated(false);
+        window.location.href = "/login";
     };
 
     const value = {
         user,
-        setUser,
-        isAuthenticated,
-        setIsAuthenticated,
+        token,
         loading,
         login,
+        register,
         logout,
+        isAuthenticated: !!user,
     };
 
-    return (
-        <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

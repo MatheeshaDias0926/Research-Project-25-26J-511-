@@ -150,18 +150,28 @@ const AuthorityPhysicsCheck = () => {
                 gap: 24,
             }}
         >
-            <h1 style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>
-                Safety & Physics Analysis
-            </h1>
-            <p style={{ color: "var(--text-label)" }}>
-                Run a real-world simulation using the live physics engine. Enter coordinates manually or select a location on the map.
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+              <div style={{
+                padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+                background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+              }}>
+                <ShieldCheck size={24} color="#fff" />
+              </div>
+              <div>
+                <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+                  Safety & Physics Analysis
+                </h1>
+                <p style={{ color: "var(--text-secondary)" }}>
+                  Run a real-world simulation using the live physics engine. Enter coordinates manually or select a location on the map.
+                </p>
+              </div>
+            </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
                 <Card>
                     <CardHeader>
                         <CardTitle style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <ShieldCheck style={{ height: 24, width: 24, color: "#2563eb" }} />
+                            <ShieldCheck style={{ height: 24, width: 24, color: "var(--color-primary-500)" }} />
                             1. Simulation Parameters
                         </CardTitle>
                     </CardHeader>
@@ -173,7 +183,7 @@ const AuthorityPhysicsCheck = () => {
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                                 <div>
                                     <label
-                                        style={{ fontSize: 14, fontWeight: 500, color: "var(--text-body)", display: "block", marginBottom: 4 }}
+                                        style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}
                                     >
                                         Seated Passengers
                                     </label>
@@ -184,7 +194,7 @@ const AuthorityPhysicsCheck = () => {
                                 </div>
                                 <div>
                                     <label
-                                        style={{ fontSize: 14, fontWeight: 500, color: "var(--text-body)", display: "block", marginBottom: 4 }}
+                                        style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}
                                     >
                                         Standing Passengers
                                     </label>
@@ -197,7 +207,7 @@ const AuthorityPhysicsCheck = () => {
 
                             <div>
                                 <label
-                                    style={{ fontSize: 14, fontWeight: 500, color: "var(--text-body)", display: "block", marginBottom: 4 }}
+                                    style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}
                                 >
                                     Speed (km/h)
                                 </label>
@@ -207,14 +217,14 @@ const AuthorityPhysicsCheck = () => {
                                 />
                             </div>
 
-                            <div style={{ paddingTop: 8, borderTop: "1px solid var(--border-primary)" }}>
-                                <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-body)", marginBottom: 12 }}>
+                            <div style={{ paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+                                <p style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 12 }}>
                                     Location Coordinates
                                 </p>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                                     <div>
                                         <label
-                                            style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}
+                                            style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)", display: "block", marginBottom: 4 }}
                                         >
                                             Latitude
                                         </label>
@@ -226,7 +236,7 @@ const AuthorityPhysicsCheck = () => {
                                     </div>
                                     <div>
                                         <label
-                                            style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}
+                                            style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)", display: "block", marginBottom: 4 }}
                                         >
                                             Longitude
                                         </label>
@@ -237,7 +247,7 @@ const AuthorityPhysicsCheck = () => {
                                         />
                                     </div>
                                 </div>
-                                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
+                                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 8 }}>
                                     * Search location or click on the map to auto-fill.
                                 </p>
                             </div>
@@ -251,7 +261,7 @@ const AuthorityPhysicsCheck = () => {
 
                 {/* Map Section */}
                 <Card style={{ overflow: "hidden", minHeight: 450, display: "flex", flexDirection: "column" }}>
-                    <CardHeader style={{ padding: "16px 24px", background: "var(--bg-primary)", borderBottom: "1px solid var(--border-primary)" }}>
+                    <CardHeader style={{ padding: "16px 24px", background: "var(--bg-muted)", borderBottom: "1px solid #e2e8f0" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                             <CardTitle style={{ fontSize: 16, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
                                 <MapPin size={18} /> Select Location
@@ -288,13 +298,13 @@ const AuthorityPhysicsCheck = () => {
 
             {result && (
                 <div style={{ animation: "fadeInUp 0.5s", paddingBottom: 40 }}>
-                    <h2 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 }}>Analysis Results</h2>
+                    <h2 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 }}>Analysis Results</h2>
 
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
                         {/* Result Cards */}
-                        <Card style={{ background: result["Rollover threshold"] < "0.70 g" ? "#fef2f2" : "#f0fdf4", border: "1px solid var(--border-secondary)" }}>
+                        <Card style={{ background: result["Rollover threshold"] < "0.70 g" ? "#fef2f2" : "#f0fdf4", border: "1px solid #e5e7eb" }}>
                             <CardContent style={{ padding: 16 }}>
-                                <p style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Rollover Threshold</p>
+                                <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", fontWeight: 600 }}>Rollover Threshold</p>
                                 <p style={{ fontSize: 28, fontWeight: 700, color: result["Rollover threshold"] < "0.70 g" ? "#dc2626" : "#166534" }}>
                                     {result["Rollover threshold"]}
                                 </p>
@@ -302,7 +312,7 @@ const AuthorityPhysicsCheck = () => {
                         </Card>
                         <Card>
                             <CardContent style={{ padding: 16 }}>
-                                <p style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>CoG Height</p>
+                                <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", fontWeight: 600 }}>CoG Height</p>
                                 <p style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>
                                     {result["CoG height"]}
                                 </p>
@@ -310,7 +320,7 @@ const AuthorityPhysicsCheck = () => {
                         </Card>
                         <Card>
                             <CardContent style={{ padding: 16 }}>
-                                <p style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Lateral Accel</p>
+                                <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", fontWeight: 600 }}>Lateral Accel</p>
                                 <p style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>
                                     {result["Lateral accel"]}
                                 </p>
@@ -320,7 +330,7 @@ const AuthorityPhysicsCheck = () => {
 
                     <Card style={{ marginBottom: 24, borderLeft: result.Decision?.includes("CRITICAL") ? "6px solid #dc2626" : "6px solid #22c55e" }}>
                         <CardContent style={{ padding: 24 }}>
-                            <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", marginBottom: 8 }}>
+                            <p style={{ fontSize: "var(--text-sm)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8 }}>
                                 System Decision
                             </p>
                             <p style={{ fontSize: 24, fontWeight: 800, color: result.Decision?.includes("CRITICAL") ? "#dc2626" : "#166534" }}>
@@ -336,17 +346,17 @@ const AuthorityPhysicsCheck = () => {
                             </CardHeader>
                             <CardContent>
                                 <div style={{ display: "grid", gap: 12 }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--bg-muted)", paddingBottom: 8 }}>
-                                        <span style={{ color: "var(--text-secondary)" }}>Reaction Distance</span>
+                                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 8 }}>
+                                        <span style={{ color: "var(--text-muted)" }}>Reaction Distance</span>
                                         <span style={{ fontWeight: 600 }}>{result["Reaction distance"]}</span>
                                     </div>
-                                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--bg-muted)", paddingBottom: 8 }}>
-                                        <span style={{ color: "var(--text-secondary)" }}>Braking Distance</span>
+                                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 8 }}>
+                                        <span style={{ color: "var(--text-muted)" }}>Braking Distance</span>
                                         <span style={{ fontWeight: 600 }}>{result["Braking distance"]}</span>
                                     </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 4 }}>
                                         <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>Total Stopping Distance</span>
-                                        <span style={{ fontWeight: 700, color: "#2563eb", fontSize: 18 }}>{result["Total stopping distance"]}</span>
+                                        <span style={{ fontWeight: 700, color: "var(--color-primary-500)", fontSize: 18 }}>{result["Total stopping distance"]}</span>
                                     </div>
                                 </div>
                             </CardContent>
@@ -358,20 +368,20 @@ const AuthorityPhysicsCheck = () => {
                             </CardHeader>
                             <CardContent>
                                 <div style={{ display: "grid", gap: 12 }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--bg-muted)", paddingBottom: 8 }}>
-                                        <span style={{ color: "var(--text-secondary)" }}>Curve Radius</span>
+                                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 8 }}>
+                                        <span style={{ color: "var(--text-muted)" }}>Curve Radius</span>
                                         <span style={{ fontWeight: 600 }}>{result["Curve radius"]}</span>
                                     </div>
-                                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--bg-muted)", paddingBottom: 8 }}>
-                                        <span style={{ color: "var(--text-secondary)" }}>Max Safe Speed</span>
+                                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 8 }}>
+                                        <span style={{ color: "var(--text-muted)" }}>Max Safe Speed</span>
                                         <span style={{ fontWeight: 600 }}>{result["Max safe speed for curve"]}</span>
                                     </div>
                                     {result["Curve Warning"] && (
                                         <div style={{
                                             marginTop: 8,
                                             padding: 12,
-                                            background: "#fef2f2",
-                                            color: "#dc2626",
+                                            background: "var(--color-danger-50)",
+                                            color: "var(--color-danger-500)",
                                             borderRadius: 6,
                                             display: "flex",
                                             alignItems: "center",

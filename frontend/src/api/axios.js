@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+const API_URL = "http://localhost:5001/api";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -27,10 +27,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Don't redirect on login/register 401s — let the form handle the error
+    const url = error.config?.url || "";
+    const isAuthRoute = url.includes("/auth/login") || url.includes("/auth/register");
+    if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      // Optional: Redirect to login or trigger an event
       window.location.href = "/login";
     }
     return Promise.reject(error);

@@ -15,10 +15,25 @@ export const getCrashes = async (req, res, next) => {
         if (req.query.status) {
             filter.status = req.query.status;
         }
-        const crashes = await Crash.find(filter)
-            .populate("busId", "licensePlate routeId")
-            .sort({ timestamp: -1 });
-        res.json(crashes);
+        let crashes = await Crash.find(filter).sort({ timestamp: -1 }).lean();
+
+        // Try to populate busId for crashes that have valid ObjectIds
+        const populatedCrashes = await Promise.all(
+            crashes.map(async (crash) => {
+                if (crash.busId && typeof crash.busId === "object") {
+                    try {
+                        const bus = await (await import("../models/Bus.model.js")).default
+                            .findById(crash.busId)
+                            .select("licensePlate routeId")
+                            .lean();
+                        if (bus) crash.busId = bus;
+                    } catch (e) { /* busId is not a valid ObjectId, skip populate */ }
+                }
+                return crash;
+            })
+        );
+
+        res.json({ crashes: populatedCrashes });
     } catch (error) {
         next(error);
     }
@@ -31,34 +46,39 @@ export const getCrashes = async (req, res, next) => {
  */
 export const reportCrash = async (req, res, next) => {
     try {
-        const { busId, location, severity } = req.body;
+        const { busId, bus_id, location, severity } = req.body;
+        const resolvedBusId = busId || bus_id;
 
         // 1. Validate bus exists
-        console.log(`[CrashController] Received report for busId: ${busId}`);
+        console.log(`[CrashController] Received report for busId: ${resolvedBusId}`);
         let bus;
-        if (typeof busId === 'string' && busId.match(/^[0-9a-fA-F]{24}$/)) {
-            bus = await Bus.findById(busId);
+        if (typeof resolvedBusId === 'string' && resolvedBusId.match(/^[0-9a-fA-F]{24}$/)) {
+            bus = await Bus.findById(resolvedBusId);
         }
 
         if (!bus) {
-            bus = await Bus.findOne({ licensePlate: busId });
+            bus = await Bus.findOne({ licensePlate: resolvedBusId });
         }
 
         console.log(`[CrashController] Found Bus: ${bus ? bus._id : 'NOT FOUND'}`);
 
-        if (!bus) {
-            res.status(404);
-            throw new Error(`Bus not found: ${busId}`);
-        }
+        // Normalize location format (Python sends latitude/longitude, frontend sends lat/lon)
+        const normalizedLocation = {
+            lat: location?.lat || location?.latitude || 0,
+            lon: location?.lon || location?.longitude || 0,
+        };
 
-        // 2. Create Crash Record
+        // 2. Create Crash Record (allow even if bus not in DB — store string ID)
         const crash = await Crash.create({
-            busId: bus._id,
-            location,
+            busId: bus ? bus._id : resolvedBusId,
+            bus_id: resolvedBusId,
+            location: normalizedLocation,
             severity: severity || "high",
             status: "active",
             alertSent: false,
         });
+
+        const busLabel = bus ? bus.licensePlate : resolvedBusId;
 
         // 3. Get Emergency Message Template
         const templateConfig = await SystemConfig.findOne({
@@ -70,43 +90,48 @@ export const reportCrash = async (req, res, next) => {
 
         // 4. Format the message
         const message = messageTemplate
-            .replace("{busId}", bus.licensePlate)
-            .replace("{location}", `${location.lat}, ${location.lon}`)
+            .replace("{busId}", busLabel)
+            .replace("{location}", `${normalizedLocation.lat}, ${normalizedLocation.lon}`)
             .replace("{severity}", (severity || "high").toUpperCase());
 
-        // 5. Find Recipients — police, hospitals, and bus owner
-        const [policeUsers, hospitalUsers] = await Promise.all([
+        // 5. Find Recipients — police stations, hospitals, and users
+        const PoliceStation = (await import("../models/PoliceStation.model.js")).default;
+        const Hospital = (await import("../models/Hospital.model.js")).default;
+
+        const [policeStations, hospitals, policeUsers, hospitalUsers, authorityUsers] = await Promise.all([
+            PoliceStation.find({ status: "active" }).select("phone emergency_hotline name"),
+            Hospital.find({ status: "active" }).select("phone emergency_hotline name"),
             User.find({ role: "police" }).select("phoneNumber"),
             User.find({ role: "hospital" }).select("phoneNumber"),
+            User.find({ role: { $in: ["authority", "admin"] } }).select("phoneNumber"),
         ]);
-
-        // Get bus owner's phone number
-        let busOwnerPhone = null;
-        if (bus.owner) {
-            const owner = await User.findById(bus.owner).select("phoneNumber");
-            if (owner?.phoneNumber) {
-                busOwnerPhone = owner.phoneNumber;
-            }
-        }
 
         // Collect all unique phone numbers
         const recipientPhones = new Set();
 
+        policeStations.forEach((s) => {
+            if (s.phone) recipientPhones.add(s.phone);
+            if (s.emergency_hotline) recipientPhones.add(s.emergency_hotline);
+        });
+        hospitals.forEach((h) => {
+            if (h.phone) recipientPhones.add(h.phone);
+            if (h.emergency_hotline) recipientPhones.add(h.emergency_hotline);
+        });
         policeUsers.forEach((u) => {
             if (u.phoneNumber) recipientPhones.add(u.phoneNumber);
         });
         hospitalUsers.forEach((u) => {
             if (u.phoneNumber) recipientPhones.add(u.phoneNumber);
         });
-        if (busOwnerPhone) {
-            recipientPhones.add(busOwnerPhone);
-        }
-
-        // Also include legacy "authority" role users
-        const authorityUsers = await User.find({ role: "authority" }).select("phoneNumber");
         authorityUsers.forEach((u) => {
             if (u.phoneNumber) recipientPhones.add(u.phoneNumber);
         });
+
+        // Get bus owner's phone number
+        if (bus?.owner) {
+            const owner = await User.findById(bus.owner).select("phoneNumber");
+            if (owner?.phoneNumber) recipientPhones.add(owner.phoneNumber);
+        }
 
         // 6. Send SMS to all recipients
         const recipients = Array.from(recipientPhones);
@@ -128,6 +153,28 @@ export const reportCrash = async (req, res, next) => {
             recipientCount: recipients.length,
             message: "Crash reported and alerts processed",
         });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * @desc    Update crash status
+ * @route   PATCH /api/crashes/:id/status
+ * @access  Private
+ */
+export const updateCrashStatus = async (req, res, next) => {
+    try {
+        const { status } = req.body;
+        const crash = await Crash.findByIdAndUpdate(
+            req.params.id,
+            { status },
+            { new: true, runValidators: true }
+        );
+        if (!crash) {
+            return res.status(404).json({ message: "Crash not found" });
+        }
+        res.json({ success: true, data: crash });
     } catch (error) {
         next(error);
     }

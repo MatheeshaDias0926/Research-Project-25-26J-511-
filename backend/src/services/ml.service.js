@@ -3,7 +3,7 @@ import axios from "axios";
 // Python ML Service Configuration
 const ML_SERVICE_URL =
   process.env.ML_SERVICE_URL || "http://localhost:5001/predict";
-const ML_SERVICE_TIMEOUT = 10000; 
+const ML_SERVICE_TIMEOUT = 10000; // 10 seconds timeout
 
 /**
  * @desc    Call the Python ML model service for occupancy prediction.

@@ -4,12 +4,12 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Building2, Plus, Pencil, Trash2, Phone, MapPin, Shield, X, CheckCircle, XCircle, Search } from 'lucide-react';
 
 const inputStyle = {
-  width: "100%", padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border-primary)",
+  width: "100%", padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border-light)",
   fontSize: 14, color: "var(--text-primary)", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s",
-  background: "var(--bg-card)", boxSizing: "border-box",
+  background: "var(--bg-surface)", boxSizing: "border-box",
 };
 
-const labelStyle = { fontSize: 13, fontWeight: 600, color: "var(--text-label)", marginBottom: 4, display: "block" };
+const labelStyle = { fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, display: "block" };
 
 const PoliceStationsPage = () => {
   const [stations, setStations] = useState([]);
@@ -99,7 +99,7 @@ const PoliceStationsPage = () => {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ width: 40, height: 40, border: "3px solid var(--border-secondary)", borderTopColor: "#1e40af", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+          <div style={{ width: 40, height: 40, border: "3px solid var(--border-light)", borderTopColor: "#1e40af", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
           <p style={{ color: "var(--text-secondary)", fontSize: 15 }}>Loading police stations...</p>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
@@ -143,8 +143,8 @@ const PoliceStationsPage = () => {
           const Icon = s.icon;
           return (
             <Card key={i} style={{ background: s.bgGrad, border: `1px solid ${s.borderColor}`, transition: "transform 0.2s, box-shadow 0.2s", cursor: "default" }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "var(--shadow-card-hover)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--shadow-card)"; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "var(--shadow-md)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; }}
             >
               <CardContent style={{ padding: 22, paddingTop: 22, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
@@ -170,7 +170,7 @@ const PoliceStationsPage = () => {
               type="text" placeholder="Search stations..." value={search} onChange={e => setSearch(e.target.value)}
               style={{ ...inputStyle, width: 260, paddingLeft: 36, borderRadius: 10 }}
               onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }}
-              onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }}
+              onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }}
             />
           </div>
         </div>
@@ -199,7 +199,7 @@ const PoliceStationsPage = () => {
                       </div>
                     </td>
                     <td>
-                      <span style={{ padding: "4px 10px", borderRadius: 6, background: "var(--bg-muted)", color: "var(--text-label)", fontWeight: 600, fontSize: 13 }}>{s.station_code}</span>
+                      <span style={{ padding: "4px 10px", borderRadius: 6, background: "var(--bg-muted)", color: "var(--text-secondary)", fontWeight: 600, fontSize: 13 }}>{s.station_code}</span>
                     </td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)" }}>
@@ -223,21 +223,21 @@ const PoliceStationsPage = () => {
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => handleEdit(s)} style={{
                           display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8,
-                          background: "var(--bg-card)", border: "1.5px solid var(--border-primary)", color: "var(--text-label)", fontSize: 13,
+                          background: "var(--bg-surface)", border: "1.5px solid var(--border-light)", color: "var(--text-secondary)", fontSize: 13,
                           fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
                         }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = "#3b82f6"; e.currentTarget.style.color = "#2563eb"; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-primary)"; e.currentTarget.style.color = "var(--text-label)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-light)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
                         >
                           <Pencil style={{ height: 14, width: 14 }} /> Edit
                         </button>
                         <button onClick={() => handleDelete(s._id)} style={{
                           display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8,
-                          background: "var(--bg-card)", border: "1.5px solid #fecaca", color: "#dc2626", fontSize: 13,
+                          background: "var(--bg-surface)", border: "1.5px solid #fecaca", color: "#dc2626", fontSize: 13,
                           fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
                         }}
                           onMouseEnter={e => { e.currentTarget.style.background = "#fef2f2"; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-card)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-surface)"; }}
                         >
                           <Trash2 style={{ height: 14, width: 14 }} /> Delete
                         </button>
@@ -248,9 +248,9 @@ const PoliceStationsPage = () => {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={7} style={{ padding: 48, textAlign: "center" }}>
-                      <Building2 style={{ height: 40, width: 40, color: "var(--border-input)", margin: "0 auto 12px", display: "block" }} />
+                      <Building2 style={{ height: 40, width: 40, color: "var(--border-light)", margin: "0 auto 12px", display: "block" }} />
                       <p style={{ color: "var(--text-muted)", fontSize: 15, fontWeight: 500 }}>{search ? 'No stations match your search' : 'No police stations registered'}</p>
-                      <p style={{ color: "var(--text-faint)", fontSize: 13 }}>Click "Add Station" to get started</p>
+                      <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Click "Add Station" to get started</p>
                     </td>
                   </tr>
                 )}
@@ -266,12 +266,12 @@ const PoliceStationsPage = () => {
           onClick={(e) => { if (e.target === e.currentTarget) { setShowModal(false); resetForm(); } }}
         >
           <div style={{
-            background: "var(--modal-bg)", borderRadius: 20, width: "90%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto",
+            background: "var(--bg-surface)", borderRadius: 20, width: "90%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto",
             boxShadow: "0 25px 60px rgba(0,0,0,0.25)", animation: "modalIn 0.25s ease-out",
           }}>
             <style>{`@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }`}</style>
             {/* Modal Header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", borderBottom: "1px solid var(--modal-border)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", borderBottom: "1px solid var(--border-light)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ padding: 8, background: "linear-gradient(135deg, #1e40af, #3b82f6)", borderRadius: 10 }}>
                   <Building2 style={{ height: 18, width: 18, color: "#fff" }} />
@@ -285,33 +285,33 @@ const PoliceStationsPage = () => {
             {/* Modal Body */}
             <form onSubmit={handleSubmit} style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 18 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div><label style={labelStyle}>Station Name *</label><input type="text" style={inputStyle} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
-                <div><label style={labelStyle}>Station Code *</label><input type="text" style={inputStyle} value={formData.station_code} onChange={e => setFormData({ ...formData, station_code: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>Station Name *</label><input type="text" style={inputStyle} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>Station Code *</label><input type="text" style={inputStyle} value={formData.station_code} onChange={e => setFormData({ ...formData, station_code: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div><label style={labelStyle}>District *</label><input type="text" style={inputStyle} value={formData.district} onChange={e => setFormData({ ...formData, district: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
-                <div><label style={labelStyle}>Province *</label><input type="text" style={inputStyle} value={formData.province} onChange={e => setFormData({ ...formData, province: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>District *</label><input type="text" style={inputStyle} value={formData.district} onChange={e => setFormData({ ...formData, district: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>Province *</label><input type="text" style={inputStyle} value={formData.province} onChange={e => setFormData({ ...formData, province: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
               </div>
-              <div><label style={labelStyle}>Address *</label><input type="text" style={inputStyle} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
+              <div><label style={labelStyle}>Address *</label><input type="text" style={inputStyle} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div><label style={labelStyle}>Phone *</label><input type="tel" style={inputStyle} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
-                <div><label style={labelStyle}>Email</label><input type="email" style={inputStyle} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div><label style={labelStyle}>Latitude *</label><input type="number" step="any" style={inputStyle} value={formData.latitude} onChange={e => setFormData({ ...formData, latitude: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
-                <div><label style={labelStyle}>Longitude *</label><input type="number" step="any" style={inputStyle} value={formData.longitude} onChange={e => setFormData({ ...formData, longitude: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>Phone *</label><input type="tel" style={inputStyle} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>Email</label><input type="email" style={inputStyle} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div><label style={labelStyle}>Officer in Charge</label><input type="text" style={inputStyle} value={formData.officer_in_charge} onChange={e => setFormData({ ...formData, officer_in_charge: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
-                <div><label style={labelStyle}>Contact Person</label><input type="text" style={inputStyle} value={formData.contact_person} onChange={e => setFormData({ ...formData, contact_person: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>Latitude *</label><input type="number" step="any" style={inputStyle} value={formData.latitude} onChange={e => setFormData({ ...formData, latitude: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>Longitude *</label><input type="number" step="any" style={inputStyle} value={formData.longitude} onChange={e => setFormData({ ...formData, longitude: e.target.value })} required onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div><label style={labelStyle}>Emergency Hotline</label><input type="tel" style={inputStyle} value={formData.emergency_hotline} onChange={e => setFormData({ ...formData, emergency_hotline: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>Officer in Charge</label><input type="text" style={inputStyle} value={formData.officer_in_charge} onChange={e => setFormData({ ...formData, officer_in_charge: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
+                <div><label style={labelStyle}>Contact Person</label><input type="text" style={inputStyle} value={formData.contact_person} onChange={e => setFormData({ ...formData, contact_person: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div><label style={labelStyle}>Emergency Hotline</label><input type="tel" style={inputStyle} value={formData.emergency_hotline} onChange={e => setFormData({ ...formData, emergency_hotline: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
                 <div>
                   <label style={labelStyle}>Status *</label>
                   <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} required style={{ ...inputStyle, cursor: "pointer" }}
                     onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }}
-                    onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }}
+                    onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }}
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -319,12 +319,12 @@ const PoliceStationsPage = () => {
                 </div>
               </div>
               {/* Actions */}
-              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--modal-border)", marginTop: 4 }}>
+              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--border-light)", marginTop: 4 }}>
                 <button type="button" onClick={() => { setShowModal(false); resetForm(); }} style={{
-                  padding: "10px 24px", borderRadius: 10, background: "var(--bg-muted)", border: "none", color: "var(--text-label)",
+                  padding: "10px 24px", borderRadius: 10, background: "var(--bg-muted)", border: "none", color: "var(--text-secondary)",
                   fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "background 0.15s",
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "var(--border-primary)"; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--border-light)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-muted)"; }}
                 >Cancel</button>
                 <button type="submit" style={{

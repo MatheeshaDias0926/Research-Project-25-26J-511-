@@ -1,5 +1,5 @@
 import express from "express";
-import { reportCrash, getCrashes } from "../controllers/crash.controller.js";
+import { reportCrash, getCrashes, updateCrashStatus } from "../controllers/crash.controller.js";
 import {
     getEmergencyMessage,
     updateEmergencyMessage,
@@ -15,6 +15,7 @@ const router = express.Router();
  */
 router.get("/", protect, getCrashes);
 router.post("/", reportCrash);
+router.patch("/:id/status", protect, updateCrashStatus);
 
 /**
  * @route   GET /api/crashes/config/message

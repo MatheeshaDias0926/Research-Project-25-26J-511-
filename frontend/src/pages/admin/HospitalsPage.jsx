@@ -4,16 +4,16 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Hospital, Plus, Pencil, Trash2, Phone, MapPin, X, CheckCircle, XCircle, Search, Ambulance, BedDouble, HeartPulse } from 'lucide-react';
 
 const inputStyle = {
-  width: "100%", padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border-primary)",
+  width: "100%", padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border-light)",
   fontSize: 14, color: "var(--text-primary)", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s",
-  background: "var(--bg-card)", boxSizing: "border-box",
+  background: "var(--bg-surface)", boxSizing: "border-box",
 };
 
-const labelStyle = { fontSize: 13, fontWeight: 600, color: "var(--text-label)", marginBottom: 4, display: "block" };
+const labelStyle = { fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, display: "block" };
 
 const focusHandler = {
   onFocus: e => { e.target.style.borderColor = "#dc2626"; e.target.style.boxShadow = "0 0 0 3px rgba(220,38,38,0.1)"; },
-  onBlur: e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; },
+  onBlur: e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; },
 };
 
 const typeColors = {
@@ -114,7 +114,7 @@ const HospitalsPage = () => {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ width: 40, height: 40, border: "3px solid var(--border-secondary)", borderTopColor: "#dc2626", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+          <div style={{ width: 40, height: 40, border: "3px solid var(--border-light)", borderTopColor: "#dc2626", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
           <p style={{ color: "var(--text-secondary)", fontSize: 15 }}>Loading hospitals...</p>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
@@ -159,8 +159,8 @@ const HospitalsPage = () => {
           const Icon = s.icon;
           return (
             <Card key={i} style={{ background: s.bgGrad, border: `1px solid ${s.borderColor}`, transition: "transform 0.2s, box-shadow 0.2s", cursor: "default" }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "var(--shadow-card-hover)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--shadow-card)"; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "var(--shadow-md)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; }}
             >
               <CardContent style={{ padding: 22, paddingTop: 22, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
@@ -186,7 +186,7 @@ const HospitalsPage = () => {
               type="text" placeholder="Search hospitals..." value={search} onChange={e => setSearch(e.target.value)}
               style={{ ...inputStyle, width: 260, paddingLeft: 36, borderRadius: 10 }}
               onFocus={e => { e.target.style.borderColor = "#dc2626"; e.target.style.boxShadow = "0 0 0 3px rgba(220,38,38,0.1)"; }}
-              onBlur={e => { e.target.style.borderColor = "var(--border-primary)"; e.target.style.boxShadow = "none"; }}
+              onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }}
             />
           </div>
         </div>
@@ -217,7 +217,7 @@ const HospitalsPage = () => {
                         </div>
                       </td>
                       <td>
-                        <span style={{ padding: "4px 10px", borderRadius: 6, background: "var(--bg-muted)", color: "var(--text-label)", fontWeight: 600, fontSize: 13 }}>{h.hospital_code}</span>
+                        <span style={{ padding: "4px 10px", borderRadius: 6, background: "var(--bg-muted)", color: "var(--text-secondary)", fontWeight: 600, fontSize: 13 }}>{h.hospital_code}</span>
                       </td>
                       <td>
                         <span style={{ padding: "4px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: tc.bg, color: tc.text, textTransform: "capitalize" }}>{h.type}</span>
@@ -246,21 +246,21 @@ const HospitalsPage = () => {
                         <div style={{ display: "flex", gap: 8 }}>
                           <button onClick={() => handleEdit(h)} style={{
                             display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8,
-                            background: "var(--bg-card)", border: "1.5px solid var(--border-primary)", color: "var(--text-label)", fontSize: 13,
+                            background: "var(--bg-surface)", border: "1.5px solid var(--border-light)", color: "var(--text-secondary)", fontSize: 13,
                             fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
                           }}
                             onMouseEnter={e => { e.currentTarget.style.borderColor = "#dc2626"; e.currentTarget.style.color = "#dc2626"; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-primary)"; e.currentTarget.style.color = "var(--text-label)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-light)"; e.currentTarget.style.color = "var(--text-label)"; }}
                           >
                             <Pencil style={{ height: 14, width: 14 }} /> Edit
                           </button>
                           <button onClick={() => handleDelete(h._id)} style={{
                             display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8,
-                            background: "var(--bg-card)", border: "1.5px solid #fecaca", color: "#dc2626", fontSize: 13,
+                            background: "var(--bg-surface)", border: "1.5px solid #fecaca", color: "#dc2626", fontSize: 13,
                             fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
                           }}
                             onMouseEnter={e => { e.currentTarget.style.background = "#fef2f2"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-card)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-surface)"; }}
                           >
                             <Trash2 style={{ height: 14, width: 14 }} /> Delete
                           </button>
@@ -272,9 +272,9 @@ const HospitalsPage = () => {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={8} style={{ padding: 48, textAlign: "center" }}>
-                      <Hospital style={{ height: 40, width: 40, color: "var(--border-input)", margin: "0 auto 12px", display: "block" }} />
+                      <Hospital style={{ height: 40, width: 40, color: "var(--border-light)", margin: "0 auto 12px", display: "block" }} />
                       <p style={{ color: "var(--text-muted)", fontSize: 15, fontWeight: 500 }}>{search ? 'No hospitals match your search' : 'No hospitals registered'}</p>
-                      <p style={{ color: "var(--text-faint)", fontSize: 13 }}>Click "Add Hospital" to get started</p>
+                      <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Click "Add Hospital" to get started</p>
                     </td>
                   </tr>
                 )}
@@ -290,12 +290,12 @@ const HospitalsPage = () => {
           onClick={(e) => { if (e.target === e.currentTarget) { setShowModal(false); resetForm(); } }}
         >
           <div style={{
-            background: "var(--modal-bg)", borderRadius: 20, width: "90%", maxWidth: 660, maxHeight: "90vh", overflowY: "auto",
+            background: "var(--bg-surface)", borderRadius: 20, width: "90%", maxWidth: 660, maxHeight: "90vh", overflowY: "auto",
             boxShadow: "0 25px 60px rgba(0,0,0,0.25)", animation: "modalIn 0.25s ease-out",
           }}>
             <style>{`@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }`}</style>
             {/* Modal Header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", borderBottom: "1px solid var(--modal-border)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", borderBottom: "1px solid var(--border-light)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ padding: 8, background: "linear-gradient(135deg, #dc2626, #ef4444)", borderRadius: 10 }}>
                   <Hospital style={{ height: 18, width: 18, color: "#fff" }} />
@@ -339,21 +339,21 @@ const HospitalsPage = () => {
                 <div><label style={labelStyle}>Bed Capacity</label><input type="number" style={inputStyle} value={formData.bed_capacity} onChange={e => setFormData({ ...formData, bed_capacity: e.target.value })} {...focusHandler} /></div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, alignItems: "end" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border-primary)", background: formData.has_trauma_unit ? "#f0fdf4" : "var(--bg-card)", cursor: "pointer", transition: "all 0.15s" }}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border-light)", background: formData.has_trauma_unit ? "#f0fdf4" : "var(--bg-surface)", cursor: "pointer", transition: "all 0.15s" }}
                   onClick={() => setFormData({ ...formData, has_trauma_unit: !formData.has_trauma_unit })}
                 >
-                  <div style={{ width: 20, height: 20, borderRadius: 6, border: formData.has_trauma_unit ? "none" : "2px solid var(--border-input)", background: formData.has_trauma_unit ? "#16a34a" : "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 20, height: 20, borderRadius: 6, border: formData.has_trauma_unit ? "none" : "2px solid var(--border-light)", background: formData.has_trauma_unit ? "#16a34a" : "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {formData.has_trauma_unit && <CheckCircle style={{ height: 14, width: 14, color: "#fff" }} />}
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-label)" }}>Trauma Unit</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Trauma Unit</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border-primary)", background: formData.has_icu ? "#f0fdf4" : "var(--bg-card)", cursor: "pointer", transition: "all 0.15s" }}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border-light)", background: formData.has_icu ? "#f0fdf4" : "var(--bg-surface)", cursor: "pointer", transition: "all 0.15s" }}
                   onClick={() => setFormData({ ...formData, has_icu: !formData.has_icu })}
                 >
-                  <div style={{ width: 20, height: 20, borderRadius: 6, border: formData.has_icu ? "none" : "2px solid var(--border-input)", background: formData.has_icu ? "#16a34a" : "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 20, height: 20, borderRadius: 6, border: formData.has_icu ? "none" : "2px solid var(--border-light)", background: formData.has_icu ? "#16a34a" : "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {formData.has_icu && <CheckCircle style={{ height: 14, width: 14, color: "#fff" }} />}
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-label)" }}>Has ICU</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Has ICU</span>
                 </div>
                 <div>
                   <label style={labelStyle}>Status *</label>
@@ -365,12 +365,12 @@ const HospitalsPage = () => {
               </div>
               <div><label style={labelStyle}>Contact Person</label><input type="text" style={inputStyle} value={formData.contact_person} onChange={e => setFormData({ ...formData, contact_person: e.target.value })} {...focusHandler} /></div>
               {/* Actions */}
-              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--modal-border)", marginTop: 4 }}>
+              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--border-light)", marginTop: 4 }}>
                 <button type="button" onClick={() => { setShowModal(false); resetForm(); }} style={{
-                  padding: "10px 24px", borderRadius: 10, background: "var(--bg-muted)", border: "none", color: "var(--text-label)",
+                  padding: "10px 24px", borderRadius: 10, background: "var(--bg-muted)", border: "none", color: "var(--text-secondary)",
                   fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "background 0.15s",
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "var(--border-primary)"; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--border-light)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-muted)"; }}
                 >Cancel</button>
                 <button type="submit" style={{

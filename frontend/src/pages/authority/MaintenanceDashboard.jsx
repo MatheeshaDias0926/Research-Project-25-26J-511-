@@ -62,17 +62,25 @@ const MaintenanceDashboard = () => {
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
-                    Maintenance Overview
-                </h1>
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                  <div style={{
+                    padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "linear-gradient(135deg, var(--color-warning-500), var(--color-warning-600))",
+                  }}>
+                    <Wrench size={24} color="#fff" />
+                  </div>
+                  <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+                      Maintenance Overview
+                  </h1>
+                </div>
                 <div style={{ display: "flex", gap: 12 }}>
                     <button
                         onClick={() => setFilter("all")}
                         style={{
                             padding: "8px 16px",
                             borderRadius: 6,
-                            background: filter === "all" ? "#0284c7" : "var(--border-primary)",
-                            color: filter === "all" ? "#fff" : "var(--text-secondary)",
+                            background: filter === "all" ? "#0284c7" : "#e2e8f0",
+                            color: filter === "all" ? "#fff" : "#64748b",
                             fontWeight: 500,
                             border: "none",
                             cursor: "pointer",
@@ -85,8 +93,8 @@ const MaintenanceDashboard = () => {
                         style={{
                             padding: "8px 16px",
                             borderRadius: 6,
-                            background: filter === "pending" ? "#0284c7" : "var(--border-primary)",
-                            color: filter === "pending" ? "#fff" : "var(--text-secondary)",
+                            background: filter === "pending" ? "#0284c7" : "#e2e8f0",
+                            color: filter === "pending" ? "#fff" : "#64748b",
                             fontWeight: 500,
                             border: "none",
                             cursor: "pointer",
@@ -99,8 +107,8 @@ const MaintenanceDashboard = () => {
                         style={{
                             padding: "8px 16px",
                             borderRadius: 6,
-                            background: filter === "resolved" ? "#0284c7" : "var(--border-primary)",
-                            color: filter === "resolved" ? "#fff" : "var(--text-secondary)",
+                            background: filter === "resolved" ? "#0284c7" : "#e2e8f0",
+                            color: filter === "resolved" ? "#fff" : "#64748b",
                             fontWeight: 500,
                             border: "none",
                             cursor: "pointer",
@@ -113,7 +121,7 @@ const MaintenanceDashboard = () => {
 
             <div style={{ display: "grid", gap: 16 }}>
                 {filteredLogs.length === 0 ? (
-                    <p style={{ color: "var(--text-secondary)" }}>No maintenance logs found.</p>
+                    <p style={{ color: "var(--text-muted)" }}>No maintenance logs found.</p>
                 ) : (
                     filteredLogs.map((log) => (
                         <Card key={log._id}>
@@ -125,8 +133,8 @@ const MaintenanceDashboard = () => {
                                                 style={{
                                                     fontSize: 14,
                                                     fontWeight: 700,
-                                                    color: "#1e293b",
-                                                    background: "var(--bg-muted)",
+                                                    color: "var(--text-primary)",
+                                                    background: "var(--bg-subtle)",
                                                     padding: "4px 8px",
                                                     borderRadius: 4,
                                                 }}
@@ -140,7 +148,7 @@ const MaintenanceDashboard = () => {
                                                     color: "#fff",
                                                     background: getPriorityColor(log.priority),
                                                     padding: "4px 12px",
-                                                    borderRadius: 9999,
+                                                    borderRadius: "var(--radius-full)",
                                                     textTransform: "uppercase",
                                                 }}
                                             >
@@ -153,7 +161,7 @@ const MaintenanceDashboard = () => {
                                                     color: getStatusColor(log.status),
                                                     border: `1px solid ${getStatusColor(log.status)}`,
                                                     padding: "3px 10px",
-                                                    borderRadius: 9999,
+                                                    borderRadius: "var(--radius-full)",
                                                     textTransform: "capitalize",
                                                     display: "flex",
                                                     alignItems: "center",
@@ -167,10 +175,10 @@ const MaintenanceDashboard = () => {
                                         <h3 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
                                             {log.issue}
                                         </h3>
-                                        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 12 }}>
+                                        <p style={{ color: "var(--text-muted)", fontSize: 14, marginBottom: 12 }}>
                                             {log.description}
                                         </p>
-                                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                                        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
                                             Reported by: <span style={{ fontWeight: 500 }}>{log.reportedBy?.username || "Unknown"}</span> •{" "}
                                             {new Date(log.createdAt).toLocaleString()}
                                         </div>

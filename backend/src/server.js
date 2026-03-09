@@ -1,5 +1,6 @@
+import "dotenv/config"; // Must be first — loads .env before other imports
 import express from "express";
-import dotenv from "dotenv";
+import mongoose from "mongoose";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import { notFound, errorHandler } from "./middleware/error.middleware.js";
@@ -9,10 +10,14 @@ import authRoutes from "./api/auth.routes.js";
 import iotRoutes from "./api/iot.routes.js";
 import busRoutes from "./api/bus.routes.js";
 import maintenanceRoutes from "./api/maintenance.routes.js";
+import driverRoutes from "./api/driver.routes.js";
+import edgeDeviceRoutes from "./api/edgeDevice.routes.js";
+import sosRoutes from "./api/sos.routes.js";
+import attendanceRoutes from "./api/attendance.routes.js";
+import assignmentRoutes from "./api/assignment.routes.js";
+import policeStationRoutes from "./api/policeStation.routes.js";
+import hospitalRoutes from "./api/hospital.routes.js";
 import crashRoutes from "./api/crash.routes.js";
-
-// Load environment variables
-dotenv.config();
 
 // Connect to Database
 connectDB();
@@ -21,34 +26,59 @@ const app = express();
 
 // Middleware
 app.use(cors()); // Allow cross-origin requests
-app.use(express.json()); // Body parser for JSON
-app.use(express.urlencoded({ extended: true })); // Body parser for URL-encoded data
+app.use(express.json({ limit: "10mb" })); // Body parser for JSON (10mb for Pi base64 images)
+app.use(express.urlencoded({ extended: true, limit: "10mb" })); // Body parser for URL-encoded data
 
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/iot", iotRoutes);
 app.use("/api/bus", busRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
+app.use("/api/driver", driverRoutes);
+app.use("/api/edge-devices", edgeDeviceRoutes);
+app.use("/api/sos", sosRoutes);
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/assignments", assignmentRoutes);
+app.use("/api/police-stations", policeStationRoutes);
+app.use("/api/hospitals", hospitalRoutes);
 app.use("/api/crashes", crashRoutes);
 
 // Root route
 app.get("/", (req, res) => {
   res.json({
     message: "Smart Bus API is running...",
-    version: "1.0.0",
+    version: "2.0.0",
     endpoints: {
       auth: "/api/auth",
       iot: "/api/iot",
       bus: "/api/bus",
       maintenance: "/api/maintenance",
+      driver: "/api/driver",
+      edgeDevices: "/api/edge-devices",
+      sos: "/api/sos",
+      attendance: "/api/attendance",
+      assignments: "/api/assignments",
+      policeStations: "/api/police-stations",
+      hospitals: "/api/hospitals",
+      crashes: "/api/crashes",
     },
   });
 });
 
 // Health check endpoint
 app.get("/health", (req, res) => {
+  const dbStatus =
+    mongoose.connection.readyState === 1
+      ? "Connected"
+      : mongoose.connection.readyState === 2
+      ? "Connecting"
+      : mongoose.connection.readyState === 0
+      ? "Disconnected"
+      : "Disconnecting";
+
   res.json({
     status: "OK",
+    mongodb: dbStatus,
     timestamp: new Date().toISOString(),
   });
 });

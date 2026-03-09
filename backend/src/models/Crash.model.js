@@ -3,9 +3,12 @@ import mongoose from "mongoose";
 const crashSchema = new mongoose.Schema(
   {
     busId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "Bus",
       required: true,
+    },
+    bus_id: {
+      type: String,
     },
     location: {
       lat: { type: Number, required: true },
@@ -22,7 +25,7 @@ const crashSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "responded", "resolved"],
+      enum: ["active", "responded", "in_progress", "resolved", "false_positive"],
       default: "active",
     },
     alertSent: {

@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/drawing_utils": "^0.3.1675466124",
+    "@mediapipe/face_mesh": "^0.4.1633559619",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -22,6 +24,8 @@
     "react-hook-form": "^7.69.0",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.11.0",
+    "react-toastify": "^11.0.5",
+    "react-webcam": "^7.2.0",
     "recharts": "^3.6.0"
   },
   "devDependencies": {
