@@ -510,8 +510,8 @@ router.post("/gps-update", async (req, res) => {
         const lat = parseFloat(req.query.lat ?? req.body.lat);
         const lon = parseFloat(req.query.lon ?? req.body.lon);
         const rawSpeed = parseFloat(req.query.speed ?? req.body.speed ?? 0);
-        // Traccar Client sends speed in knots – convert to km/h
-        const speed = isNaN(rawSpeed) ? 0 : rawSpeed * 1.852;
+        // Traccar Client (OsmAnd protocol) sends speed in m/s – convert to km/h
+        const speed = isNaN(rawSpeed) ? 0 : rawSpeed * 3.6;
         // Traccar uses "id", GPSLogger uses "deviceId"
         const deviceId = req.query.deviceId ?? req.query.id ?? req.body.deviceId ?? req.body.id ?? req.headers["x-device-id"];
 
@@ -549,8 +549,8 @@ router.get("/gps-update", async (req, res) => {
         const lat = parseFloat(req.query.lat);
         const lon = parseFloat(req.query.lon);
         const rawSpeed = parseFloat(req.query.speed ?? 0);
-        // Traccar Client sends speed in knots – convert to km/h
-        const speed = isNaN(rawSpeed) ? 0 : rawSpeed * 1.852;
+        // Traccar Client (OsmAnd protocol) sends speed in m/s – convert to km/h
+        const speed = isNaN(rawSpeed) ? 0 : rawSpeed * 3.6;
         // Traccar uses "id", GPSLogger uses "deviceId"
         const deviceId = req.query.deviceId ?? req.query.id;
 
@@ -683,13 +683,18 @@ router.post("/driver-alert", authenticateDevice, async (req, res) => {
                         const driverDoc = await Driver.findOne({ licenseNumber: driverId });
                         if (driverDoc) vlDriverRef = driverDoc._id;
                     }
+                    // Fetch the bus's current live location for the violation record
+                    const vlBus = await Bus.findById(device.assignedBus).select("liveLocation").lean();
+                    const vlGps = vlBus?.liveLocation?.lat != null
+                        ? { lat: vlBus.liveLocation.lat, lon: vlBus.liveLocation.lon }
+                        : { lat: 0, lon: 0 };
                     await ViolationLog.create({
                         busId: device.assignedBus,
                         driverRef: vlDriverRef,
                         driverName: driverName || currentSession?.driverName || null,
                         violationType: eventType,
-                        speed: 0,
-                        gps: { lat: 0, lon: 0 },
+                        speed: vlBus?.liveLocation?.speed || 0,
+                        gps: vlGps,
                     });
                 } catch (vlErr) {
                     console.error("ViolationLog create error:", vlErr.message);

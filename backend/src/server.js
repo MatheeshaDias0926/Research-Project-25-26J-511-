@@ -26,6 +26,17 @@ app.use(cors()); // Allow cross-origin requests
 app.use(express.json({ limit: "10mb" })); // Body parser for JSON (10mb for Pi base64 images)
 app.use(express.urlencoded({ extended: true, limit: "10mb" })); // Body parser for URL-encoded data
 
+// ── Traccar Client catch-all: accept GPS at ANY path with lat/lon query params ──
+// Traccar Client (OsmAnd protocol) may send to  /?id=X&lat=Y&lon=Z  or  /gps-update?...
+app.use((req, res, next) => {
+  if (req.query.lat && req.query.lon && (req.query.id || req.query.deviceId)) {
+    console.log(`[GPS-TRACCAR] ${req.method} ${req.originalUrl}`);
+    // Forward to the gps-update handler
+    req.url = "/api/edge-devices/gps-update" + (req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "");
+  }
+  next();
+});
+
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/iot", iotRoutes);

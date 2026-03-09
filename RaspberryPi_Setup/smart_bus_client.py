@@ -245,7 +245,7 @@ class MobileGPSReceiver:
            {"lat": 6.9271, "lon": 79.8612, "speed": 52.3, "accuracy": 3.2}
       2. **HTTP server** (port 8080) — Traccar Client (Android/iOS) sends
            GET/POST with query params: ?id=DEVICE&lat=X&lon=Y&speed=Z
-           Speed from Traccar is in **knots** and is converted to km/h.
+           Speed from Traccar is in **m/s** and is converted to km/h.
 
     Works fully offline — the phone and Pi are on the same local WiFi
     hotspot (no internet required).
@@ -326,8 +326,8 @@ class MobileGPSReceiver:
                     lat = float(lat_str)
                     lon = float(lon_str)
                     raw_speed = float(speed_str)
-                    # Traccar Client sends speed in knots → convert to km/h
-                    speed_kmh = raw_speed * 1.852
+                    # Traccar Client (OsmAnd protocol) sends speed in m/s → convert to km/h
+                    speed_kmh = raw_speed * 3.6
                     accuracy = float(accuracy_str)
                 except (ValueError, TypeError):
                     self.send_response(400)
