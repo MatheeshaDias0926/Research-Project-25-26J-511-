@@ -12,7 +12,8 @@ import {
   Map,
   ShieldAlert,
   BookOpen,
-  Navigation, // Added
+  Navigation,
+  Radio,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -58,6 +59,12 @@ const Sidebar = () => {
       name: "Overview",
       href: "/authority",
       icon: LayoutDashboard,
+      roles: ["authority"],
+    },
+    {
+      name: "Live Monitor",
+      href: "/authority/live-monitor",
+      icon: Radio,
       roles: ["authority"],
     },
     {

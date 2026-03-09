@@ -30,6 +30,7 @@ import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
 import AuthorityPhysicsCheck from "./pages/authority/AuthorityPhysicsCheck";
 import SafetyTheories from "./pages/authority/SafetyTheories";
 import AuthorityScenarioSimulator from "./pages/authority/AuthorityScenarioSimulator";
+import LiveMonitor from "./pages/authority/LiveMonitor";
 
 // Conductor Pages
 import ConductorDashboard from "./pages/conductor/ConductorDashboard";
@@ -104,6 +105,10 @@ function App() {
               <Route
                 path="/authority/simulator"
                 element={<AuthorityScenarioSimulator />}
+              />
+              <Route
+                path="/authority/live-monitor"
+                element={<LiveMonitor />}
               />
             </Route>
 
