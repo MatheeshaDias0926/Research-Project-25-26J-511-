@@ -371,13 +371,16 @@ router.post("/heartbeat", authenticateDevice, async (req, res) => {
 
         // ── Save GPS location to the assigned bus (from mobile phone → Pi) ──
         const { gps } = req.body;
-        if (gps && gps.lat && gps.lon && device.assignedBus) {
+        if (gps && gps.lat != null && gps.lon != null && device.assignedBus) {
             await Bus.findByIdAndUpdate(device.assignedBus, {
                 "liveLocation.lat": gps.lat,
                 "liveLocation.lon": gps.lon,
                 "liveLocation.speed": gps.speed || 0,
                 "liveLocation.updatedAt": new Date(),
             });
+            console.log(`[EdgeDevice ${device.deviceId}] GPS updated: lat=${gps.lat}, lon=${gps.lon}, speed=${gps.speed || 0} km/h`);
+        } else {
+            console.log(`[EdgeDevice ${device.deviceId}] Heartbeat received (no GPS data — phone may not be sending to Pi port 8080)`);
         }
 
         // Drain pending commands

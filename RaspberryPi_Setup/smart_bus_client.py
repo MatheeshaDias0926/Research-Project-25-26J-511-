@@ -260,6 +260,24 @@ class MobileGPSReceiver:
         self._running = False
         self._server_sock: socket.socket | None = None
         self._http_server = None
+        # Backend URL + headers set by SmartBusPiClient after creation
+        self._backend_url: str | None = None
+        self._backend_headers: dict | None = None
+
+    def _forward_gps_to_backend(self, lat, lon, speed_kmh):
+        """Forward GPS to backend in real-time so the map updates immediately."""
+        if not self._backend_url or not self._backend_headers:
+            return
+        try:
+            import requests as _req
+            _req.get(
+                f"{self._backend_url}/api/edge-devices/gps-update",
+                params={"id": self._backend_headers.get("x-device-id", ""),
+                         "lat": lat, "lon": lon, "speed": speed_kmh / 3.6},
+                timeout=3,
+            )
+        except Exception as e:
+            log.debug(f"[GPS-HTTP] Failed to forward to backend: {e}")
 
     def _update_gps(self, lat, lon, speed, accuracy=0):
         """Thread-safe update of the latest GPS reading."""
@@ -339,6 +357,9 @@ class MobileGPSReceiver:
                 log.info(f"[GPS-HTTP] Traccar: lat={lat:.6f}, lon={lon:.6f}, "
                          f"speed={speed_kmh:.1f} km/h")
 
+                # Forward GPS to backend in real-time (don't wait for heartbeat)
+                receiver._forward_gps_to_backend(lat, lon, speed_kmh)
+
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(b"OK")
@@ -350,8 +371,8 @@ class MobileGPSReceiver:
                 self._handle_request()
 
             def log_message(self, fmt, *args):
-                """Suppress default HTTP logging (we use our own logger)."""
-                pass
+                """Log all incoming HTTP requests for debugging."""
+                log.info(f"[GPS-HTTP] {self.client_address[0]} → {fmt % args}")
 
         try:
             self._http_server = HTTPServer((self._host, self._http_port), TraccarHandler)
@@ -970,6 +991,8 @@ class SmartBusPiClient:
 
         # GPS from mobile phone (TCP socket + HTTP for Traccar Client)
         self.gps_receiver = MobileGPSReceiver(http_port=http_gps_port)
+        self.gps_receiver._backend_url = self.backend_url
+        self.gps_receiver._backend_headers = self.headers
         self.latest_gps = None  # {lat, lon, speed, accuracy, timestamp}
 
         # Sub-systems
