@@ -20,9 +20,7 @@ import {
   isPassenger,
   isAuthority,
   isConductorOrAuthority,
-  isDriverConductorOrAdmin,
 } from "../middleware/auth.middleware.js";
-import Bus from "../models/Bus.model.js";
 
 const router = express.Router();
 
@@ -97,83 +95,6 @@ router.post("/physics", protect, getPhysicsModel);
 router.get("/weather", protect, getRouteWeather);
 
 /**
- * @route   GET /api/bus/locations
- * @desc    Get live GPS locations for all buses (role-filtered)
- *          - Admin: all buses
- *          - Driver/Conductor: only their assigned bus
- *          - Passenger: only buses with locationVisibleToPassengers=true
- * @access  Private (All authenticated users)
- */
-router.get("/locations", protect, async (req, res, next) => {
-  try {
-    const role = req.user.role;
-    let filter = {};
-    let projection = "licensePlate routeId capacity status liveLocation locationVisibleToPassengers assignedDriver assignedConductor";
-
-    if (role === "admin" || role === "authority") {
-      // Admin sees all buses
-    } else if (role === "driver" || role === "conductor") {
-      // Driver/Conductor sees only their assigned bus
-      const assignedBusId = req.user.assignedBus;
-      if (!assignedBusId) {
-        return res.json([]);
-      }
-      filter._id = assignedBusId;
-    } else {
-      // Passenger sees only buses with location visible
-      filter.locationVisibleToPassengers = true;
-    }
-
-    // Only return buses with actual GPS data
-    filter["liveLocation.lat"] = { $ne: null };
-    filter["liveLocation.lon"] = { $ne: null };
-
-    const buses = await Bus.find(filter)
-      .select(projection)
-      .populate("assignedDriver", "name licenseNumber")
-      .populate("assignedConductor", "username")
-      .lean();
-
-    // Compute staleness: if location is older than 5 minutes → stale
-    const now = Date.now();
-    const result = buses.map((b) => ({
-      ...b,
-      liveLocation: {
-        ...b.liveLocation,
-        isStale: b.liveLocation?.updatedAt
-          ? now - new Date(b.liveLocation.updatedAt).getTime() > 5 * 60 * 1000
-          : true,
-      },
-    }));
-
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @route   PATCH /api/bus/locations/:busId/visibility
- * @desc    Toggle passenger location visibility for a bus
- * @access  Private (Admin only)
- */
-router.patch("/locations/:busId/visibility", protect, isAuthority, async (req, res, next) => {
-  try {
-    const { visible } = req.body;
-    const bus = await Bus.findById(req.params.busId);
-    if (!bus) {
-      res.status(404);
-      throw new Error("Bus not found");
-    }
-    bus.locationVisibleToPassengers = !!visible;
-    await bus.save();
-    res.json({ message: `Passenger visibility ${visible ? "enabled" : "disabled"}`, bus: { _id: bus._id, locationVisibleToPassengers: bus.locationVisibleToPassengers } });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
  * @route   GET /api/bus/plate/:licensePlate
  * @desc    Get bus by license plate
  * @access  Private (All authenticated users)
@@ -192,7 +113,7 @@ router.get("/:busId/status", protect, getBusStatus);
  * @desc    Get violation history for a bus (Authority App)
  * @access  Private (Authority only)
  */
-router.get("/:busId/violations", protect, isDriverConductorOrAdmin, getBusViolations);
+router.get("/:busId/violations", protect, isConductorOrAuthority, getBusViolations);
 
 /**
  * @route   GET /api/bus/:busId/logs

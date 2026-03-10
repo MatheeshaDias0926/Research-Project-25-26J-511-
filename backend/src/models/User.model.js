@@ -8,22 +8,12 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["passenger", "conductor", "driver", "admin"],
+      enum: ["passenger", "conductor", "authority"],
       default: "passenger",
     },
-    fullName: { type: String, default: "" },
-    nic: { type: String, default: "" },
-    licenceNumber: { type: String, default: "" },
-    contactNumber: { type: String, default: "" },
-    profileImage: { type: String, default: "" },
     assignedBus: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Bus",
-      default: null,
-    },
-    driverProfile: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Driver",
       default: null,
     },
   },

@@ -7,12 +7,6 @@ const violationLogSchema = new mongoose.Schema(
       required: true,
       ref: "Bus",
     },
-    driverRef: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Driver",
-      default: null,
-    },
-    driverName: { type: String, default: null },
     gps: {
       lat: { type: Number },
       lon: { type: Number },
@@ -20,7 +14,7 @@ const violationLogSchema = new mongoose.Schema(
     occupancyAtViolation: { type: Number },
     violationType: {
       type: String,
-      enum: ["footboard", "overcrowding", "drowsiness", "yawning", "sleepiness", "mobile_phone", "no_face", "driving_limit"],
+      // enum: ["footboard", "overcrowding", "red-light", "speed", "double-line","single-line"],
       default: "footboard",
     },
     speed: { type: Number }, // Speed at the time of violation

@@ -49,6 +49,7 @@ export const ingestMockData = async (req, res, next) => {
       speed: speed || 0,
       // Store the HIGHEST risk (Current vs Future) to trigger early warning
       riskScore: Math.max(parseFloat(riskScore || 0), parseFloat(req.body.futureRiskScore || 0)),
+      distToCurve: req.body.distToCurve || 0, // Store distance to curve
     });
     await newLog.save();
 
