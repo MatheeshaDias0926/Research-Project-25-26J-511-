@@ -5,6 +5,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const PHYSICS_TIMEOUT_MS = 10_000; // Kill subprocess after 10 seconds
+
 /**
  * @desc    Call the Physics Model Python script and return parsed output.
  * @param   {object} params - Input parameters for the model.
@@ -26,7 +28,7 @@ export const getPhysicsModelResult = async ({
   return new Promise((resolve, reject) => {
     const scriptPath = path.resolve(
       __dirname,
-      "../../../Physics Model-Rollover Prediction/main.py"
+      "../../../Physics Model-Rollover Prediction/main.py",
     );
     // Use venv Python executable, or fallback to python3
     const venvPython =
@@ -51,6 +53,18 @@ export const getPhysicsModelResult = async ({
     const py = spawn(venvPython, args);
     let output = "";
     let error = "";
+    let killed = false;
+
+    // Timeout: kill the subprocess if it takes too long
+    const timer = setTimeout(() => {
+      killed = true;
+      py.kill("SIGKILL");
+      reject(
+        new Error(
+          `Physics model timed out after ${PHYSICS_TIMEOUT_MS / 1000}s`,
+        ),
+      );
+    }, PHYSICS_TIMEOUT_MS);
 
     py.stdout.on("data", (data) => {
       output += data.toString();
@@ -59,6 +73,8 @@ export const getPhysicsModelResult = async ({
       error += data.toString();
     });
     py.on("close", (code) => {
+      clearTimeout(timer);
+      if (killed) return; // Already rejected by timeout
       if (code !== 0) {
         return reject(new Error(error || `Python exited with code ${code}`));
       }
@@ -76,7 +92,7 @@ export const getPhysicsModelResult = async ({
           }
         } else if (line.startsWith("Passengers")) {
           const match = line.match(
-            /Passengers \(seated\/standing\): (\d+) (\d+)/
+            /Passengers \(seated\/standing\): (\d+) (\d+)/,
           );
           if (match) {
             result["Passengers (seated/standing)"] = `${match[1]} ${match[2]}`;

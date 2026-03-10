@@ -1,10 +1,23 @@
 import Bus from "../models/Bus.model.js";
 import BusDataLog from "../models/BusDataLog.model.js";
 import { checkAndLogViolation } from "../services/violation.service.js";
-import { updateGps, getLatestGps, getAllActiveFeeds } from "../services/gps-cache.js";
+import {
+  updateGps,
+  getLatestGps,
+  getAllActiveFeeds,
+} from "../services/gps-cache.js";
 import { getSafetyPrediction } from "../services/ml.service.js";
 import { getPhysicsModelResult } from "../services/physics.service.js";
 import { getRoadWeather } from "../services/weather.service.js";
+import {
+  getCachedPhysics,
+  setCachedPhysics,
+} from "../services/physics-cache.js";
+import {
+  shouldRunSafety,
+  updateSafetyState,
+  getLastSafetyState,
+} from "../services/safety-throttle.js";
 
 /**
  * @desc    Receive GPS feed from mobile app
@@ -70,7 +83,9 @@ export const ingestIoTData = async (req, res, next) => {
     // Validate required fields
     if (!licensePlate || currentOccupancy === undefined) {
       res.status(400);
-      throw new Error("Missing required fields: licensePlate or currentOccupancy");
+      throw new Error(
+        "Missing required fields: licensePlate or currentOccupancy",
+      );
     }
 
     // 1. Find the bus by its license plate
@@ -91,10 +106,12 @@ export const ingestIoTData = async (req, res, next) => {
       resolvedSpeed = phoneGps.speed || resolvedSpeed;
       gpsSource = "phone";
       console.log(
-        `[IoT] GPS filled from phone: (${resolvedGps.lat.toFixed(4)}, ${resolvedGps.lon.toFixed(4)}) @ ${resolvedSpeed.toFixed(1)} km/h`
+        `[IoT] GPS filled from phone: (${resolvedGps.lat.toFixed(4)}, ${resolvedGps.lon.toFixed(4)}) @ ${resolvedSpeed.toFixed(1)} km/h`,
       );
     } else if (!gps || (gps.lat === 0 && gps.lon === 0)) {
-      console.log(`[IoT] No phone GPS available for ${licensePlate}, using ESP32 GPS`);
+      console.log(
+        `[IoT] No phone GPS available for ${licensePlate}, using ESP32 GPS`,
+      );
     }
 
     // 3. Run Safety Pipeline (only if we have valid GPS)
@@ -102,71 +119,138 @@ export const ingestIoTData = async (req, res, next) => {
     let distToCurve = 0;
     let safetyResult = null;
 
-    const hasValidGps =
-      resolvedGps.lat !== 0 && resolvedGps.lon !== 0;
+    const hasValidGps = resolvedGps.lat !== 0 && resolvedGps.lon !== 0;
 
     if (hasValidGps && resolvedSpeed > 0) {
-      try {
-        console.log(`[IoT] Running safety pipeline for ${licensePlate}...`);
+      // Check throttle: only run expensive pipeline every ~5s per bus
+      if (shouldRunSafety(licensePlate)) {
+        try {
+          console.log(`[IoT] Running safety pipeline for ${licensePlate}...`);
 
-        // Calculate seated vs standing using actual bus seat capacity
-        const seatCapacity = bus.capacity || 55;
-        const actualSeated = Math.min(currentOccupancy, seatCapacity);
-        const actualStanding = Math.max(0, currentOccupancy - seatCapacity);
+          // Calculate seated vs standing using actual bus seat capacity
+          const seatCapacity = bus.capacity || 55;
+          const actualSeated = Math.min(currentOccupancy, seatCapacity);
+          const actualStanding = Math.max(0, currentOccupancy - seatCapacity);
 
-        // 3a. Get weather FIRST (needed for friction in physics model)
-        const weather = await getRoadWeather(resolvedGps.lat, resolvedGps.lon);
+          // Check physics cache first
+          const physicsCacheParams = {
+            lat: resolvedGps.lat,
+            lon: resolvedGps.lon,
+            speed: resolvedSpeed,
+            seated: actualSeated,
+            standing: actualStanding,
+          };
+          let physicsResult = getCachedPhysics(physicsCacheParams);
 
-        // 3b. Get road geometry from Physics Model (now with real friction)
-        const physicsResult = await getPhysicsModelResult({
-          seated: actualSeated,
-          standing: actualStanding,
-          speed: resolvedSpeed,
-          lat: resolvedGps.lat,
-          lon: resolvedGps.lon,
-          friction: weather.friction,  // Use real weather friction instead of default 0.65
-        });
+          if (physicsResult) {
+            // Cache hit — only need weather for ML (also cached)
+            const weather = await getRoadWeather(
+              resolvedGps.lat,
+              resolvedGps.lon,
+            );
 
-        // 3c. Parse physics results
-        const radiusStr = physicsResult["Sharpest curve radius ahead"];
-        const distStr = physicsResult["Distance to sharpest curve"];
-        const slopeStr = physicsResult["Road slope"];
+            const radiusStr = physicsResult["Sharpest curve radius ahead"];
+            const distStr = physicsResult["Distance to sharpest curve"];
+            const slopeStr = physicsResult["Road slope"];
 
-        const radius_m = parseFloat(radiusStr?.replace(" m", "")) || 10000;
-        const dist_to_curve_m = parseFloat(distStr?.replace(" m", "")) || 0;
-        const gradient_deg = parseFloat(slopeStr?.replace("°", "")) || 0;
+            const radius_m = parseFloat(radiusStr?.replace(" m", "")) || 10000;
+            const dist_to_curve_m = parseFloat(distStr?.replace(" m", "")) || 0;
+            const gradient_deg = parseFloat(slopeStr?.replace("°", "")) || 0;
 
-        console.log(
-          `[IoT] Physics: radius=${radius_m.toFixed(0)}m, dist=${dist_to_curve_m.toFixed(0)}m, slope=${gradient_deg.toFixed(1)}°, weather=${weather.condition}`
-        );
+            safetyResult = await getSafetyPrediction({
+              n_seated: actualSeated,
+              n_standing: actualStanding,
+              speed_kmh: resolvedSpeed,
+              radius_m,
+              is_wet: weather.isWet ? 1 : 0,
+              gradient_deg,
+              dist_to_curve_m,
+            });
 
-        // 3d. Call ML Safety Prediction
-        safetyResult = await getSafetyPrediction({
-          n_seated: actualSeated,
-          n_standing: actualStanding,
-          speed_kmh: resolvedSpeed,
-          radius_m: radius_m,
-          is_wet: weather.isWet ? 1 : 0,
-          gradient_deg: gradient_deg,
-          dist_to_curve_m: dist_to_curve_m,
-        });
+            riskScore = safetyResult.risk_score || 0;
+            distToCurve = dist_to_curve_m;
 
-        riskScore = safetyResult.risk_score || 0;
-        distToCurve = dist_to_curve_m;
+            console.log(
+              `[IoT] ML Safety (cached physics): risk=${riskScore.toFixed(3)}, source=${safetyResult.source}`,
+            );
+          } else {
+            // Cache miss — run weather + physics in PARALLEL (they're independent)
+            const [weather, freshPhysicsResult] = await Promise.all([
+              getRoadWeather(resolvedGps.lat, resolvedGps.lon),
+              getPhysicsModelResult({
+                seated: actualSeated,
+                standing: actualStanding,
+                speed: resolvedSpeed,
+                lat: resolvedGps.lat,
+                lon: resolvedGps.lon,
+                friction: 0.65, // Default friction; weather result used for ML below
+              }),
+            ]);
 
-        console.log(
-          `[IoT] ML Safety: risk=${riskScore.toFixed(3)}, stopping=${safetyResult.stopping_distance?.toFixed(1)}m, source=${safetyResult.source}`
-        );
+            physicsResult = freshPhysicsResult;
 
-        // Log high risk alerts
-        if (riskScore > 0.7) {
+            // Cache the physics result for future requests at this location
+            setCachedPhysics(physicsCacheParams, physicsResult);
+
+            const radiusStr = physicsResult["Sharpest curve radius ahead"];
+            const distStr = physicsResult["Distance to sharpest curve"];
+            const slopeStr = physicsResult["Road slope"];
+
+            const radius_m = parseFloat(radiusStr?.replace(" m", "")) || 10000;
+            const dist_to_curve_m = parseFloat(distStr?.replace(" m", "")) || 0;
+            const gradient_deg = parseFloat(slopeStr?.replace("°", "")) || 0;
+
+            console.log(
+              `[IoT] Physics: radius=${radius_m.toFixed(0)}m, dist=${dist_to_curve_m.toFixed(0)}m, slope=${gradient_deg.toFixed(1)}°, weather=${weather.condition}`,
+            );
+
+            // ML depends on physics results
+            safetyResult = await getSafetyPrediction({
+              n_seated: actualSeated,
+              n_standing: actualStanding,
+              speed_kmh: resolvedSpeed,
+              radius_m,
+              is_wet: weather.isWet ? 1 : 0,
+              gradient_deg,
+              dist_to_curve_m,
+            });
+
+            riskScore = safetyResult.risk_score || 0;
+            distToCurve = dist_to_curve_m;
+
+            console.log(
+              `[IoT] ML Safety: risk=${riskScore.toFixed(3)}, stopping=${safetyResult.stopping_distance?.toFixed(1)}m, source=${safetyResult.source}`,
+            );
+          }
+
+          // Log high risk alerts
+          if (riskScore > 0.7) {
+            console.log(
+              `[IoT] ⚠️  HIGH RISK ALERT for ${licensePlate}: score=${riskScore.toFixed(2)} at (${resolvedGps.lat.toFixed(4)}, ${resolvedGps.lon.toFixed(4)})`,
+            );
+          }
+
+          // Update throttle state with fresh results
+          updateSafetyState(licensePlate, {
+            riskScore,
+            distToCurve,
+            safetyResult,
+          });
+        } catch (safetyError) {
+          console.error(`[IoT] Safety pipeline error: ${safetyError.message}`);
+          // Continue saving data even if safety pipeline fails
+        }
+      } else {
+        // Throttled: reuse last known safety results
+        const lastState = getLastSafetyState(licensePlate);
+        if (lastState) {
+          riskScore = lastState.riskScore;
+          distToCurve = lastState.distToCurve;
+          safetyResult = lastState.safetyResult;
           console.log(
-            `[IoT] ⚠️  HIGH RISK ALERT for ${licensePlate}: score=${riskScore.toFixed(2)} at (${resolvedGps.lat.toFixed(4)}, ${resolvedGps.lon.toFixed(4)})`
+            `[IoT] Safety throttled for ${licensePlate}, reusing: risk=${riskScore.toFixed(3)}`,
           );
         }
-      } catch (safetyError) {
-        console.error(`[IoT] Safety pipeline error: ${safetyError.message}`);
-        // Continue saving data even if safety pipeline fails
       }
     }
 
@@ -213,14 +297,20 @@ export const ingestIoTData = async (req, res, next) => {
  * @access  Public
  */
 export const ingestMockData = async (req, res, next) => {
-  const { licensePlate, currentOccupancy, gps, footboardStatus, speed, riskScore } =
-    req.body;
+  const {
+    licensePlate,
+    currentOccupancy,
+    gps,
+    footboardStatus,
+    speed,
+    riskScore,
+  } = req.body;
 
   try {
     if (!licensePlate || currentOccupancy === undefined || !gps) {
       res.status(400);
       throw new Error(
-        "Missing required fields: licensePlate, currentOccupancy, or gps"
+        "Missing required fields: licensePlate, currentOccupancy, or gps",
       );
     }
 
@@ -241,7 +331,10 @@ export const ingestMockData = async (req, res, next) => {
       gps,
       footboardStatus: footboardStatus || false,
       speed: speed || 0,
-      riskScore: Math.max(parseFloat(riskScore || 0), parseFloat(req.body.futureRiskScore || 0)),
+      riskScore: Math.max(
+        parseFloat(riskScore || 0),
+        parseFloat(req.body.futureRiskScore || 0),
+      ),
       distToCurve: req.body.distToCurve || 0,
     });
     await newLog.save();

@@ -22,9 +22,9 @@ const char* LICENSE_PLATE = "NP-1234";
 
 // --- Data Send Interval ---
 // How often to send data to backend (in milliseconds)
-// 3 seconds = 3000ms (For smooth real-world testing and faster warnings)
-// 30 seconds = 30000ms
-const unsigned long SEND_INTERVAL = 3000;  // 3 seconds
+// 1.5 seconds = 1500ms (Optimized: backend now has caching + throttle)
+// 3 seconds = 3000ms (Previous default)
+const unsigned long SEND_INTERVAL = 1500;  // 1.5 seconds
 
 // --- Hardware Pins ---
 #define SENSOR1_PIN  18   // IR Sensor 1 (Outer) - Entry side
