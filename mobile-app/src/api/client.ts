@@ -3,7 +3,7 @@ import { storage } from "../utils/storage";
 import { Platform } from "react-native";
 
 // Use user's specific IP for physical device testing
-const DEV_API_URL = "http://10.70.209.141:3000/api";
+const DEV_API_URL = "http://10.220.172.179:3000/api";
 const WEB_API_URL = "http://localhost:3000/api";
 
 export const API_URL = Platform.OS === "web" ? WEB_API_URL : DEV_API_URL;
