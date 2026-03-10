@@ -440,6 +440,7 @@ def predict_safety():
             'radius_m': float(data['radius_m']),
             'is_wet': float(data['is_wet']),
             'gradient_deg': float(data['gradient_deg']),
+            'dist_to_curve_m': float(data.get('dist_to_curve_m', 0.0)),
         }
         df = pd.DataFrame([input_data])
         

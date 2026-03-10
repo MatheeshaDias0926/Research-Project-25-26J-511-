@@ -16,7 +16,6 @@ import {
 
 const TABS = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
-  { key: "live-map", label: "Live Location", icon: MapPin },
   { key: "maintenance", label: "Maintenance", icon: Wrench },
 ];
 
@@ -218,23 +217,6 @@ const OverviewTab = ({ user }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// LIVE LOCATION TAB (Conductor - assigned bus only)
-// ═══════════════════════════════════════════════════════════════
-const LiveLocationTab = () => {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <h2 style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "var(--text-primary)" }}>My Bus Location</h2>
-          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 4 }}>Real-time location of your assigned bus</p>
-        </div>
-      </div>
-      <BusLocationMap role="conductor" height="550px" refreshInterval={10000} />
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════
 // MAINTENANCE TAB
 // ═══════════════════════════════════════════════════════════════
 const MaintenanceTab = ({ user }) => {
@@ -370,21 +352,7 @@ const MaintenanceTab = ({ user }) => {
 const ConductorPanel = () => {
   const { user } = useAuth();
   const location = useLocation();
-  const getActiveTab = () => {
-    if (location.pathname === "/conductor/live-map") return "live-map";
-    if (location.pathname === "/conductor/maintenance") return "maintenance";
-    return "overview";
-  };
-  const activeTab = getActiveTab();
-
-  const renderTab = () => {
-    switch (activeTab) {
-      case "overview": return <OverviewTab user={user} />;
-      case "live-map": return <LiveLocationTab />;
-      case "maintenance": return <MaintenanceTab user={user} />;
-      default: return <OverviewTab user={user} />;
-    }
-  };
+  const activeTab = location.pathname === "/conductor/maintenance" ? "maintenance" : "overview";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)", maxWidth: 1200, margin: "0 auto", animation: "fadeIn 0.3s ease-out" }}>
@@ -398,7 +366,9 @@ const ConductorPanel = () => {
         <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>Conductor Panel</h1>
       </div>
 
-      <div>{renderTab()}</div>
+      <div>
+        {activeTab === "overview" ? <OverviewTab user={user} /> : <MaintenanceTab user={user} />}
+      </div>
     </div>
   );
 };

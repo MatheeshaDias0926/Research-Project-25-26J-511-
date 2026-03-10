@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { storage } from "../../src/utils/storage";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
+import { startGpsFeed, stopGpsFeed, isGpsFeedRunning } from "../../src/services/gps-feed";
 
 
 
@@ -37,27 +38,55 @@ export default function ConductorDashboard() {
     const latestViolationIdRef = useRef<string | null>(null);
     const isFirstLoad = useRef(true);
 
+    // GPS Feed State
+    const [gpsFeedActive, setGpsFeedActive] = useState(false);
+    const [gpsData, setGpsData] = useState<{ lat: number; lon: number; speed: number } | null>(null);
+
     const router = useRouter();
 
     useEffect(() => {
         const checkBusSelection = async () => {
             const id = await storage.getItem("currentBusId");
+            const plate = await storage.getItem("currentBusPlate");
             
             if (!id) {
                 router.replace("/(conductor)/bus-selection");
             } else {
                 setBusId(id);
                 fetchData(id);
+
+                // Start GPS feed immediately using stored license plate
+                if (plate && !gpsFeedActive) {
+                    console.log("[GPS Feed] Starting for plate:", plate);
+                    startGpsFeed(
+                        plate,
+                        (data) => {
+                            setGpsData({ lat: data.lat, lon: data.lon, speed: data.speed });
+                        },
+                        1000 // Every 1 second for smoother real-time tracked positioning
+                    ).then((result) => {
+                        if (result.success) {
+                            setGpsFeedActive(true);
+                            console.log("[GPS Feed] ✅ Active for", plate);
+                        } else {
+                            console.error("[GPS Feed] ❌ Failed:", result.error);
+                            Alert.alert("GPS Permission Required", result.error || "Unable to access location.");
+                        }
+                    });
+                }
             }
         };
         checkBusSelection();
         
-        // Polling every 2s for Real-time Simulator Sync
+        // Polling for real-time data
         const interval = setInterval(() => {
             if (busId) fetchData(busId);
-        }, 500); // 0.5s polling for ultra-fast warnings
+        }, 2000);
         
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            stopGpsFeed();
+        };
     }, [busId]);
 
     const fetchData = async (id: string) => {
@@ -237,7 +266,18 @@ export default function ConductorDashboard() {
                            <Text style={{ color: 'white', fontSize: 16, textAlign: 'center', opacity: 0.9 }}>
                                Stability: {Math.max(0, 100 - (riskScore * 100)).toFixed(0)}%
                            </Text>
-                           <View style={{ marginTop: 8, backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 }}>
+                           
+                           {/* NEW: CURVE DISTANCE WARNING */}
+                           {myBus?.currentStatus?.distToCurve > 0 && (
+                                <View style={{ marginTop: 12, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                     <Ionicons name="return-up-forward" size={24} color="#fff" />
+                                     <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+                                         Curve Ahead: {myBus.currentStatus.distToCurve.toFixed(0)} m
+                                     </Text>
+                                </View>
+                           )}
+
+                           <View style={{ marginTop: 12, backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 }}>
                                 <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
                                     SLOW DOWN IMMEDIATELY
                                 </Text>
@@ -245,6 +285,28 @@ export default function ConductorDashboard() {
                       </View>
                  </Card>
             )}
+
+            {/* GPS Feed Status Card */}
+            <Card style={styles.gpsFeedCard}>
+                <View style={styles.gpsFeedRow}>
+                    <View style={styles.gpsFeedInfo}>
+                        <View style={styles.gpsFeedDotRow}>
+                            <View style={[styles.gpsDot, gpsFeedActive ? styles.gpsDotActive : styles.gpsDotInactive]} />
+                            <Text style={styles.gpsFeedTitle}>
+                                GPS Feed: {gpsFeedActive ? "Active" : "Inactive"}
+                            </Text>
+                        </View>
+                        {gpsData ? (
+                            <Text style={styles.gpsFeedDetail}>
+                                {gpsData.lat.toFixed(4)}, {gpsData.lon.toFixed(4)} • {gpsData.speed.toFixed(0)} km/h
+                            </Text>
+                        ) : (
+                            <Text style={styles.gpsFeedDetail}>Waiting for GPS signal...</Text>
+                        )}
+                    </View>
+                    <Ionicons name="navigate" size={20} color={gpsFeedActive ? "#22c55e" : "#94a3b8"} />
+                </View>
+            </Card>
 
             {/* Main Bus Card (Dark Theme like Frontend) */}
             <Card style={styles.mainCard}>
@@ -612,5 +674,48 @@ const styles = StyleSheet.create({
     lastUpdated: {
         color: Colors.textSecondary,
         fontSize: 12,
+    },
+    /* GPS Feed Card */
+    gpsFeedCard: {
+        marginBottom: 16,
+        padding: 12,
+        backgroundColor: '#f0fdf4',
+        borderWidth: 1,
+        borderColor: '#dcfce7',
+    },
+    gpsFeedRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    gpsFeedInfo: {
+        flex: 1,
+    },
+    gpsFeedDotRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
+    gpsDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    gpsDotActive: {
+        backgroundColor: '#22c55e',
+    },
+    gpsDotInactive: {
+        backgroundColor: '#94a3b8',
+    },
+    gpsFeedTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#15803d',
+    },
+    gpsFeedDetail: {
+        fontSize: 12,
+        color: '#64748b',
+        marginLeft: 18,
     }
 });

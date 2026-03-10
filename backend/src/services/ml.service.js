@@ -100,11 +100,11 @@ export const getSafetyPrediction = async (features) => {
     return response.data;
   } catch (error) {
     console.error(`[ML Service] Safety Predict Error: ${error.message}`);
-    // Fallback: Safe values if ML fails
+    // Fallback: Zero values if ML fails (clearly indicating no prediction)
     return {
-      risk_score: 0.1,
-      stopping_distance: 30, // Default safe distance
-      source: "Fallback_Default",
+      risk_score: 0,
+      stopping_distance: 0,
+      source: "Fallback_ML_Unavailable",
       error: error.message,
     };
   }

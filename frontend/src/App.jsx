@@ -17,7 +17,6 @@ import Profile from "./pages/auth/Profile";
 // Passenger Pages
 import PassengerDashboard from "./pages/passenger/PassengerDashboard";
 import Prediction from "./pages/passenger/Prediction";
-import LiveLocation from "./pages/passenger/LiveLocation";
 
 // Admin Panel (unified tabbed)
 import AdminPanel from "./pages/admin/AdminPanel";
@@ -54,20 +53,24 @@ function App() {
             <Route element={<PrivateRoutes roles={["passenger"]} />}>
               <Route path="/passenger" element={<PassengerDashboard />} />
               <Route path="/passenger/prediction" element={<Prediction />} />
-              <Route path="/passenger/live-map" element={<LiveLocation />} />
+              <Route
+                path="/passenger/live-map"
+                element={<PassengerDashboard />}
+              />
             </Route>
 
             {/* Conductor Routes */}
             <Route element={<PrivateRoutes roles={["conductor"]} />}>
               <Route path="/conductor" element={<ConductorPanel />} />
-              <Route path="/conductor/live-map" element={<ConductorPanel />} />
-              <Route path="/conductor/maintenance" element={<ConductorPanel />} />
+              <Route
+                path="/conductor/maintenance"
+                element={<ConductorPanel />}
+              />
             </Route>
 
             {/* Driver Routes */}
             <Route element={<PrivateRoutes roles={["driver"]} />}>
               <Route path="/driver" element={<DriverPanel />} />
-              <Route path="/driver/live-map" element={<DriverPanel />} />
               <Route path="/driver/maintenance" element={<DriverPanel />} />
               <Route path="/driver/alerts" element={<DriverPanel />} />
             </Route>

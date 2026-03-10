@@ -182,6 +182,9 @@ def main():
     print(f"CoG height: {result['cog_height_m']:.2f} m")
     print(f"Rollover threshold: {result['rollover_threshold_g']:.2f} g")
     print(f"Sharpest curve radius ahead: {radius:.1f} m")
+    dist_curve = road_data.get("distance_to_sharpest_radius_m")
+    if dist_curve is not None:
+        print(f"Distance to sharpest curve: {dist_curve:.1f} m")
     if slope_deg is not None and slope_deg != 0.0:
         print(f"Road slope: {slope_deg:.2f}°")
     print(f"Lateral accel: {result['lateral_accel_g']:.2f} g")

@@ -169,25 +169,15 @@ router.get("/driver-sessions", protect, async (req, res) => {
 
         // Find the edge device for this driver to get driving limits config
         let drivingLimits = null;
-        let deviceOnline = false;
-        let violationAlertConfig = null;
         if (currentSession) {
             const edgeDevice = await EdgeDevice.findOne({ deviceId: currentSession.deviceId });
             if (edgeDevice) {
-                deviceOnline = edgeDevice.status === "active" && edgeDevice.lastPing &&
-                    (Date.now() - new Date(edgeDevice.lastPing).getTime()) < 120000;
                 drivingLimits = {
                     maxContinuousDriving: edgeDevice.config.maxContinuousDriving,
                     maxDailyDriving: edgeDevice.config.maxDailyDriving,
                     requiredRest: edgeDevice.config.minRestDuration,
                     minRestDuration: edgeDevice.config.minRestDuration,
                     restTimeout: edgeDevice.config.restTimeout,
-                };
-                violationAlertConfig = {
-                    threshold: edgeDevice.config.violationAlertThreshold,
-                    timeWindow: edgeDevice.config.violationTimeWindow,
-                    blinkCount: edgeDevice.config.alertBlinkCount,
-                    blinkDuration: edgeDevice.config.alertBlinkDuration,
                 };
             }
         }
@@ -243,8 +233,6 @@ router.get("/driver-sessions", protect, async (req, res) => {
             driverName: driver.name,
             drivingLimits,
             continuousDrivingMinutes,
-            deviceOnline,
-            violationAlertConfig,
         });
     } catch (error) {
         console.error("driver-sessions error:", error);
@@ -282,8 +270,7 @@ router.put("/config/:deviceId", protect, isAdmin, async (req, res) => {
         if (!device) return res.status(404).json({ message: "Device not found" });
 
         const { verifyInterval, earThreshold, marThreshold, noFaceTimeout, drowsyFrames, yawnFrames,
-                restTimeout, maxContinuousDriving, maxDailyDriving, minRestDuration,
-                violationAlertThreshold, violationTimeWindow, alertBlinkCount, alertBlinkDuration } = req.body;
+                restTimeout, maxContinuousDriving, maxDailyDriving, minRestDuration } = req.body;
         if (verifyInterval != null) device.config.verifyInterval = verifyInterval;
         if (earThreshold != null) device.config.earThreshold = earThreshold;
         if (marThreshold != null) device.config.marThreshold = marThreshold;
@@ -294,10 +281,6 @@ router.put("/config/:deviceId", protect, isAdmin, async (req, res) => {
         if (maxContinuousDriving != null) device.config.maxContinuousDriving = maxContinuousDriving;
         if (maxDailyDriving != null) device.config.maxDailyDriving = maxDailyDriving;
         if (minRestDuration != null) device.config.minRestDuration = minRestDuration;
-        if (violationAlertThreshold != null) device.config.violationAlertThreshold = violationAlertThreshold;
-        if (violationTimeWindow != null) device.config.violationTimeWindow = violationTimeWindow;
-        if (alertBlinkCount != null) device.config.alertBlinkCount = alertBlinkCount;
-        if (alertBlinkDuration != null) device.config.alertBlinkDuration = alertBlinkDuration;
         await device.save();
 
         res.json({ ok: true, config: device.config });
@@ -388,16 +371,13 @@ router.post("/heartbeat", authenticateDevice, async (req, res) => {
 
         // ── Save GPS location to the assigned bus (from mobile phone → Pi) ──
         const { gps } = req.body;
-        if (gps && gps.lat != null && gps.lon != null && device.assignedBus) {
+        if (gps && gps.lat && gps.lon && device.assignedBus) {
             await Bus.findByIdAndUpdate(device.assignedBus, {
                 "liveLocation.lat": gps.lat,
                 "liveLocation.lon": gps.lon,
                 "liveLocation.speed": gps.speed || 0,
                 "liveLocation.updatedAt": new Date(),
             });
-            console.log(`[EdgeDevice ${device.deviceId}] GPS updated: lat=${gps.lat}, lon=${gps.lon}, speed=${gps.speed || 0} km/h`);
-        } else {
-            console.log(`[EdgeDevice ${device.deviceId}] Heartbeat received (no GPS data — phone may not be sending to Pi port 8080)`);
         }
 
         // Drain pending commands
@@ -517,85 +497,6 @@ router.post("/heartbeat", authenticateDevice, async (req, res) => {
 });
 
 /**
- * @route   POST /api/edge-devices/gps-update
- * @desc    Receive GPS location from a mobile phone app (e.g. GPSLogger).
- *          Updates the assigned bus's liveLocation.
- *          URL query params accepted: lat, lon, speed, accuracy, deviceId
- *          OR JSON/form body with the same fields.
- * @access  Public (identified by deviceId param)
- */
-router.post("/gps-update", async (req, res) => {
-    try {
-        // Accept from query string OR body (GPSLogger / Traccar Client)
-        const lat = parseFloat(req.query.lat ?? req.body.lat);
-        const lon = parseFloat(req.query.lon ?? req.body.lon);
-        const rawSpeed = parseFloat(req.query.speed ?? req.body.speed ?? 0);
-        // Traccar Client (OsmAnd protocol) sends speed in m/s – convert to km/h
-        const speed = isNaN(rawSpeed) ? 0 : rawSpeed * 3.6;
-        // Traccar uses "id", GPSLogger uses "deviceId"
-        const deviceId = req.query.deviceId ?? req.query.id ?? req.body.deviceId ?? req.body.id ?? req.headers["x-device-id"];
-
-        if (!deviceId) {
-            return res.status(400).json({ message: "deviceId is required (query param, body, or x-device-id header)" });
-        }
-        if (isNaN(lat) || isNaN(lon)) {
-            return res.status(400).json({ message: "Valid lat and lon are required" });
-        }
-
-        const device = await EdgeDevice.findOne({ deviceId });
-        if (!device) {
-            return res.status(404).json({ message: `Device not found: ${deviceId}` });
-        }
-        if (!device.assignedBus) {
-            return res.status(400).json({ message: "Device has no assigned bus" });
-        }
-
-        await Bus.findByIdAndUpdate(device.assignedBus, {
-            "liveLocation.lat": lat,
-            "liveLocation.lon": lon,
-            "liveLocation.speed": speed,
-            "liveLocation.updatedAt": new Date(),
-        });
-
-        res.json({ ok: true, lat, lon, speed });
-    } catch (error) {
-        console.error("[GPS-Update] Error:", error.message);
-        res.status(500).json({ message: "Server Error" });
-    }
-});
-// Also accept GET (Traccar Client and other GPS apps use GET with query params)
-router.get("/gps-update", async (req, res) => {
-    try {
-        const lat = parseFloat(req.query.lat);
-        const lon = parseFloat(req.query.lon);
-        const rawSpeed = parseFloat(req.query.speed ?? 0);
-        // Traccar Client (OsmAnd protocol) sends speed in m/s – convert to km/h
-        const speed = isNaN(rawSpeed) ? 0 : rawSpeed * 3.6;
-        // Traccar uses "id", GPSLogger uses "deviceId"
-        const deviceId = req.query.deviceId ?? req.query.id;
-
-        if (!deviceId) return res.status(400).json({ message: "deviceId query param required" });
-        if (isNaN(lat) || isNaN(lon)) return res.status(400).json({ message: "Valid lat and lon required" });
-
-        const device = await EdgeDevice.findOne({ deviceId });
-        if (!device) return res.status(404).json({ message: `Device not found: ${deviceId}` });
-        if (!device.assignedBus) return res.status(400).json({ message: "Device has no assigned bus" });
-
-        await Bus.findByIdAndUpdate(device.assignedBus, {
-            "liveLocation.lat": lat,
-            "liveLocation.lon": lon,
-            "liveLocation.speed": speed,
-            "liveLocation.updatedAt": new Date(),
-        });
-
-        res.json({ ok: true, lat, lon, speed });
-    } catch (error) {
-        console.error("[GPS-Update GET] Error:", error.message);
-        res.status(500).json({ message: "Server Error" });
-    }
-});
-
-/**
  * @route   POST /api/edge-devices/driver-alert
  * @desc    Pi reports driver verification or drowsiness alert
  * @access  Device (x-device-id header)
@@ -703,18 +604,13 @@ router.post("/driver-alert", authenticateDevice, async (req, res) => {
                         const driverDoc = await Driver.findOne({ licenseNumber: driverId });
                         if (driverDoc) vlDriverRef = driverDoc._id;
                     }
-                    // Fetch the bus's current live location for the violation record
-                    const vlBus = await Bus.findById(device.assignedBus).select("liveLocation").lean();
-                    const vlGps = vlBus?.liveLocation?.lat != null
-                        ? { lat: vlBus.liveLocation.lat, lon: vlBus.liveLocation.lon }
-                        : { lat: 0, lon: 0 };
                     await ViolationLog.create({
                         busId: device.assignedBus,
                         driverRef: vlDriverRef,
                         driverName: driverName || currentSession?.driverName || null,
                         violationType: eventType,
-                        speed: vlBus?.liveLocation?.speed || 0,
-                        gps: vlGps,
+                        speed: 0,
+                        gps: { lat: 0, lon: 0 },
                     });
                 } catch (vlErr) {
                     console.error("ViolationLog create error:", vlErr.message);

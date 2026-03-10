@@ -37,13 +37,9 @@ export const assignDriverToBus = async (req, res, next) => {
 
     // Unassign previous driver from this bus
     if (bus.assignedDriver) {
-      const prevDriver = await Driver.findByIdAndUpdate(bus.assignedDriver, {
+      await Driver.findByIdAndUpdate(bus.assignedDriver, {
         $unset: { assignedBus: "" },
       });
-      // Also clear the previous driver's User.assignedBus
-      if (prevDriver?.userId) {
-        await User.findByIdAndUpdate(prevDriver.userId, { $unset: { assignedBus: "" } });
-      }
     }
 
     bus.assignedDriver = driverId;
@@ -51,11 +47,6 @@ export const assignDriverToBus = async (req, res, next) => {
 
     await bus.save();
     await driver.save();
-
-    // Sync the driver's User document so /bus/locations works for driver login
-    if (driver.userId) {
-      await User.findByIdAndUpdate(driver.userId, { assignedBus: busId });
-    }
 
     await bus.populate("assignedDriver", "name licenseNumber");
 
@@ -206,13 +197,9 @@ export const unassignDriverFromBus = async (req, res, next) => {
     }
 
     if (bus.assignedDriver) {
-      const driver = await Driver.findByIdAndUpdate(bus.assignedDriver, {
+      await Driver.findByIdAndUpdate(bus.assignedDriver, {
         $unset: { assignedBus: "" },
       });
-      // Also clear the driver's User.assignedBus
-      if (driver?.userId) {
-        await User.findByIdAndUpdate(driver.userId, { $unset: { assignedBus: "" } });
-      }
       bus.assignedDriver = undefined;
       await bus.save();
     }

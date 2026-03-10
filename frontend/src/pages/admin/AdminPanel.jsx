@@ -2200,10 +2200,6 @@ const EdgeDeviceTab = () => {
       maxContinuousDriving: dev.config?.maxContinuousDriving ?? 240,
       maxDailyDriving: dev.config?.maxDailyDriving ?? 480,
       minRestDuration: dev.config?.minRestDuration ?? 15,
-      violationAlertThreshold: dev.config?.violationAlertThreshold ?? 5,
-      violationTimeWindow: dev.config?.violationTimeWindow ?? 5,
-      alertBlinkCount: dev.config?.alertBlinkCount ?? 5,
-      alertBlinkDuration: dev.config?.alertBlinkDuration ?? 2,
     });
   };
 
@@ -2457,18 +2453,6 @@ const EdgeDeviceTab = () => {
                             >
                               No sessions recorded.
                             </td>
-                            <td style={tdStyle}>{s.confidence ? `${s.confidence.toFixed(2)}%` : "—"}</td>
-                            <td style={tdStyle}>{new Date(s.sessionStart).toLocaleTimeString()}</td>
-                            <td style={tdStyle}>{s.sessionEnd ? new Date(s.sessionEnd).toLocaleTimeString() : "Active"}</td>
-                            <td style={tdStyle}>{s.drivingMinutes ? `${s.drivingMinutes}m` : "—"}</td>
-                            <td style={tdStyle}>
-                              {s.alertnessLevel && (
-                                <Badge variant={s.alertnessLevel === "ALERT" ? "success" : s.alertnessLevel === "TIRED" ? "warning" : "error"}>
-                                  {s.alertnessLevel} {s.alertnessScore != null ? `(${s.alertnessScore})` : ""}
-                                </Badge>
-                              )}
-                            </td>
-                            <td style={tdStyle}>{s.drowsinessEvents?.length || 0}</td>
                           </tr>
                         ) : (
                           sessionHistory.map((s) => (
@@ -2641,11 +2625,29 @@ const EdgeDeviceTab = () => {
                             </div>
                           )}
 
-                          {cs && isOnline ? (
-                            <div style={{ background: cs.verified ? "#f0fdf4" : "#fffbeb", borderRadius: 8, padding: 12, marginBottom: 8 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                                <span style={{ fontWeight: 600, fontSize: 15 }}>{cs.driverName || "Unknown Driver"}</span>
-                                <Badge variant={cs.verified ? "success" : "error"}>
+                          {cs ? (
+                            <div
+                              style={{
+                                background: cs.verified ? "#f0fdf4" : "#fffbeb",
+                                borderRadius: 8,
+                                padding: 12,
+                                marginBottom: 8,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  marginBottom: 6,
+                                }}
+                              >
+                                <span style={{ fontWeight: 600, fontSize: 15 }}>
+                                  {cs.driverName || "Unknown Driver"}
+                                </span>
+                                <Badge
+                                  variant={cs.verified ? "success" : "error"}
+                                >
                                   {cs.verified ? "Verified" : "Unverified"}
                                 </Badge>
                               </div>
@@ -2660,8 +2662,16 @@ const EdgeDeviceTab = () => {
                                 </p>
                               )}
                               {cs.confidence != null && (
-                                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
-                                  Face Confidence: <strong>{cs.confidence.toFixed(2)}%</strong>
+                                <p
+                                  style={{
+                                    fontSize: "var(--text-xs)",
+                                    color: "var(--text-muted)",
+                                  }}
+                                >
+                                  Face Confidence:{" "}
+                                  <strong>
+                                    {(cs.confidence * 100).toFixed(0)}%
+                                  </strong>
                                   {cs.local ? " (On-device)" : " (Remote)"}
                                 </p>
                               )}
@@ -2693,10 +2703,6 @@ const EdgeDeviceTab = () => {
                                 Since:{" "}
                                 {new Date(cs.sessionStart).toLocaleTimeString()}
                               </p>
-                            </div>
-                          ) : !isOnline ? (
-                            <div style={{ background: "var(--bg-muted)", borderRadius: 8, padding: 12, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
-                              Device Offline
                             </div>
                           ) : (
                             <div
@@ -3351,39 +3357,6 @@ const EdgeDeviceTab = () => {
                   >
                     Total driving limit per day (e.g. 480 = 8h)
                   </p>
-                </div>
-              </div>
-
-              {/* Violation Alert Settings */}
-              <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 14, marginTop: 4 }}>
-                <p style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 10 }}>Violation Alert Overlay</p>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Violation Threshold</label>
-                  <input type="number" style={inputStyle} value={configForm.violationAlertThreshold}
-                    onChange={e => setConfigForm(p => ({ ...p, violationAlertThreshold: Number(e.target.value) }))} />
-                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>Number of violations to trigger red alert</p>
-                </div>
-                <div>
-                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Time Window (min)</label>
-                  <input type="number" style={inputStyle} value={configForm.violationTimeWindow}
-                    onChange={e => setConfigForm(p => ({ ...p, violationTimeWindow: Number(e.target.value) }))} />
-                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>Minutes to count violations within</p>
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Blink Count</label>
-                  <input type="number" style={inputStyle} value={configForm.alertBlinkCount}
-                    onChange={e => setConfigForm(p => ({ ...p, alertBlinkCount: Number(e.target.value) }))} />
-                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>Number of red screen blinks</p>
-                </div>
-                <div>
-                  <label style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "block", marginBottom: 4 }}>Blink Duration (s)</label>
-                  <input type="number" step="0.5" style={inputStyle} value={configForm.alertBlinkDuration}
-                    onChange={e => setConfigForm(p => ({ ...p, alertBlinkDuration: Number(e.target.value) }))} />
-                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>Duration of each blink cycle in seconds</p>
                 </div>
               </div>
             </div>

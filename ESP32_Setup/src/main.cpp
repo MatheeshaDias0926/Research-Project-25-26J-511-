@@ -3,24 +3,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <TM1637Display.h>
-
-// WiFi credentials
-const char* ssid = "Wi-fi";
-const char* password = "123456788";
-
-// Backend API endpoint - Use your Mac's IP address
-const char* serverUrl = "http://192.168.43.31:3000/api/iot/iot-data";
-
-// IR Sensor pins
-#define SENSOR1_PIN 18  // Outer sensor
-#define SENSOR2_PIN 19  // Inner sensor
-
-// TM1637 Display pins
-#define DISPLAY_CLK 22  // Clock pin
-#define DISPLAY_DIO 23  // Data pin
-
-// Buzzer pin
-#define BUZZER_PIN 21   // Buzzer signal pin
+#include "config.h"
 
 // Sensor states
 bool sensor1State = HIGH;  // HIGH = no obstacle, LOW = obstacle detected
@@ -42,7 +25,6 @@ enum CountingState {
 
 CountingState currentState = IDLE;
 unsigned long lastStateChange = 0;
-const unsigned long STATE_TIMEOUT = 5000;  // 5 seconds timeout for slow hand movement
 
 // Track if sensor was triggered during this sequence
 bool sensor1WasTriggered = false;
@@ -52,53 +34,39 @@ bool sensor2WasTriggered = false;
 unsigned long sensor1BlockedStartTime = 0;
 bool sensor1BlockedFor2Sec = false;
 bool footboardDetected = false;
-const unsigned long FOOTBOARD_BLOCK_TIME = 2000;  // 2 seconds
-const unsigned long FOOTBOARD_WAIT_TIME = 1000;   // 1 second wait for sensor2
 
 // Debounce
 unsigned long lastDebounceTime1 = 0;
 unsigned long lastDebounceTime2 = 0;
-const unsigned long debounceDelay = 50;  // Stable debounce
 
 // Send interval
 unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 300000;  // 5 minutes (300000ms)
 
-// GPS simulation data
-struct GPSLocation {
-  const char* name;
-  float lat;
-  float lng;
+// WiFi reconnect
+unsigned long lastWifiCheck = 0;
+
+// Offline data buffer (stores data when WiFi is down)
+struct OfflineData {
+  int occupancy;
+  bool footboard;
+  unsigned long timestamp;
 };
-
-GPSLocation gpsLocations[] = {
-  {"Bandarawela Stand", 6.8258, 80.9982},
-  {"Bindunuwewa", 6.8448, 80.9997},
-  {"Dhowa Temple", 6.8556, 81.0208},
-  {"Kinigama", 6.8620, 81.0300},
-  {"Ella Town", 6.8756, 81.0463}
-};
-
-int currentGPSIndex = 0;
-unsigned long lastGPSUpdateTime = 0;
-const unsigned long gpsUpdateInterval = 600000;  // 10 minutes (600000ms)
-
-// Fixed values
-const char* licensePlate = "NP-1234";
-const int fixedSpeed = 60;
+const int MAX_BUFFER = 20;
+OfflineData offlineBuffer[MAX_BUFFER];
+int bufferCount = 0;
 
 // TM1637 Display object
 TM1637Display display(DISPLAY_CLK, DISPLAY_DIO);
 
 // Function declarations
 void connectWiFi();
+void checkWiFiReconnect();
 void readSensors();
 void processCountingLogic();
 void checkFootboardDetection();
-void updateGPSLocation();
-void sendDataToBackend();
 void sendDataToBackend(bool isFootboardViolation);
 void sendFootboardViolation();
+void sendBufferedData();
 void updateDisplay();
 void showFootboardWarning();
 void playBuzzer(int duration, int frequency);
@@ -110,31 +78,27 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  Serial.println("\n=== ESP32 Passenger Counter - Module M1 ===");
+  Serial.println("\n=== ESP32 Passenger Counter — Real-World Mode ===");
+  Serial.print("Bus: ");
+  Serial.println(LICENSE_PLATE);
+  Serial.print("Backend: ");
+  Serial.println(BACKEND_URL);
+  Serial.print("Send Interval: ");
+  Serial.print(SEND_INTERVAL / 1000);
+  Serial.println("s");
 
   // Configure IR sensor pins
   pinMode(SENSOR1_PIN, INPUT);
   pinMode(SENSOR2_PIN, INPUT);
-
-  Serial.println("IR Sensors initialized:");
-  Serial.print(" Sensor 1 (Outer): GPIO ");
-  Serial.println(SENSOR1_PIN);
-  Serial.print(" Sensor 2 (Inner): GPIO ");
-  Serial.println(SENSOR2_PIN);
+  Serial.println("IR Sensors initialized");
 
   // Configure buzzer pin
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
-  Serial.print(" Buzzer: GPIO ");
-  Serial.println(BUZZER_PIN);
 
   // Initialize TM1637 Display
-  display.setBrightness(0x0f);  // Set brightness (0x00-0x0f, max brightness)
+  display.setBrightness(0x0f);
   display.clear();
-  Serial.print(" Display: CLK=GPIO");
-  Serial.print(DISPLAY_CLK);
-  Serial.print(", DIO=GPIO");
-  Serial.println(DISPLAY_DIO);
 
   // Show initial count (0)
   updateDisplay();
@@ -158,27 +122,27 @@ void loop() {
   // Check for footboard detection
   checkFootboardDetection();
 
-  // Update GPS location every 10 minutes
-  updateGPSLocation();
+  // Auto-reconnect WiFi if lost
+  checkWiFiReconnect();
 
-  // Send data periodically (every 5 minutes)
-  if (millis() - lastSendTime >= sendInterval) {
-    Serial.println("\n[SCHEDULED SEND - 5 min interval]");
-    sendDataToBackend(false);  // Regular send, not footboard violation
+  // Send data periodically
+  if (millis() - lastSendTime >= SEND_INTERVAL) {
+    Serial.println("\n[SCHEDULED SEND]");
+    sendDataToBackend(false);
     lastSendTime = millis();
   }
 
-  delay(10);  // Small delay to prevent excessive polling
+  delay(10);
 }
 
 void connectWiFi() {
   Serial.print("\nConnecting to WiFi: ");
-  Serial.println(ssid);
+  Serial.println(WIFI_SSID);
 
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+  while (WiFi.status() != WL_CONNECTED && attempts < WIFI_CONNECT_TIMEOUT) {
     delay(500);
     Serial.print(".");
     attempts++;
@@ -188,9 +152,44 @@ void connectWiFi() {
     Serial.println("\nWiFi Connected!");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
+
+    // Send any buffered data
+    if (bufferCount > 0) {
+      Serial.println("Sending buffered offline data...");
+      sendBufferedData();
+    }
   } else {
     Serial.println("\nFailed to connect to WiFi!");
-    Serial.println("Please check your credentials and restart.");
+    Serial.println("Will retry automatically...");
+  }
+}
+
+void checkWiFiReconnect() {
+  if (WiFi.status() != WL_CONNECTED) {
+    if (millis() - lastWifiCheck >= WIFI_RECONNECT_INTERVAL) {
+      lastWifiCheck = millis();
+      Serial.println("[WiFi] Disconnected! Attempting reconnect...");
+      WiFi.disconnect();
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      
+      // Quick check (2 seconds)
+      int attempts = 0;
+      while (WiFi.status() != WL_CONNECTED && attempts < 4) {
+        delay(500);
+        attempts++;
+      }
+      
+      if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("[WiFi] Reconnected!");
+        Serial.print("IP: ");
+        Serial.println(WiFi.localIP());
+        
+        // Send buffered data
+        if (bufferCount > 0) {
+          sendBufferedData();
+        }
+      }
+    }
   }
 }
 
@@ -200,14 +199,11 @@ void readSensors() {
   if (reading1 != lastSensor1State) {
     lastDebounceTime1 = millis();
   }
-
-  if ((millis() - lastDebounceTime1) > debounceDelay) {
+  if ((millis() - lastDebounceTime1) > DEBOUNCE_DELAY_MS) {
     if (reading1 != sensor1State) {
       sensor1State = reading1;
-      Serial.println("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      Serial.print("🔴 SENSOR 1: ");
-      Serial.println(sensor1State == LOW ? "BLOCKED ⚫" : "CLEAR ⚪");
-      Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      Serial.print("SENSOR 1: ");
+      Serial.println(sensor1State == LOW ? "BLOCKED" : "CLEAR");
     }
   }
   lastSensor1State = reading1;
@@ -217,48 +213,38 @@ void readSensors() {
   if (reading2 != lastSensor2State) {
     lastDebounceTime2 = millis();
   }
-
-  if ((millis() - lastDebounceTime2) > debounceDelay) {
+  if ((millis() - lastDebounceTime2) > DEBOUNCE_DELAY_MS) {
     if (reading2 != sensor2State) {
       sensor2State = reading2;
-      Serial.println("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      Serial.print("🔵 SENSOR 2: ");
-      Serial.println(sensor2State == LOW ? "BLOCKED ⚫" : "CLEAR ⚪");
-      Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      Serial.print("SENSOR 2: ");
+      Serial.println(sensor2State == LOW ? "BLOCKED" : "CLEAR");
     }
   }
   lastSensor2State = reading2;
 }
 
 void processCountingLogic() {
-  // Check for timeout and process if both sensors were triggered
-  if (currentState != IDLE && (millis() - lastStateChange > STATE_TIMEOUT)) {
-    Serial.println("State timeout!");
-    
-    // Check if we detected a sequence even if not completed perfectly
+  // Check for timeout
+  if (currentState != IDLE && (millis() - lastStateChange > STATE_TIMEOUT_MS)) {
     if ((currentState == SENSOR1_TRIGGERED || currentState == BOTH_TRIGGERED_IN) && 
         sensor2WasTriggered) {
-      // Entry sequence detected (Sensor1 -> Sensor2)
       passengerCount++;
-      Serial.println("*** PERSON ENTERED (timeout detected) ***");
-      Serial.print("Current occupancy: ");
+      Serial.println("*** PERSON ENTERED (timeout) ***");
+      Serial.print("Occupancy: ");
       Serial.println(passengerCount);
       updateDisplay();
       playEntrySound();
     } 
     else if ((currentState == SENSOR2_TRIGGERED || currentState == BOTH_TRIGGERED_OUT) && 
              sensor1WasTriggered) {
-      // Exit sequence detected (Sensor2 -> Sensor1)
       passengerCount--;
       if (passengerCount < 0) passengerCount = 0;
-      Serial.println("*** PERSON EXITED (timeout detected) ***");
-      Serial.print("Current occupancy: ");
+      Serial.println("*** PERSON EXITED (timeout) ***");
+      Serial.print("Occupancy: ");
       Serial.println(passengerCount);
       updateDisplay();
       playExitSound();
     }
-    
-    // Reset state
     currentState = IDLE;
     sensor1WasTriggered = false;
     sensor2WasTriggered = false;
@@ -266,52 +252,35 @@ void processCountingLogic() {
 
   switch (currentState) {
     case IDLE:
-      // Reset trigger flags when idle
       sensor1WasTriggered = false;
       sensor2WasTriggered = false;
-      
       if (sensor1State == LOW) {
-        // Sensor 1 triggered first (entering)
         currentState = SENSOR1_TRIGGERED;
         sensor1WasTriggered = true;
         lastStateChange = millis();
-        Serial.println("\n   ➡️  STATE: SENSOR1_TRIGGERED");
-        Serial.println("   📍 Entry sequence started...");
       } else if (sensor2State == LOW) {
-        // Sensor 2 triggered first (exiting)
         currentState = SENSOR2_TRIGGERED;
         sensor2WasTriggered = true;
         lastStateChange = millis();
-        Serial.println("\n   ⬅️  STATE: SENSOR2_TRIGGERED");
-        Serial.println("   📍 Exit sequence started...");
       }
       break;
 
     case SENSOR1_TRIGGERED:
-      // Track if sensor 2 gets triggered at any point
       if (sensor2State == LOW) {
         sensor2WasTriggered = true;
         currentState = BOTH_TRIGGERED_IN;
         lastStateChange = millis();
-        Serial.println("   ⏩ STATE: BOTH_TRIGGERED_IN");
-        Serial.println("   👤 Person passing through (entry)...");
       }
       break;
 
     case BOTH_TRIGGERED_IN:
-      // Complete entry when both sensors clear
       if (sensor1State == HIGH && sensor2State == HIGH) {
         passengerCount++;
-        Serial.println("\n╔════════════════════════════════════╗");
-        Serial.println("║   ✅ PERSON ENTERED                ║");
-        Serial.print("║   👥 Current Occupancy: ");
-        Serial.print(passengerCount);
-        Serial.println("          ║");
-        Serial.println("╚════════════════════════════════════╝");
-        
+        Serial.println("\n=== PERSON ENTERED ===");
+        Serial.print("Occupancy: ");
+        Serial.println(passengerCount);
         updateDisplay();
         playEntrySound();
-        
         currentState = IDLE;
         sensor1WasTriggered = false;
         sensor2WasTriggered = false;
@@ -319,31 +288,22 @@ void processCountingLogic() {
       break;
 
     case SENSOR2_TRIGGERED:
-      // Track if sensor 1 gets triggered at any point
       if (sensor1State == LOW) {
         sensor1WasTriggered = true;
         currentState = BOTH_TRIGGERED_OUT;
         lastStateChange = millis();
-        Serial.println("   ⏪ STATE: BOTH_TRIGGERED_OUT");
-        Serial.println("   👤 Person passing through (exit)...");
       }
       break;
 
     case BOTH_TRIGGERED_OUT:
-      // Complete exit when both sensors clear
       if (sensor1State == HIGH && sensor2State == HIGH) {
         passengerCount--;
         if (passengerCount < 0) passengerCount = 0;
-        Serial.println("\n╔════════════════════════════════════╗");
-        Serial.println("║   ⬅️  PERSON EXITED                ║");
-        Serial.print("║   👥 Current Occupancy: ");
-        Serial.print(passengerCount);
-        Serial.println("          ║");
-        Serial.println("╚════════════════════════════════════╝");
-        
+        Serial.println("\n=== PERSON EXITED ===");
+        Serial.print("Occupancy: ");
+        Serial.println(passengerCount);
         updateDisplay();
         playExitSound();
-        
         currentState = IDLE;
         sensor1WasTriggered = false;
         sensor2WasTriggered = false;
@@ -354,190 +314,196 @@ void processCountingLogic() {
 
 void sendDataToBackend(bool isFootboardViolation) {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi not connected. Attempting to reconnect...");
-    connectWiFi();
+    Serial.println("[OFFLINE] WiFi not connected, buffering data...");
+    
+    // Buffer the data for later
+    if (bufferCount < MAX_BUFFER) {
+      offlineBuffer[bufferCount].occupancy = passengerCount;
+      offlineBuffer[bufferCount].footboard = isFootboardViolation;
+      offlineBuffer[bufferCount].timestamp = millis();
+      bufferCount++;
+      Serial.print("[OFFLINE] Buffered. Count: ");
+      Serial.println(bufferCount);
+    } else {
+      Serial.println("[OFFLINE] Buffer full! Oldest data will be lost.");
+    }
     return;
   }
 
   HTTPClient http;
 
-  // Create JSON payload with new format
+  // Create JSON payload — GPS will be filled by backend from phone GPS cache
   JsonDocument jsonDoc;
-  jsonDoc["licensePlate"] = licensePlate;
+  jsonDoc["licensePlate"] = LICENSE_PLATE;
   jsonDoc["currentOccupancy"] = passengerCount;
   
-  // Add GPS location
+  // Send placeholder GPS (0,0) — backend auto-fills from phone GPS
   JsonObject gps = jsonDoc["gps"].to<JsonObject>();
-  gps["lat"] = gpsLocations[currentGPSIndex].lat;
-  gps["lon"] = gpsLocations[currentGPSIndex].lng;
+  gps["lat"] = 0;
+  gps["lon"] = 0;
   
   jsonDoc["footboardStatus"] = isFootboardViolation;
-  jsonDoc["speed"] = fixedSpeed;
+  jsonDoc["speed"] = 0;  // Backend auto-fills from phone GPS
 
   String jsonString;
   serializeJson(jsonDoc, jsonString);
 
   Serial.println("\n--- Sending Data to Backend ---");
   Serial.print("URL: ");
-  Serial.println(serverUrl);
-  Serial.print("Location: ");
-  Serial.println(gpsLocations[currentGPSIndex].name);
+  Serial.println(BACKEND_URL);
   Serial.print("JSON: ");
   Serial.println(jsonString);
 
-  http.begin(serverUrl);
+  http.begin(BACKEND_URL);
   http.addHeader("Content-Type", "application/json");
 
   int httpResponseCode = http.POST(jsonString);
 
   if (httpResponseCode > 0) {
-    Serial.print("HTTP Response code: ");
+    Serial.print("HTTP Response: ");
     Serial.println(httpResponseCode);
     String response = http.getString();
     Serial.print("Response: ");
     Serial.println(response);
   } else {
-    Serial.print("Error sending POST request. Error code: ");
-    Serial.println(httpResponseCode);
     Serial.print("Error: ");
     Serial.println(http.errorToString(httpResponseCode));
+    
+    // Buffer on send failure
+    if (bufferCount < MAX_BUFFER) {
+      offlineBuffer[bufferCount].occupancy = passengerCount;
+      offlineBuffer[bufferCount].footboard = isFootboardViolation;
+      offlineBuffer[bufferCount].timestamp = millis();
+      bufferCount++;
+    }
   }
 
   http.end();
-  Serial.println("-------------------------------\n");
 }
 
-void updateDisplay() {
-  // Display current passenger count (right-aligned, 4 digits)
-  display.showNumberDec(passengerCount, false);
-  Serial.print("   📺 Display updated: ");
-  Serial.println(passengerCount);
-}
+void sendBufferedData() {
+  if (WiFi.status() != WL_CONNECTED || bufferCount == 0) return;
 
-void playBuzzer(int duration, int frequency) {
-  // Play tone on buzzer
-  tone(BUZZER_PIN, frequency, duration);
-  delay(duration);
-  noTone(BUZZER_PIN);
-}
+  Serial.print("[BUFFER] Sending ");
+  Serial.print(bufferCount);
+  Serial.println(" buffered entries...");
 
-void playEntrySound() {
-  // Entry: Two ascending beeps
-  playBuzzer(100, 1000);  // First beep (1000 Hz)
-  delay(50);
-  playBuzzer(100, 1500);  // Second beep (1500 Hz)
-  Serial.println("   🔊 Entry beep played\n");
-}
+  HTTPClient http;
 
-void playExitSound() {
-  // Exit: Two descending beeps
-  playBuzzer(100, 1500);  // First beep (1500 Hz)
-  delay(50);
-  playBuzzer(100, 1000);  // Second beep (1000 Hz)
-  Serial.println("   🔊 Exit beep played\n");
+  for (int i = 0; i < bufferCount; i++) {
+    JsonDocument jsonDoc;
+    jsonDoc["licensePlate"] = LICENSE_PLATE;
+    jsonDoc["currentOccupancy"] = offlineBuffer[i].occupancy;
+    
+    JsonObject gps = jsonDoc["gps"].to<JsonObject>();
+    gps["lat"] = 0;
+    gps["lon"] = 0;
+    
+    jsonDoc["footboardStatus"] = offlineBuffer[i].footboard;
+    jsonDoc["speed"] = 0;
+
+    String jsonString;
+    serializeJson(jsonDoc, jsonString);
+
+    http.begin(BACKEND_URL);
+    http.addHeader("Content-Type", "application/json");
+    int code = http.POST(jsonString);
+    http.end();
+
+    Serial.print("[BUFFER] Sent ");
+    Serial.print(i + 1);
+    Serial.print("/");
+    Serial.print(bufferCount);
+    Serial.print(" → HTTP ");
+    Serial.println(code);
+    
+    delay(100);  // Small delay between sends
+  }
+
+  bufferCount = 0;
+  Serial.println("[BUFFER] All buffered data sent!");
 }
 
 void checkFootboardDetection() {
-  // Track how long sensor 1 has been blocked (works in IDLE or SENSOR1_TRIGGERED states)
   if (sensor1State == LOW && (currentState == IDLE || currentState == SENSOR1_TRIGGERED)) {
     if (sensor1BlockedStartTime == 0) {
       sensor1BlockedStartTime = millis();
-      Serial.println("\n   ⚠️  FOOTBOARD: Monitoring sensor 1...");
     }
     
-    // Check if blocked for more than 2 seconds
-    if (!sensor1BlockedFor2Sec && (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_TIME)) {
+    if (!sensor1BlockedFor2Sec && (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_MS)) {
       sensor1BlockedFor2Sec = true;
-      Serial.println("   ⚠️  FOOTBOARD: Blocked for 2+ seconds!");
+      Serial.println("FOOTBOARD: Sensor 1 blocked 2+ sec!");
     }
     
-    // After 2 sec block + 1 sec wait (total 3 sec), check if sensor2 was triggered
     if (sensor1BlockedFor2Sec && 
-        (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_TIME + FOOTBOARD_WAIT_TIME)) {
+        (millis() - sensor1BlockedStartTime >= FOOTBOARD_BLOCK_MS + FOOTBOARD_WAIT_MS)) {
       
       if (!sensor2WasTriggered && sensor2State == HIGH) {
-        // Footboard violation detected!
         footboardDetected = true;
-        Serial.println("\n╔════════════════════════════════════╗");
-        Serial.println("║  🚨 FOOTBOARD VIOLATION! 🚨        ║");
-        Serial.println("║  Person standing on footboard      ║");
-        Serial.println("║  Sensor 1: 2+ sec, Sensor 2: None  ║");
-        Serial.println("╚════════════════════════════════════╝");
+        Serial.println("\n!!! FOOTBOARD VIOLATION DETECTED !!!");
         
-        // Show warning on display
         showFootboardWarning();
-        
-        // Play warning sound
         playFootboardWarning();
-        
-        // Send violation to backend immediately
         sendFootboardViolation();
         
-        // Reset footboard detection and state machine
         sensor1BlockedStartTime = 0;
         sensor1BlockedFor2Sec = false;
         footboardDetected = false;
         sensor1WasTriggered = false;
         sensor2WasTriggered = false;
-        currentState = IDLE;  // Force back to IDLE
+        currentState = IDLE;
       }
     }
   } else {
-    // Reset if sensor 1 is clear
     if (sensor1State == HIGH && sensor1BlockedStartTime > 0) {
-      Serial.println("   ✅ FOOTBOARD: Monitoring reset\n");
       sensor1BlockedStartTime = 0;
       sensor1BlockedFor2Sec = false;
     }
   }
 }
 
-void updateGPSLocation() {
-  unsigned long currentTime = millis();
-  
-  // Check if 10 minutes have elapsed
-  if (currentTime - lastGPSUpdateTime >= gpsUpdateInterval) {
-    // Move to next location
-    currentGPSIndex = (currentGPSIndex + 1) % 5;  // Wrap around after last location
-    lastGPSUpdateTime = currentTime;
-    
-    Serial.println("\n--- GPS Location Updated ---");
-    Serial.print("New Location: ");
-    Serial.println(gpsLocations[currentGPSIndex].name);
-    Serial.print("Coordinates: ");
-    Serial.print(gpsLocations[currentGPSIndex].lat, 4);
-    Serial.print(", ");
-    Serial.println(gpsLocations[currentGPSIndex].lng, 4);
-    Serial.println("----------------------------\n");
-  }
+void sendFootboardViolation() {
+  Serial.println("--- FOOTBOARD VIOLATION ---");
+  sendDataToBackend(true);
 }
 
-void sendFootboardViolation() {
-  Serial.println("\n--- FOOTBOARD VIOLATION DETECTED ---");
-  sendDataToBackend(true);  // Reuse sendDataToBackend with footboard flag
+void updateDisplay() {
+  display.showNumberDec(passengerCount, false);
+}
+
+void playBuzzer(int duration, int frequency) {
+  tone(BUZZER_PIN, frequency, duration);
+  delay(duration);
+  noTone(BUZZER_PIN);
+}
+
+void playEntrySound() {
+  playBuzzer(100, 1000);
+  delay(50);
+  playBuzzer(100, 1500);
+}
+
+void playExitSound() {
+  playBuzzer(100, 1500);
+  delay(50);
+  playBuzzer(100, 1000);
 }
 
 void showFootboardWarning() {
-  // Flash "FOOT" text on display (display shows numbers, so we show error code)
-  // Show "Err" pattern or flash the display
   for (int i = 0; i < 3; i++) {
     display.clear();
     delay(200);
-    display.showNumberDec(8888, true);  // Show all segments (error indicator)
+    display.showNumberDec(8888, true);
     delay(200);
   }
-  // Restore passenger count
   updateDisplay();
-  Serial.println("   ⚠️  Display warning flashed\n");
 }
 
 void playFootboardWarning() {
-  // Car-like alarm sound: alternating high-low tones (siren pattern)
   for (int i = 0; i < 6; i++) {
-    playBuzzer(200, 800);   // Low tone (800 Hz)
+    playBuzzer(200, 800);
     delay(50);
-    playBuzzer(200, 1200);  // High tone (1200 Hz)
+    playBuzzer(200, 1200);
     delay(50);
   }
-  Serial.println("[BUZZER] Car alarm warning sound played");
 }

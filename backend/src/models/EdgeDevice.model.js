@@ -36,12 +36,6 @@ const edgeDeviceSchema = new mongoose.Schema(
       maxContinuousDriving: { type: Number, default: 240 }, // max continuous driving minutes before mandatory break
       maxDailyDriving: { type: Number, default: 480 },      // max total driving minutes per day (8 hours)
       minRestDuration: { type: Number, default: 15 },       // minimum rest minutes between driving periods
-
-      // Violation alert overlay settings
-      violationAlertThreshold: { type: Number, default: 5 },  // number of violations to trigger alert
-      violationTimeWindow: { type: Number, default: 5 },      // time window in minutes
-      alertBlinkCount: { type: Number, default: 5 },          // number of red blinks
-      alertBlinkDuration: { type: Number, default: 2 },       // duration of each blink cycle in seconds
     },
 
     // Pending commands queue (admin → device)

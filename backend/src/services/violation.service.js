@@ -1,15 +1,15 @@
 import ViolationLog from "../models/ViolationLog.model.js";
-import Bus from "../models/Bus.model.js";
 
 /**
  * Checks bus data for safety violations and logs them.
  * This function is triggered by the IoT controller.
  *
- * @param {string} busId - The MongoDB ObjectId of the bus
+ * @param {object} bus - The bus document from MongoDB (with _id, capacity, etc.)
  * @param {object} busData - The newly created BusDataLog object
  */
-export const checkAndLogViolation = async (busId, busData) => {
+export const checkAndLogViolation = async (bus, busData) => {
   const { footboardStatus, speed, gps, currentOccupancy } = busData;
+  const busId = bus._id || bus;
 
   // Rule from proposal: Check for footboard violation
   // Footboard is being used while the bus is moving at speed > 5 km/h
@@ -35,8 +35,8 @@ export const checkAndLogViolation = async (busId, busData) => {
   // Rule: Check for overcrowding
   // Bus occupancy exceeds its capacity
   try {
-    const bus = await Bus.findById(busId);
-    if (bus && currentOccupancy > bus.capacity) {
+    const capacity = bus.capacity || 55;
+    if (currentOccupancy > capacity) {
       await ViolationLog.create({
         busId,
         gps,
@@ -45,7 +45,7 @@ export const checkAndLogViolation = async (busId, busData) => {
         speed,
       });
       console.log(
-        `[ViolationService] Overcrowding violation logged for bus ${busId} (${currentOccupancy}/${bus.capacity})`
+        `[ViolationService] Overcrowding violation logged for bus ${busId} (${currentOccupancy}/${capacity})`
       );
     }
   } catch (error) {
