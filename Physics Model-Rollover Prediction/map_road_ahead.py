@@ -289,22 +289,10 @@ def get_road_data(lat: float, lon: float,
         finite_radii = [r if np.isfinite(r) else 1e9 for r in radii]
         smoothed = smooth_array(finite_radii, window=7, polyorder=2) if len(finite_radii) >= 7 else finite_radii
 
-        if radii:
-            min_index = np.argmin(radii)
-            try:
-                # dists array is len(sample_pts). radii is len(sample_pts)-2.
-                # radii[0] uses pts[0,1,2]. Center is pts[1]. Distance is dists[1].
-                distance_to_min = dists[min_index + 1]
-            except IndexError:
-                distance_to_min = 0.0
-        else:
-            distance_to_min = None
-
         result = {
             "projected_crs": transformer.target_crs.to_string(),
             "median_radius_m": None if not math.isfinite(median_R) else float(median_R),
             "sharpest_radius_m": None if not math.isfinite(min_R) else float(min_R),
-            "distance_to_sharpest_radius_m": float(distance_to_min) if distance_to_min is not None else None,
             "radii_samples": radii,
             "radii_smoothed": smoothed,
             "slope_m_per_m": slope,
