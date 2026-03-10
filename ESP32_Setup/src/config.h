@@ -8,8 +8,8 @@
 
 // --- WiFi Settings ---
 // Connect to your phone's mobile hotspot
-const char* WIFI_SSID     = "Matheesha";
-const char* WIFI_PASSWORD  = "DewshiD#0926";
+const char* WIFI_SSID     = "Rashen's S24 Ultra";
+const char* WIFI_PASSWORD  = "jeskoodin";
 
 // --- Backend Server ---
 // Use your Mac's IP on the phone hotspot network
