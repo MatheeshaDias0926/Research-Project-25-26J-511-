@@ -68,6 +68,7 @@ import IoTSimulator from "../authority/IoTSimulator";
 import AuthorityScenarioSimulator from "../authority/AuthorityScenarioSimulator";
 import AuthorityPhysicsCheck from "../authority/AuthorityPhysicsCheck";
 import SafetyTheories from "../authority/SafetyTheories";
+import ViolationsFeed from "../authority/ViolationsFeed";
 
 // ─── Tab Navigation ────────────────────────────────────────
 const TABS = [
@@ -83,6 +84,7 @@ const TABS = [
   { key: "scenario-sim", label: "Scenario Simulator", icon: Play },
   { key: "physics-check", label: "Physics Check", icon: AlertTriangle },
   { key: "safety-theories", label: "Safety Theories", icon: BookOpen },
+  { key: "violations", label: "Violations Feed", icon: AlertTriangle },
 ];
 
 const tabStyle = (active) => ({
@@ -4339,6 +4341,7 @@ const AdminPanel = () => {
     if (path === "/admin/scenario-sim") return "scenario-sim";
     if (path === "/admin/physics-check") return "physics-check";
     if (path === "/admin/safety-theories") return "safety-theories";
+    if (path === "/admin/violations") return "violations";
     return "overview";
   };
 
@@ -4372,6 +4375,8 @@ const AdminPanel = () => {
         return <AuthorityPhysicsCheck />;
       case "safety-theories":
         return <SafetyTheories />;
+      case "violations":
+        return <ViolationsFeed />;
       default:
         return <OverviewTab />;
     }

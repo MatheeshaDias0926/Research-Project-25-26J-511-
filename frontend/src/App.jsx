@@ -90,6 +90,7 @@ function App() {
               <Route path="/admin/scenario-sim" element={<AdminPanel />} />
               <Route path="/admin/physics-check" element={<AdminPanel />} />
               <Route path="/admin/safety-theories" element={<AdminPanel />} />
+              <Route path="/admin/violations" element={<AdminPanel />} />
             </Route>
 
             {/* Legacy authority routes redirect to admin */}

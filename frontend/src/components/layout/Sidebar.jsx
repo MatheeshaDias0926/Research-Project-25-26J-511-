@@ -155,6 +155,12 @@ const Sidebar = () => {
       icon: BookOpen,
       roles: ["authority", "admin"],
     },
+    {
+      name: "Violations Feed",
+      href: "/admin/violations",
+      icon: FileWarning,
+      roles: ["authority", "admin"],
+    },
   ];
 
   const filteredLinks = links.filter((link) => link.roles.includes(role));
