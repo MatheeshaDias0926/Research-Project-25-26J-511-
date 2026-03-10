@@ -169,15 +169,25 @@ router.get("/driver-sessions", protect, async (req, res) => {
 
         // Find the edge device for this driver to get driving limits config
         let drivingLimits = null;
+        let deviceOnline = false;
+        let violationAlertConfig = null;
         if (currentSession) {
             const edgeDevice = await EdgeDevice.findOne({ deviceId: currentSession.deviceId });
             if (edgeDevice) {
+                deviceOnline = edgeDevice.status === "active" && edgeDevice.lastPing &&
+                    (Date.now() - new Date(edgeDevice.lastPing).getTime()) < 120000;
                 drivingLimits = {
                     maxContinuousDriving: edgeDevice.config.maxContinuousDriving,
                     maxDailyDriving: edgeDevice.config.maxDailyDriving,
                     requiredRest: edgeDevice.config.minRestDuration,
                     minRestDuration: edgeDevice.config.minRestDuration,
                     restTimeout: edgeDevice.config.restTimeout,
+                };
+                violationAlertConfig = {
+                    threshold: edgeDevice.config.violationAlertThreshold,
+                    timeWindow: edgeDevice.config.violationTimeWindow,
+                    blinkCount: edgeDevice.config.alertBlinkCount,
+                    blinkDuration: edgeDevice.config.alertBlinkDuration,
                 };
             }
         }
@@ -233,6 +243,8 @@ router.get("/driver-sessions", protect, async (req, res) => {
             driverName: driver.name,
             drivingLimits,
             continuousDrivingMinutes,
+            deviceOnline,
+            violationAlertConfig,
         });
     } catch (error) {
         console.error("driver-sessions error:", error);
@@ -270,7 +282,8 @@ router.put("/config/:deviceId", protect, isAdmin, async (req, res) => {
         if (!device) return res.status(404).json({ message: "Device not found" });
 
         const { verifyInterval, earThreshold, marThreshold, noFaceTimeout, drowsyFrames, yawnFrames,
-                restTimeout, maxContinuousDriving, maxDailyDriving, minRestDuration } = req.body;
+                restTimeout, maxContinuousDriving, maxDailyDriving, minRestDuration,
+                violationAlertThreshold, violationTimeWindow, alertBlinkCount, alertBlinkDuration } = req.body;
         if (verifyInterval != null) device.config.verifyInterval = verifyInterval;
         if (earThreshold != null) device.config.earThreshold = earThreshold;
         if (marThreshold != null) device.config.marThreshold = marThreshold;
@@ -281,6 +294,10 @@ router.put("/config/:deviceId", protect, isAdmin, async (req, res) => {
         if (maxContinuousDriving != null) device.config.maxContinuousDriving = maxContinuousDriving;
         if (maxDailyDriving != null) device.config.maxDailyDriving = maxDailyDriving;
         if (minRestDuration != null) device.config.minRestDuration = minRestDuration;
+        if (violationAlertThreshold != null) device.config.violationAlertThreshold = violationAlertThreshold;
+        if (violationTimeWindow != null) device.config.violationTimeWindow = violationTimeWindow;
+        if (alertBlinkCount != null) device.config.alertBlinkCount = alertBlinkCount;
+        if (alertBlinkDuration != null) device.config.alertBlinkDuration = alertBlinkDuration;
         await device.save();
 
         res.json({ ok: true, config: device.config });

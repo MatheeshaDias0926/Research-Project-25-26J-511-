@@ -102,12 +102,23 @@ app.get("/health", (req, res) => {
   });
 });
 
+import os from "os";
+
 // Error Handling Middleware (must be last)
 app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
+  const nets = os.networkInterfaces();
+  const ips = [];
+  for (const iface of Object.values(nets)) {
+    for (const cfg of iface) {
+      if (cfg.family === "IPv4" && !cfg.internal) ips.push(cfg.address);
+    }
+  }
   console.log(`[Server] Running on port ${PORT}`);
   console.log(`[Server] Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`[Server] Local:   http://localhost:${PORT}`);
+  ips.forEach(ip => console.log(`[Server] Network: http://${ip}:${PORT}`));
 });

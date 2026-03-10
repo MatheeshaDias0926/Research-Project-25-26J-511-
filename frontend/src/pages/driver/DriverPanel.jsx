@@ -60,6 +60,59 @@ const formatMinutes = (min) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// RED ALERT OVERLAY (full-screen blinking red)
+// ═══════════════════════════════════════════════════════════════
+const RedAlertOverlay = ({ blinkCount = 5, blinkDuration = 2, onComplete }) => {
+  const [visible, setVisible] = useState(true);
+  const [currentBlink, setCurrentBlink] = useState(0);
+  const [isRed, setIsRed] = useState(true);
+
+  useEffect(() => {
+    if (currentBlink >= blinkCount) {
+      onComplete?.();
+      return;
+    }
+    const halfCycle = (blinkDuration * 1000) / 2;
+    const timer = setTimeout(() => {
+      if (isRed) {
+        setIsRed(false);
+      } else {
+        setIsRed(true);
+        setCurrentBlink(prev => prev + 1);
+      }
+    }, halfCycle);
+    return () => clearTimeout(timer);
+  }, [currentBlink, isRed, blinkCount, blinkDuration, onComplete]);
+
+  if (!visible || currentBlink >= blinkCount) return null;
+
+  return (
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 99999,
+      background: isRed ? "rgba(239, 68, 68, 0.85)" : "transparent",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      pointerEvents: isRed ? "auto" : "none",
+      transition: `background ${blinkDuration * 250}ms ease-in-out`,
+    }}>
+      {isRed && (
+        <div style={{ textAlign: "center", color: "white" }}>
+          <AlertTriangle size={80} style={{ marginBottom: 16 }} />
+          <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>⚠ VIOLATION ALERT</h1>
+          <p style={{ fontSize: 18, opacity: 0.9 }}>Multiple violations detected — Drive safely!</p>
+          <p style={{ fontSize: 14, opacity: 0.7, marginTop: 8 }}>
+            Blink {currentBlink + 1} of {blinkCount}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
 // OVERVIEW TAB
 // ═══════════════════════════════════════════════════════════════
 const OverviewTab = ({ user }) => {
@@ -70,6 +123,9 @@ const OverviewTab = ({ user }) => {
   const [piSession, setPiSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [showRedAlert, setShowRedAlert] = useState(false);
+  const [alertConfig, setAlertConfig] = useState(null);
+  const lastAlertTimeRef = { current: 0 };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -126,10 +182,45 @@ const OverviewTab = ({ user }) => {
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  // Check violations against alert config and trigger red overlay
+  useEffect(() => {
+    if (!piSession?.violationAlertConfig || !piSession?.todaySessions) return;
+    const cfg = piSession.violationAlertConfig;
+    setAlertConfig(cfg);
+
+    const now = Date.now();
+    const windowMs = (cfg.timeWindow || 5) * 60 * 1000;
+
+    // Count drowsiness events within the time window
+    let recentCount = 0;
+    for (const session of piSession.todaySessions) {
+      if (session.drowsinessEvents) {
+        for (const evt of session.drowsinessEvents) {
+          if (evt.timestamp && (now - new Date(evt.timestamp).getTime()) < windowMs) {
+            recentCount++;
+          }
+        }
+      }
+    }
+
+    // Trigger alert if threshold exceeded and not already triggered recently
+    if (recentCount >= (cfg.threshold || 5) && (now - lastAlertTimeRef.current) > windowMs) {
+      lastAlertTimeRef.current = now;
+      setShowRedAlert(true);
+    }
+  }, [piSession]);
+
   if (loading && !busInfo) return <div style={{ padding: 32 }}>Loading...</div>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* Red Alert Overlay */}
+      {showRedAlert && <RedAlertOverlay
+        blinkCount={alertConfig?.blinkCount || 5}
+        blinkDuration={alertConfig?.blinkDuration || 2}
+        onComplete={() => setShowRedAlert(false)}
+      />}
+
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <Button variant="outline" onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--color-primary-600)", borderColor: "var(--color-primary-100)", background: "var(--color-primary-50)" }}>
           <RefreshCw size={16} /> Refresh
@@ -148,32 +239,46 @@ const OverviewTab = ({ user }) => {
           </div>
         </div>
 
-        <div style={{ ...cardBoxStyle, borderLeft: "4px solid #f59e0b" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Continuous Driving</p>
-              <p style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>{formatMinutes(piSession?.continuousDrivingMinutes)}</p>
-              <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
-                Max: {piSession?.drivingLimits ? formatMinutes(piSession.drivingLimits.maxContinuousDriving) : "—"} before rest
-              </p>
+        <div style={{ ...cardBoxStyle, borderLeft: piSession?.deviceOnline === false ? "4px solid #94a3b8" : "4px solid #f59e0b" }}>
+          {piSession?.deviceOnline === false ? (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Continuous Driving</p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: "#94a3b8" }}>Device Offline</p>
+              </div>
+              <Timer size={32} color="#94a3b8" />
             </div>
-            <Timer size={32} color="#f59e0b" />
-          </div>
-          <div style={{ marginTop: 12, background: "var(--bg-subtle)", borderRadius: 4, height: 8, overflow: "hidden" }}>
-            <div style={{
-              width: `${Math.min(100, ((piSession?.continuousDrivingMinutes || 0) / (piSession?.drivingLimits?.maxContinuousDriving || 360)) * 100)}%`,
-              height: "100%",
-              background: (piSession?.continuousDrivingMinutes || 0) >= (piSession?.drivingLimits?.maxContinuousDriving || 360) * 0.8 ? "#ef4444" : "#f59e0b",
-              borderRadius: 4,
-            }} />
-          </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Continuous Driving</p>
+                  <p style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>{formatMinutes(piSession?.continuousDrivingMinutes)}</p>
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+                    Max: {piSession?.drivingLimits ? formatMinutes(piSession.drivingLimits.maxContinuousDriving) : "—"} before rest
+                  </p>
+                </div>
+                <Timer size={32} color="#f59e0b" />
+              </div>
+              <div style={{ marginTop: 12, background: "var(--bg-subtle)", borderRadius: 4, height: 8, overflow: "hidden" }}>
+                <div style={{
+                  width: `${Math.min(100, ((piSession?.continuousDrivingMinutes || 0) / (piSession?.drivingLimits?.maxContinuousDriving || 360)) * 100)}%`,
+                  height: "100%",
+                  background: (piSession?.continuousDrivingMinutes || 0) >= (piSession?.drivingLimits?.maxContinuousDriving || 360) * 0.8 ? "#ef4444" : "#f59e0b",
+                  borderRadius: 4,
+                }} />
+              </div>
+            </>
+          )}
         </div>
 
-        <div style={{ ...cardBoxStyle, borderLeft: (piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "4px solid #ef4444" : "4px solid #22c55e" }}>
+        <div style={{ ...cardBoxStyle, borderLeft: piSession?.deviceOnline === false ? "4px solid #94a3b8" : (piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "4px solid #ef4444" : "4px solid #22c55e" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Status</p>
-              {piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360) ? (
+              {piSession?.deviceOnline === false ? (
+                <p style={{ fontSize: 22, fontWeight: 700, color: "#94a3b8" }}>OFFLINE</p>
+              ) : piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360) ? (
                 <>
                   <p style={{ fontSize: 22, fontWeight: 700, color: "#ef4444" }}>REST REQUIRED</p>
                   <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
@@ -184,7 +289,7 @@ const OverviewTab = ({ user }) => {
                 <p style={{ fontSize: 22, fontWeight: 700, color: "var(--color-success-500)" }}>ACTIVE</p>
               )}
             </div>
-            <AlertTriangle size={32} color={(piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "#ef4444" : "#22c55e"} />
+            <AlertTriangle size={32} color={piSession?.deviceOnline === false ? "#94a3b8" : (piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "#ef4444" : "#22c55e"} />
           </div>
         </div>
 
@@ -230,7 +335,7 @@ const OverviewTab = ({ user }) => {
             </div>
 
             {/* Driving Limits Progress */}
-            {piSession.drivingLimits && (
+            {piSession.drivingLimits && piSession.deviceOnline !== false && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                 <div style={{ background: "var(--bg-muted)", borderRadius: "var(--radius-lg)", padding: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -270,7 +375,7 @@ const OverviewTab = ({ user }) => {
             )}
 
             {/* Driving Limit Warnings */}
-            {piSession.drivingLimits && (piSession.continuousDrivingMinutes >= piSession.drivingLimits.maxContinuousDriving ||
+            {piSession.deviceOnline !== false && piSession.drivingLimits && (piSession.continuousDrivingMinutes >= piSession.drivingLimits.maxContinuousDriving ||
                piSession.todayDrivingMinutes >= piSession.drivingLimits.maxDailyDriving) && (
                 <div style={{ background: "var(--color-danger-50)", border: "1px solid var(--color-danger-200)", borderRadius: 8, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
                   <AlertTriangle size={20} color="#ef4444" />
@@ -302,7 +407,7 @@ const OverviewTab = ({ user }) => {
                 </div>
                 {piSession.currentSession.confidence != null && (
                   <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
-                    Confidence: <strong>{piSession.currentSession.confidence?.toFixed(0)}%</strong>
+                    Confidence: <strong>{piSession.currentSession.confidence?.toFixed(2)}%</strong>
                     {piSession.currentSession.local ? " (On-device)" : " (Remote)"}
                   </p>
                 )}
@@ -341,7 +446,7 @@ const OverviewTab = ({ user }) => {
                         </span>
                         {s.confidence != null && (
                           <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginLeft: 12 }}>
-                            {s.confidence?.toFixed(0)}% confidence
+                            {s.confidence?.toFixed(2)}% confidence
                           </span>
                         )}
                       </div>
