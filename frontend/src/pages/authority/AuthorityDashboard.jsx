@@ -7,7 +7,11 @@ import {
   CardTitle,
 } from "../../components/ui/Card";
 import { Bus, AlertTriangle, CheckCircle, Wrench, UserPlus } from "lucide-react";
+<<<<<<< HEAD
 import { 
+=======
+import {
+>>>>>>> main
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis
 } from 'recharts';
@@ -18,6 +22,10 @@ const AuthorityDashboard = () => {
     conductors: 0,
     totalViolations: 0,
     pendingMaintenance: 0,
+<<<<<<< HEAD
+=======
+    totalDrivers: 0,
+>>>>>>> main
     systemStatus: "Healthy",
     violationsByBus: [],
     violationTrends: [],
@@ -35,12 +43,21 @@ const AuthorityDashboard = () => {
         const analyticsRes = await api.get("/bus/analytics/violations");
         const trendsRes = await api.get("/bus/analytics/trends");
         const occupancyRes = await api.get("/bus/analytics/occupancy");
+<<<<<<< HEAD
         
+=======
+        const driversRes = await api.get("/driver");
+
+>>>>>>> main
         setStats({
           activeBuses: busesRes.data.length,
           conductors: statsRes.data.conductors,
           totalViolations: statsRes.data.totalViolations,
           pendingMaintenance: statsRes.data.pendingMaintenance,
+<<<<<<< HEAD
+=======
+          totalDrivers: driversRes.data.length,
+>>>>>>> main
           systemStatus: "Healthy",
           violationsByBus: analyticsRes.data || [],
           violationTrends: trendsRes.data || [],
@@ -59,9 +76,23 @@ const AuthorityDashboard = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+<<<<<<< HEAD
       <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
         System Overview
       </h1>
+=======
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <div style={{
+          padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
+          background: "linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600))",
+        }}>
+          <Bus size={24} color="#fff" />
+        </div>
+        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+          System Overview
+        </h1>
+      </div>
+>>>>>>> main
 
       <div
         style={{
@@ -80,19 +111,32 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
+<<<<<<< HEAD
               <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
                 Active Buses
               </p>
               <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+=======
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
+                Active Buses
+              </p>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+>>>>>>> main
                 {stats.activeBuses}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
+<<<<<<< HEAD
                 background: "#dbeafe",
                 borderRadius: 9999,
                 color: "#2563eb",
+=======
+                background: "var(--color-primary-100)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-primary-500)",
+>>>>>>> main
               }}
             >
               <Bus style={{ height: 24, width: 24 }} />
@@ -110,19 +154,32 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
+<<<<<<< HEAD
               <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
                 Total Conductors
               </p>
               <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+=======
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
+                Total Conductors
+              </p>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+>>>>>>> main
                 {stats.conductors}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
+<<<<<<< HEAD
                 background: "#f0f9ff",
                 borderRadius: 9999,
                 color: "#0284c7",
+=======
+                background: "var(--color-info-50)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-info-500)",
+>>>>>>> main
               }}
             >
               <UserPlus style={{ height: 24, width: 24 }} />
@@ -140,19 +197,32 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
+<<<<<<< HEAD
               <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
                 Violations (24h)
               </p>
               <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+=======
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
+                Violations (24h)
+              </p>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+>>>>>>> main
                 {stats.totalViolations}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
+<<<<<<< HEAD
                 background: "#fee2e2",
                 borderRadius: 9999,
                 color: "#dc2626",
+=======
+                background: "var(--color-danger-100)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-danger-500)",
+>>>>>>> main
               }}
             >
               <AlertTriangle style={{ height: 24, width: 24 }} />
@@ -170,19 +240,32 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
+<<<<<<< HEAD
               <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
                 Maintenance
               </p>
               <p style={{ fontSize: 30, fontWeight: 700, color: "#0f172a" }}>
+=======
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
+                Maintenance
+              </p>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+>>>>>>> main
                 {stats.pendingMaintenance}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
+<<<<<<< HEAD
                 background: "#ffedd5",
                 borderRadius: 9999,
                 color: "#ea580c",
+=======
+                background: "var(--color-warning-100)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-warning-600)",
+>>>>>>> main
               }}
             >
               <Wrench style={{ height: 24, width: 24 }} />
@@ -200,19 +283,62 @@ const AuthorityDashboard = () => {
             }}
           >
             <div>
+<<<<<<< HEAD
               <p style={{ fontSize: 14, fontWeight: 500, color: "#64748b" }}>
                 System Status
               </p>
               <p style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>
+=======
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
+                Total Drivers
+              </p>
+              <p style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+                {stats.totalDrivers}
+              </p>
+            </div>
+            <div
+              style={{
+                padding: 12,
+                background: "var(--bg-subtle)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <UserPlus style={{ height: 24, width: 24 }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent
+            style={{
+              padding: 24,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--text-muted)" }}>
+                System Status
+              </p>
+              <p style={{ fontSize: 20, fontWeight: 700, color: "var(--color-success-500)" }}>
+>>>>>>> main
                 {stats.systemStatus}
               </p>
             </div>
             <div
               style={{
                 padding: 12,
+<<<<<<< HEAD
                 background: "#bbf7d0",
                 borderRadius: 9999,
                 color: "#22c55e",
+=======
+                background: "var(--color-success-200)",
+                borderRadius: "var(--radius-full)",
+                color: "var(--color-success-500)",
+>>>>>>> main
               }}
             >
               <CheckCircle style={{ height: 24, width: 24 }} />
@@ -222,7 +348,11 @@ const AuthorityDashboard = () => {
       </div>
 
       <div style={{ marginTop: 20 }}>
+<<<<<<< HEAD
         <h2 style={{ fontSize: 24, fontWeight: 700, color: "#1e293b", marginBottom: 20 }}>
+=======
+        <h2 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+>>>>>>> main
           Quick Actions
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
@@ -237,19 +367,63 @@ const AuthorityDashboard = () => {
                 }}
               >
                 <div>
+<<<<<<< HEAD
                   <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
                     Manage Conductors
                   </p>
                   <p style={{ fontSize: 13, color: "#64748b" }}>
+=======
+                  <p style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text-primary)" }}>
+                    Manage Conductors
+                  </p>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
+>>>>>>> main
                     Register & Assign Buses
                   </p>
                 </div>
                 <div
                   style={{
                     padding: 12,
+<<<<<<< HEAD
                     background: "#f1f5f9",
                     borderRadius: 9999,
                     color: "#475569",
+=======
+                    background: "var(--bg-subtle)",
+                    borderRadius: "var(--radius-full)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <UserPlus style={{ height: 24, width: 24 }} />
+                </div>
+              </CardContent>
+            </Card>
+          </a>
+          <a href="/authority/drivers" style={{ textDecoration: "none" }}>
+            <Card style={{ cursor: "pointer", transition: "transform 0.2s" }} className="hover:scale-105">
+              <CardContent
+                style={{
+                  padding: 24,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <p style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text-primary)" }}>
+                    Register Driver
+                  </p>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
+                    Add New Driver & Face ID
+                  </p>
+                </div>
+                <div
+                  style={{
+                    padding: 12,
+                    background: "var(--bg-subtle)",
+                    borderRadius: "var(--radius-full)",
+                    color: "var(--text-secondary)",
+>>>>>>> main
                   }}
                 >
                   <UserPlus style={{ height: 24, width: 24 }} />
@@ -268,19 +442,32 @@ const AuthorityDashboard = () => {
                 }}
               >
                 <div>
+<<<<<<< HEAD
                   <p style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
                     Safety Check
                   </p>
                   <p style={{ fontSize: 13, color: "#64748b" }}>
+=======
+                  <p style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text-primary)" }}>
+                    Safety Check
+                  </p>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
+>>>>>>> main
                     Run Physics Simulation
                   </p>
                 </div>
                 <div
                   style={{
                     padding: 12,
+<<<<<<< HEAD
                     background: "#f1f5f9",
                     borderRadius: 9999,
                     color: "#475569",
+=======
+                    background: "var(--bg-subtle)",
+                    borderRadius: "var(--radius-full)",
+                    color: "var(--text-secondary)",
+>>>>>>> main
                   }}
                 >
                   <AlertTriangle style={{ height: 24, width: 24 }} />
@@ -293,7 +480,11 @@ const AuthorityDashboard = () => {
 
       {/* Violation Analytics Chart */}
       <div style={{ marginTop: 24 }}>
+<<<<<<< HEAD
         <h2 style={{ fontSize: 24, fontWeight: 700, color: "#1e293b", marginBottom: 20 }}>
+=======
+        <h2 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+>>>>>>> main
           Violation Analytics (Top Offenders)
         </h2>
         <Card>
@@ -305,9 +496,15 @@ const AuthorityDashboard = () => {
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+<<<<<<< HEAD
                   <XAxis dataKey="licensePlate" stroke="#64748b" fontSize={12} tick={{fill: '#64748b'}} />
                   <YAxis stroke="#64748b" fontSize={12} tick={{fill: '#64748b'}} />
                   <Tooltip 
+=======
+                  <XAxis dataKey="licensePlate" stroke="#64748b" fontSize={12} tick={{ fill: '#64748b' }} />
+                  <YAxis stroke="#64748b" fontSize={12} tick={{ fill: '#64748b' }} />
+                  <Tooltip
+>>>>>>> main
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     cursor={{ fill: '#f1f5f9' }}
                   />
@@ -317,14 +514,22 @@ const AuthorityDashboard = () => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
+<<<<<<< HEAD
               <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+=======
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+>>>>>>> main
                 No significant violation data found for diagrams.
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> main
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 24 }}>
         {/* Violation Trends Chart (Stacked for Detail) */}
         <Card>
@@ -339,9 +544,15 @@ const AuthorityDashboard = () => {
                   margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+<<<<<<< HEAD
                   <XAxis dataKey="date" stroke="#64748b" fontSize={12} tick={{fill: '#64748b'}} />
                   <YAxis stroke="#64748b" fontSize={12} tick={{fill: '#64748b'}} />
                   <Tooltip 
+=======
+                  <XAxis dataKey="date" stroke="#64748b" fontSize={12} tick={{ fill: '#64748b' }} />
+                  <YAxis stroke="#64748b" fontSize={12} tick={{ fill: '#64748b' }} />
+                  <Tooltip
+>>>>>>> main
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
                   <Legend />
@@ -350,7 +561,11 @@ const AuthorityDashboard = () => {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
+<<<<<<< HEAD
               <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+=======
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+>>>>>>> main
                 No trend data available.
               </div>
             )}
@@ -363,17 +578,29 @@ const AuthorityDashboard = () => {
             <CardTitle>Real-time Fleet Capacity (Per Bus)</CardTitle>
           </CardHeader>
           <CardContent style={{ padding: 24, height: 350 }}>
+<<<<<<< HEAD
              {stats.fleetOccupancy && stats.fleetOccupancy.length > 0 ? (
+=======
+            {stats.fleetOccupancy && stats.fleetOccupancy.length > 0 ? (
+>>>>>>> main
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart
                   margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
+<<<<<<< HEAD
                   <XAxis type="category" dataKey="routeId" name="Route" stroke="#64748b" tick={{fontSize: 12}} />
                   <YAxis type="number" dataKey="occupancyPct" name="Occupancy" unit="%" stroke="#64748b" domain={[0, 'auto']} />
                   <ZAxis type="number" range={[100, 300]} /> {/* Size of bubbles */}
                   <Tooltip 
                     cursor={{ strokeDasharray: '3 3' }} 
+=======
+                  <XAxis type="category" dataKey="routeId" name="Route" stroke="#64748b" tick={{ fontSize: 12 }} />
+                  <YAxis type="number" dataKey="occupancyPct" name="Occupancy" unit="%" stroke="#64748b" domain={[0, 'auto']} />
+                  <ZAxis type="number" range={[100, 300]} /> {/* Size of bubbles */}
+                  <Tooltip
+                    cursor={{ strokeDasharray: '3 3' }}
+>>>>>>> main
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
@@ -396,14 +623,21 @@ const AuthorityDashboard = () => {
                     {stats.fleetOccupancy.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={
                         entry.occupancyPct > 120 ? '#ef4444' :  // Overloaded (Red)
+<<<<<<< HEAD
                         entry.occupancyPct > 100 ? '#f59e0b' :  // Standing (Orange)
                         entry.occupancyPct === 0 ? '#10b981' :  // Empty (Green)
                         '#3b82f6'                               // Seated (Blue)
+=======
+                          entry.occupancyPct > 100 ? '#f59e0b' :  // Standing (Orange)
+                            entry.occupancyPct === 0 ? '#10b981' :  // Empty (Green)
+                              '#3b82f6'                               // Seated (Blue)
+>>>>>>> main
                       } />
                     ))}
                   </Scatter>
                 </ScatterChart>
               </ResponsiveContainer>
+<<<<<<< HEAD
              ) : (
               <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
                 No active buses found.
@@ -413,6 +647,17 @@ const AuthorityDashboard = () => {
         </Card>
       </div>
       
+=======
+            ) : (
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+                No active buses found.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+>>>>>>> main
     </div >
   );
 };

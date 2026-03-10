@@ -17,6 +17,7 @@ import Profile from "./pages/auth/Profile";
 // Passenger Pages
 import PassengerDashboard from "./pages/passenger/PassengerDashboard";
 import Prediction from "./pages/passenger/Prediction";
+<<<<<<< HEAD
 import PhysicsCheck from "./pages/passenger/PhysicsCheck";
 
 // Authority Pages
@@ -35,6 +36,17 @@ import LiveMonitor from "./pages/authority/LiveMonitor";
 // Conductor Pages
 import ConductorDashboard from "./pages/conductor/ConductorDashboard";
 import MaintenanceReport from "./pages/conductor/MaintenanceReport";
+=======
+
+// Admin Panel (unified tabbed)
+import AdminPanel from "./pages/admin/AdminPanel";
+
+// Conductor Panel (unified tabbed)
+import ConductorPanel from "./pages/conductor/ConductorPanel";
+
+// Driver Panel (unified tabbed)
+import DriverPanel from "./pages/driver/DriverPanel";
+>>>>>>> main
 
 // Placeholders for now
 const NotFound = () => (
@@ -42,11 +54,14 @@ const NotFound = () => (
     404 - Page Not Found
   </div>
 );
+<<<<<<< HEAD
 const DashboardPlaceholder = ({ title }) => (
   <div style={{ fontSize: 24, fontWeight: 700 }}>
     {title} Dashboard (Coming Soon)
   </div>
 );
+=======
+>>>>>>> main
 
 function App() {
   return (
@@ -63,6 +78,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
             </Route>
 
+<<<<<<< HEAD
             {/* Role Protected Routes */}
             <Route element={<PrivateRoutes roles={["passenger"]} />}>
               <Route path="/passenger" element={<PassengerDashboard />} />
@@ -112,6 +128,43 @@ function App() {
               />
             </Route>
 
+=======
+            {/* Passenger Routes */}
+            <Route element={<PrivateRoutes roles={["passenger"]} />}>
+              <Route path="/passenger" element={<PassengerDashboard />} />
+              <Route path="/passenger/prediction" element={<Prediction />} />
+              <Route path="/passenger/live-map" element={<PassengerDashboard />} />
+            </Route>
+
+            {/* Conductor Routes */}
+            <Route element={<PrivateRoutes roles={["conductor"]} />}>
+              <Route path="/conductor" element={<ConductorPanel />} />
+              <Route path="/conductor/maintenance" element={<ConductorPanel />} />
+            </Route>
+
+            {/* Driver Routes */}
+            <Route element={<PrivateRoutes roles={["driver"]} />}>
+              <Route path="/driver" element={<DriverPanel />} />
+              <Route path="/driver/maintenance" element={<DriverPanel />} />
+              <Route path="/driver/alerts" element={<DriverPanel />} />
+            </Route>
+
+            {/* Admin Routes (supports both "authority" and "admin" roles) */}
+            <Route element={<PrivateRoutes roles={["authority", "admin"]} />}>
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/admin/fleet" element={<AdminPanel />} />
+              <Route path="/admin/assignments" element={<AdminPanel />} />
+              <Route path="/admin/employees" element={<AdminPanel />} />
+              <Route path="/admin/edge-devices" element={<AdminPanel />} />
+              <Route path="/admin/sos" element={<AdminPanel />} />
+              <Route path="/admin/face-recognition" element={<AdminPanel />} />
+              <Route path="/admin/live-map" element={<AdminPanel />} />
+            </Route>
+
+            {/* Legacy authority routes redirect to admin */}
+            <Route path="/authority/*" element={<Navigate to="/admin" replace />} />
+
+>>>>>>> main
             {/* Default redirect for root */}
             <Route path="/" element={<RoleRedirect />} />
           </Route>
