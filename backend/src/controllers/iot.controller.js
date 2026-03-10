@@ -103,8 +103,7 @@ export const ingestIoTData = async (req, res, next) => {
     let safetyResult = null;
 
     const hasValidGps =
-      resolvedGps.lat !== 0 && resolvedGps.lon !== 0 &&
-      resolvedGps.lat !== 6.9155 && resolvedGps.lon !== 79.9739; // Skip hardcoded demo GPS
+      resolvedGps.lat !== 0 && resolvedGps.lon !== 0;
 
     if (hasValidGps && resolvedSpeed > 0) {
       try {
@@ -115,15 +114,20 @@ export const ingestIoTData = async (req, res, next) => {
         const actualSeated = Math.min(currentOccupancy, seatCapacity);
         const actualStanding = Math.max(0, currentOccupancy - seatCapacity);
 
-        // 3a. Get road geometry from Physics Model (curve radius, slope, distance)
+        // 3a. Get weather FIRST (needed for friction in physics model)
+        const weather = await getRoadWeather(resolvedGps.lat, resolvedGps.lon);
+
+        // 3b. Get road geometry from Physics Model (now with real friction)
         const physicsResult = await getPhysicsModelResult({
           seated: actualSeated,
           standing: actualStanding,
           speed: resolvedSpeed,
           lat: resolvedGps.lat,
           lon: resolvedGps.lon,
+          friction: weather.friction,  // Use real weather friction instead of default 0.65
         });
 
+        // 3c. Parse physics results
         const radiusStr = physicsResult["Sharpest curve radius ahead"];
         const distStr = physicsResult["Distance to sharpest curve"];
         const slopeStr = physicsResult["Road slope"];
@@ -133,13 +137,10 @@ export const ingestIoTData = async (req, res, next) => {
         const gradient_deg = parseFloat(slopeStr?.replace("°", "")) || 0;
 
         console.log(
-          `[IoT] Physics: radius=${radius_m.toFixed(0)}m, dist=${dist_to_curve_m.toFixed(0)}m, slope=${gradient_deg.toFixed(1)}°`
+          `[IoT] Physics: radius=${radius_m.toFixed(0)}m, dist=${dist_to_curve_m.toFixed(0)}m, slope=${gradient_deg.toFixed(1)}°, weather=${weather.condition}`
         );
 
-        // 3b. Get weather for friction
-        const weather = await getRoadWeather(resolvedGps.lat, resolvedGps.lon);
-
-        // 3c. Call ML Safety Prediction
+        // 3d. Call ML Safety Prediction
         safetyResult = await getSafetyPrediction({
           n_seated: actualSeated,
           n_standing: actualStanding,
@@ -178,6 +179,7 @@ export const ingestIoTData = async (req, res, next) => {
       speed: resolvedSpeed,
       riskScore: riskScore,
       distToCurve: distToCurve,
+      gpsSource: gpsSource,
     });
     await newLog.save();
 
@@ -185,8 +187,8 @@ export const ingestIoTData = async (req, res, next) => {
     bus.currentStatus = newLog._id;
     await bus.save();
 
-    // 6. Check violations (footboard + overcrowding)
-    await checkAndLogViolation(bus._id, newLog);
+    // 6. Check violations (pass bus to avoid redundant DB query)
+    await checkAndLogViolation(bus, newLog);
 
     res.status(201).json({
       message: "Data ingested successfully",
@@ -247,7 +249,7 @@ export const ingestMockData = async (req, res, next) => {
     bus.currentStatus = newLog._id;
     await bus.save();
 
-    await checkAndLogViolation(bus._id, newLog);
+    await checkAndLogViolation(bus, newLog);
 
     res.status(201).json({
       message: "Data ingested successfully",
