@@ -15,14 +15,6 @@ const Layout = () => {
         display: "flex",
         height: "100vh",
         overflow: "hidden",
-<<<<<<< HEAD
-        background: "#f8fafc",
-      }}
-    >
-      <Sidebar />
-      <main style={{ flex: 1, overflowY: "auto" }}>
-        <div style={{ margin: "0 auto", padding: 32, maxWidth: 1120 }}>
-=======
         background: "var(--bg-body)",
       }}
     >
@@ -42,7 +34,6 @@ const Layout = () => {
             animation: "fadeIn 0.3s ease-out",
           }}
         >
->>>>>>> main
           <Outlet />
         </div>
       </main>

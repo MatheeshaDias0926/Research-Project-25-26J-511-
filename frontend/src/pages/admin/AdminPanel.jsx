@@ -14,13 +14,20 @@ import {
   Bus, AlertTriangle, CheckCircle, Wrench, UserPlus, Users, Cpu,
   Plus, RefreshCw, Link2, ArrowRight, Edit, Trash2, Eye, Siren,
   LayoutDashboard, Shield, User, X, Camera, Scan, Upload, XCircle, VideoOff,
-  Settings, Wifi, WifiOff, Play, MapPin, EyeOff,
+  Settings, Wifi, WifiOff, Play, MapPin, EyeOff, Radio, BookOpen,
 } from "lucide-react";
 import BusLocationMap from "../../components/ui/BusLocationMap";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area, ScatterChart, Scatter, ZAxis, Cell,
 } from "recharts";
+
+// User feature pages
+import LiveMonitor from "../authority/LiveMonitor";
+import IoTSimulator from "../authority/IoTSimulator";
+import AuthorityScenarioSimulator from "../authority/AuthorityScenarioSimulator";
+import AuthorityPhysicsCheck from "../authority/AuthorityPhysicsCheck";
+import SafetyTheories from "../authority/SafetyTheories";
 
 // ─── Tab Navigation ────────────────────────────────────────
 const TABS = [
@@ -31,6 +38,11 @@ const TABS = [
   { key: "employees", label: "Employee Management", icon: Users },
   { key: "edge-devices", label: "Edge Device Management", icon: Cpu },
   { key: "sos", label: "SOS Alerts", icon: Siren },
+  { key: "live-monitor", label: "Live Monitor", icon: Radio },
+  { key: "iot-simulator", label: "IoT Simulator", icon: Wifi },
+  { key: "scenario-sim", label: "Scenario Simulator", icon: Play },
+  { key: "physics-check", label: "Physics Check", icon: AlertTriangle },
+  { key: "safety-theories", label: "Safety Theories", icon: BookOpen },
 ];
 
 const tabStyle = (active) => ({
@@ -1848,6 +1860,11 @@ const AdminPanel = () => {
     if (path === "/admin/sos") return "sos";
     if (path === "/admin/face-recognition") return "face-recognition";
     if (path === "/admin/live-map") return "live-map";
+    if (path === "/admin/live-monitor") return "live-monitor";
+    if (path === "/admin/iot-simulator") return "iot-simulator";
+    if (path === "/admin/scenario-sim") return "scenario-sim";
+    if (path === "/admin/physics-check") return "physics-check";
+    if (path === "/admin/safety-theories") return "safety-theories";
     return "overview";
   };
 
@@ -1863,6 +1880,11 @@ const AdminPanel = () => {
       case "edge-devices": return <EdgeDeviceTab />;
       case "sos": return <SOSTab />;
       case "face-recognition": return <FaceRecognitionTab />;
+      case "live-monitor": return <LiveMonitor />;
+      case "iot-simulator": return <IoTSimulator />;
+      case "scenario-sim": return <AuthorityScenarioSimulator />;
+      case "physics-check": return <AuthorityPhysicsCheck />;
+      case "safety-theories": return <SafetyTheories />;
       default: return <OverviewTab />;
     }
   };

@@ -10,11 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/Card";
-<<<<<<< HEAD
-import { UserPlus } from "lucide-react";
-=======
 import { UserPlus, UserCircle, Lock, ShieldCheck } from "lucide-react";
->>>>>>> main
 
 const Register = () => {
   const {
@@ -33,10 +29,6 @@ const Register = () => {
     setError("");
     const result = await registerUser(data.username, data.password);
     setLoading(false);
-<<<<<<< HEAD
-
-=======
->>>>>>> main
     if (result.success) {
       navigate("/");
     } else {
@@ -44,12 +36,9 @@ const Register = () => {
     }
   };
 
-<<<<<<< HEAD
-=======
   const labelStyle = { fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-secondary)" };
   const errorStyle = { fontSize: "var(--text-xs)", color: "var(--color-danger-500)" };
 
->>>>>>> main
   return (
     <div
       style={{
@@ -57,61 +46,6 @@ const Register = () => {
         minHeight: "100vh",
         alignItems: "center",
         justifyContent: "center",
-<<<<<<< HEAD
-        background: "#f8fafc",
-        padding: 16,
-      }}
-    >
-      <Card
-        style={{
-          width: "100%",
-          maxWidth: 400,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
-        }}
-      >
-        <CardHeader style={{ textAlign: "center" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginBottom: 16,
-            }}
-          >
-            <div
-              style={{
-                padding: 12,
-                background: "#e0f2fe",
-                borderRadius: "9999px",
-              }}
-            >
-              <UserPlus style={{ height: 32, width: 32, color: "#0284c7" }} />
-            </div>
-          </div>
-          <CardTitle
-            style={{ fontSize: 24, fontWeight: 700, color: "#1e293b" }}
-          >
-            Create Account
-          </CardTitle>
-          <p style={{ fontSize: 14, color: "#64748b", marginTop: 8 }}>
-            Join as a Passenger
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            style={{ display: "flex", flexDirection: "column", gap: 16 }}
-          >
-            {error && (
-              <div
-                style={{
-                  padding: 12,
-                  fontSize: 14,
-                  color: "#dc2626",
-                  background: "#fef2f2",
-                  borderRadius: 8,
-                }}
-              >
-=======
         background: "linear-gradient(135deg, var(--color-slate-900) 0%, var(--color-primary-900) 50%, var(--color-slate-900) 100%)",
         padding: "var(--space-4)",
         position: "relative",
@@ -167,96 +101,10 @@ const Register = () => {
                 color: "var(--color-danger-600)", background: "var(--color-danger-50)",
                 borderRadius: "var(--radius-md)", border: "1px solid var(--color-danger-100)",
               }}>
->>>>>>> main
                 {error}
               </div>
             )}
 
-<<<<<<< HEAD
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label
-                style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
-              >
-                Username
-              </label>
-              <Input
-                {...register("username", {
-                  required: "Username is required",
-                  minLength: { value: 3, message: "Min 3 characters" },
-                })}
-                placeholder="Choose a username"
-              />
-              {errors.username && (
-                <p style={{ fontSize: 12, color: "#ef4444" }}>
-                  {errors.username.message}
-                </p>
-              )}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label
-                style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
-              >
-                Password
-              </label>
-              <Input
-                type="password"
-                {...register("password", {
-                  required: "Password is required",
-                  minLength: { value: 6, message: "Min 6 characters" },
-                })}
-                placeholder="••••••••"
-              />
-              {errors.password && (
-                <p style={{ fontSize: 12, color: "#ef4444" }}>
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label
-                style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}
-              >
-                Confirm Password
-              </label>
-              <Input
-                type="password"
-                {...register("confirmPassword", {
-                  required: "Please confirm password",
-                  validate: (val) => {
-                    if (watch("password") != val) {
-                      return "Your passwords do not match";
-                    }
-                  },
-                })}
-                placeholder="••••••••"
-              />
-              {errors.confirmPassword && (
-                <p style={{ fontSize: 12, color: "#ef4444" }}>
-                  {errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
-
-            <Button type="submit" style={{ width: "100%" }} disabled={loading}>
-              {loading ? "Creating Account..." : "Register"}
-            </Button>
-
-            <div
-              style={{ textAlign: "center", fontSize: 14, color: "#64748b" }}
-            >
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                style={{
-                  fontWeight: 500,
-                  color: "#2563eb",
-                  textDecoration: "underline",
-                  cursor: "pointer",
-                }}
-              >
-=======
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label style={labelStyle}>Username</label>
               <div style={{ position: "relative" }}>
@@ -310,7 +158,6 @@ const Register = () => {
             <div style={{ textAlign: "center", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
               Already have an account?{" "}
               <Link to="/login" style={{ fontWeight: 600, color: "var(--color-primary-600)", cursor: "pointer" }}>
->>>>>>> main
                 Sign in
               </Link>
             </div>

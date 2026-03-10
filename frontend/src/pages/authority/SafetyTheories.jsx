@@ -940,7 +940,7 @@ const SafetyTheories = () => {
                                     </p>
                                     <ul style={{ marginTop: "8px", fontSize: "13px", color: "#475569", listStyle: "disc", paddingLeft: "16px" }}>
                                         <li>Updates <code>BusDataLog</code> collection.</li>
-                                        <li>Triggers "Violation Check" service (if Speed > Limit).</li>
+                                        <li>Triggers "Violation Check" service (if Speed &gt; Limit).</li>
                                         <li>Updates `Bus.currentStatus` pointer.</li>
                                     </ul>
                                 </div>
@@ -969,7 +969,7 @@ const SafetyTheories = () => {
                                         </div>
                                          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
                                             <p style={{ fontSize: "12px", color: "#64748b" }}>
-                                                Audio/Haptic feedback is triggered instantly when Risk > 0.7.
+                                                Audio/Haptic feedback is triggered instantly when Risk &gt; 0.7.
                                             </p>
                                          </div>
                                     </div>

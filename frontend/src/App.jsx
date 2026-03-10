@@ -17,26 +17,6 @@ import Profile from "./pages/auth/Profile";
 // Passenger Pages
 import PassengerDashboard from "./pages/passenger/PassengerDashboard";
 import Prediction from "./pages/passenger/Prediction";
-<<<<<<< HEAD
-import PhysicsCheck from "./pages/passenger/PhysicsCheck";
-
-// Authority Pages
-import AuthorityDashboard from "./pages/authority/AuthorityDashboard";
-import ViolationsFeed from "./pages/authority/ViolationsFeed";
-import IoTSimulator from "./pages/authority/IoTSimulator";
-import FleetManagement from "./pages/authority/FleetManagement";
-import ConductorManagement from "./pages/authority/ConductorManagement";
-
-import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
-import AuthorityPhysicsCheck from "./pages/authority/AuthorityPhysicsCheck";
-import SafetyTheories from "./pages/authority/SafetyTheories";
-import AuthorityScenarioSimulator from "./pages/authority/AuthorityScenarioSimulator";
-import LiveMonitor from "./pages/authority/LiveMonitor";
-
-// Conductor Pages
-import ConductorDashboard from "./pages/conductor/ConductorDashboard";
-import MaintenanceReport from "./pages/conductor/MaintenanceReport";
-=======
 
 // Admin Panel (unified tabbed)
 import AdminPanel from "./pages/admin/AdminPanel";
@@ -46,7 +26,6 @@ import ConductorPanel from "./pages/conductor/ConductorPanel";
 
 // Driver Panel (unified tabbed)
 import DriverPanel from "./pages/driver/DriverPanel";
->>>>>>> main
 
 // Placeholders for now
 const NotFound = () => (
@@ -54,14 +33,6 @@ const NotFound = () => (
     404 - Page Not Found
   </div>
 );
-<<<<<<< HEAD
-const DashboardPlaceholder = ({ title }) => (
-  <div style={{ fontSize: 24, fontWeight: 700 }}>
-    {title} Dashboard (Coming Soon)
-  </div>
-);
-=======
->>>>>>> main
 
 function App() {
   return (
@@ -78,57 +49,6 @@ function App() {
               <Route path="/profile" element={<Profile />} />
             </Route>
 
-<<<<<<< HEAD
-            {/* Role Protected Routes */}
-            <Route element={<PrivateRoutes roles={["passenger"]} />}>
-              <Route path="/passenger" element={<PassengerDashboard />} />
-              <Route path="/passenger/prediction" element={<Prediction />} />
-
-            </Route>
-
-            <Route element={<PrivateRoutes roles={["conductor"]} />}>
-              <Route path="/conductor" element={<ConductorDashboard />} />
-              <Route
-                path="/conductor/maintenance"
-                element={<MaintenanceReport />}
-              />
-            </Route>
-
-            <Route element={<PrivateRoutes roles={["authority"]} />}>
-              <Route path="/authority" element={<AuthorityDashboard />} />
-              <Route path="/authority/fleet" element={<FleetManagement />} />
-              <Route
-                path="/authority/conductors"
-                element={<ConductorManagement />}
-              />
-              <Route
-                path="/authority/violations"
-                element={<ViolationsFeed />}
-              />
-              <Route
-                path="/authority/maintenance"
-                element={<MaintenanceDashboard />}
-              />
-              <Route path="/authority/iot" element={<IoTSimulator />} />
-              <Route
-                path="/authority/safety"
-                element={<AuthorityPhysicsCheck />}
-              />
-              <Route
-                path="/authority/theories"
-                element={<SafetyTheories />}
-              />
-              <Route
-                path="/authority/simulator"
-                element={<AuthorityScenarioSimulator />}
-              />
-              <Route
-                path="/authority/live-monitor"
-                element={<LiveMonitor />}
-              />
-            </Route>
-
-=======
             {/* Passenger Routes */}
             <Route element={<PrivateRoutes roles={["passenger"]} />}>
               <Route path="/passenger" element={<PassengerDashboard />} />
@@ -159,12 +79,16 @@ function App() {
               <Route path="/admin/sos" element={<AdminPanel />} />
               <Route path="/admin/face-recognition" element={<AdminPanel />} />
               <Route path="/admin/live-map" element={<AdminPanel />} />
+              <Route path="/admin/live-monitor" element={<AdminPanel />} />
+              <Route path="/admin/iot-simulator" element={<AdminPanel />} />
+              <Route path="/admin/scenario-sim" element={<AdminPanel />} />
+              <Route path="/admin/physics-check" element={<AdminPanel />} />
+              <Route path="/admin/safety-theories" element={<AdminPanel />} />
             </Route>
 
             {/* Legacy authority routes redirect to admin */}
             <Route path="/authority/*" element={<Navigate to="/admin" replace />} />
 
->>>>>>> main
             {/* Default redirect for root */}
             <Route path="/" element={<RoleRedirect />} />
           </Route>

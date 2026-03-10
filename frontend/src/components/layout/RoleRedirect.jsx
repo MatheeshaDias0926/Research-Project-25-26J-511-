@@ -15,13 +15,9 @@ const RoleRedirect = () => {
     const dashboardMap = {
         passenger: "/passenger",
         conductor: "/conductor",
-<<<<<<< HEAD
-        authority: "/authority",
-=======
         authority: "/admin",
         admin: "/admin",
         driver: "/driver",
->>>>>>> main
     };
 
     const targetPath = dashboardMap[user.role] || "/passenger"; // Default to passenger or handle error

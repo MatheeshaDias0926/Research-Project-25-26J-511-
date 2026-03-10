@@ -62,11 +62,6 @@ const MaintenanceDashboard = () => {
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-<<<<<<< HEAD
-                <h1 style={{ fontSize: 30, fontWeight: 700, color: "#1e293b" }}>
-                    Maintenance Overview
-                </h1>
-=======
                 <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
                   <div style={{
                     padding: 10, borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center",
@@ -78,7 +73,6 @@ const MaintenanceDashboard = () => {
                       Maintenance Overview
                   </h1>
                 </div>
->>>>>>> main
                 <div style={{ display: "flex", gap: 12 }}>
                     <button
                         onClick={() => setFilter("all")}
@@ -127,11 +121,7 @@ const MaintenanceDashboard = () => {
 
             <div style={{ display: "grid", gap: 16 }}>
                 {filteredLogs.length === 0 ? (
-<<<<<<< HEAD
-                    <p style={{ color: "#64748b" }}>No maintenance logs found.</p>
-=======
                     <p style={{ color: "var(--text-muted)" }}>No maintenance logs found.</p>
->>>>>>> main
                 ) : (
                     filteredLogs.map((log) => (
                         <Card key={log._id}>
@@ -143,13 +133,8 @@ const MaintenanceDashboard = () => {
                                                 style={{
                                                     fontSize: 14,
                                                     fontWeight: 700,
-<<<<<<< HEAD
-                                                    color: "#1e293b",
-                                                    background: "#f1f5f9",
-=======
                                                     color: "var(--text-primary)",
                                                     background: "var(--bg-subtle)",
->>>>>>> main
                                                     padding: "4px 8px",
                                                     borderRadius: 4,
                                                 }}
@@ -163,11 +148,7 @@ const MaintenanceDashboard = () => {
                                                     color: "#fff",
                                                     background: getPriorityColor(log.priority),
                                                     padding: "4px 12px",
-<<<<<<< HEAD
-                                                    borderRadius: 9999,
-=======
                                                     borderRadius: "var(--radius-full)",
->>>>>>> main
                                                     textTransform: "uppercase",
                                                 }}
                                             >
@@ -180,11 +161,7 @@ const MaintenanceDashboard = () => {
                                                     color: getStatusColor(log.status),
                                                     border: `1px solid ${getStatusColor(log.status)}`,
                                                     padding: "3px 10px",
-<<<<<<< HEAD
-                                                    borderRadius: 9999,
-=======
                                                     borderRadius: "var(--radius-full)",
->>>>>>> main
                                                     textTransform: "capitalize",
                                                     display: "flex",
                                                     alignItems: "center",
@@ -195,15 +172,6 @@ const MaintenanceDashboard = () => {
                                                 {log.status}
                                             </span>
                                         </div>
-<<<<<<< HEAD
-                                        <h3 style={{ fontSize: 18, fontWeight: 600, color: "#0f172a", marginBottom: 4 }}>
-                                            {log.issue}
-                                        </h3>
-                                        <p style={{ color: "#64748b", fontSize: 14, marginBottom: 12 }}>
-                                            {log.description}
-                                        </p>
-                                        <div style={{ fontSize: 12, color: "#94a3b8" }}>
-=======
                                         <h3 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
                                             {log.issue}
                                         </h3>
@@ -211,7 +179,6 @@ const MaintenanceDashboard = () => {
                                             {log.description}
                                         </p>
                                         <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
->>>>>>> main
                                             Reported by: <span style={{ fontWeight: 500 }}>{log.reportedBy?.username || "Unknown"}</span> •{" "}
                                             {new Date(log.createdAt).toLocaleString()}
                                         </div>
