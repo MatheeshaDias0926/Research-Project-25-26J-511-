@@ -63,7 +63,7 @@ export default function ConductorDashboard() {
                         (data) => {
                             setGpsData({ lat: data.lat, lon: data.lon, speed: data.speed });
                         },
-                        3000
+                        1000 // Every 1 second for smoother real-time tracked positioning
                     ).then((result) => {
                         if (result.success) {
                             setGpsFeedActive(true);
