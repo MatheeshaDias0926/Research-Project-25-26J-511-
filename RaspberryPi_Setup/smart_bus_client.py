@@ -1148,6 +1148,7 @@ class SmartBusPiClient:
                             driverName=self.verified_driver,
                             driverId=self.verified_driver_id or "",
                             confidence=self.verified_driver_confidence,
+                            alertnessScore=round(self.alertness.score, 1),
                             local=True)
         else:
             log.warning(f"[LOCAL VERIFY] ✗ UNKNOWN PERSON: {result.get('message')}")
@@ -1158,6 +1159,7 @@ class SmartBusPiClient:
                             driverName="Unknown",
                             driverId="",
                             confidence=result.get("confidence", 0),
+                            alertnessScore=round(self.alertness.score, 1),
                             distance=result.get("distance", 0),
                             local=True,
                             message="Unknown person — face does not match any registered driver")
