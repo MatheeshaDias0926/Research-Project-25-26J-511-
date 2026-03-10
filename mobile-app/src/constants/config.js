@@ -1,3 +1,3 @@
-export const API_URL = "http://10.70.209.141:3000/api";
+export const API_URL = "http://192.168.8.193:3000/api";
 // For Android Emulator use: http://10.0.2.2:3000/api
 // For Physical Device use: http://<YOUR_PC_IP>:3000/api
