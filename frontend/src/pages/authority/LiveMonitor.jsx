@@ -6,13 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/Card";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  useMap,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import {
   Radio,
@@ -36,8 +30,10 @@ L.Icon.Default.mergeOptions({
 // Risk-based bus icons
 const createBusIcon = (riskScore) => {
   let color = "#22c55e"; // green (safe)
-  if (riskScore > 0.7) color = "#dc2626"; // red (critical)
-  else if (riskScore > 0.5) color = "#f97316"; // orange (warning)
+  if (riskScore > 0.7)
+    color = "#dc2626"; // red (critical)
+  else if (riskScore > 0.5)
+    color = "#f97316"; // orange (warning)
   else if (riskScore > 0.3) color = "#eab308"; // yellow (caution)
 
   return L.divIcon({
@@ -66,9 +62,12 @@ const MapRecenter = ({ center }) => {
 };
 
 const getRiskLevel = (score) => {
-  if (!score || score <= 0.3) return { label: "SAFE", color: "#22c55e", bg: "#f0fdf4" };
-  if (score <= 0.5) return { label: "CAUTION", color: "#eab308", bg: "#fefce8" };
-  if (score <= 0.7) return { label: "WARNING", color: "#f97316", bg: "#fff7ed" };
+  if (!score || score <= 0.3)
+    return { label: "SAFE", color: "#22c55e", bg: "#f0fdf4" };
+  if (score <= 0.5)
+    return { label: "CAUTION", color: "#eab308", bg: "#fefce8" };
+  if (score <= 0.7)
+    return { label: "WARNING", color: "#f97316", bg: "#fff7ed" };
   return { label: "CRITICAL", color: "#dc2626", bg: "#fef2f2" };
 };
 
@@ -80,6 +79,12 @@ const LiveMonitor = () => {
   const [mapCenter, setMapCenter] = useState([6.9271, 79.8612]);
   const [lastUpdate, setLastUpdate] = useState(null);
   const pollRef = useRef(null);
+  const selectedBusRef = useRef(null);
+
+  // Keep ref in sync so the poll interval always sees the latest selectedBus
+  useEffect(() => {
+    selectedBusRef.current = selectedBus;
+  }, [selectedBus]);
 
   // Fetch all bus data + GPS feeds
   const fetchData = async () => {
@@ -103,22 +108,25 @@ const LiveMonitor = () => {
           } catch {
             return { ...bus, currentStatus: null };
           }
-        })
+        }),
       );
 
       setBuses(enriched);
       setGpsFeeds(gpsRes.data?.feeds || []);
       setLastUpdate(new Date());
 
-      // If a bus is selected, fetch its violations
-      if (selectedBus) {
+      // Refresh selectedBus with latest data so Live Status panel updates in real-time
+      const currentSelected = selectedBusRef.current;
+      if (currentSelected) {
+        const fresh = enriched.find((b) => b._id === currentSelected._id);
+        if (fresh) setSelectedBus(fresh);
+
+        // Fetch violations for the selected bus
         try {
           const violRes = await api.get(
-            `/bus/${selectedBus._id}/violations`
+            `/bus/${currentSelected._id}/violations`,
           );
-          setViolations(
-            violRes.data?.violations || violRes.data || []
-          );
+          setViolations(violRes.data?.violations || violRes.data || []);
         } catch {
           setViolations([]);
         }
@@ -133,25 +141,25 @@ const LiveMonitor = () => {
     fetchData();
     pollRef.current = setInterval(fetchData, 3000);
     return () => clearInterval(pollRef.current);
-  }, [selectedBus?._id]);
+  }, []);
 
   // Active buses with GPS data
   const activeBuses = buses.filter(
     (b) =>
       b.currentStatus?.gps &&
       b.currentStatus.gps.lat !== 0 &&
-      b.currentStatus.gps.lon !== 0
+      b.currentStatus.gps.lon !== 0,
   );
 
   // Stats
   const totalActive = activeBuses.length;
   const criticalCount = activeBuses.filter(
-    (b) => (b.currentStatus?.riskScore || 0) > 0.7
+    (b) => (b.currentStatus?.riskScore || 0) > 0.7,
   ).length;
   const warningCount = activeBuses.filter(
     (b) =>
       (b.currentStatus?.riskScore || 0) > 0.5 &&
-      (b.currentStatus?.riskScore || 0) <= 0.7
+      (b.currentStatus?.riskScore || 0) <= 0.7,
   ).length;
 
   const handleBusClick = (bus) => {
@@ -249,14 +257,10 @@ const LiveMonitor = () => {
               <Activity size={20} color="#0284c7" />
             </div>
             <div>
-              <div
-                style={{ fontSize: 24, fontWeight: 700, color: "#1e293b" }}
-              >
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#1e293b" }}>
                 {totalActive}
               </div>
-              <div style={{ fontSize: 12, color: "#64748b" }}>
-                Active Buses
-              </div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>Active Buses</div>
             </div>
           </CardContent>
         </Card>
@@ -283,9 +287,7 @@ const LiveMonitor = () => {
               <ShieldCheck size={20} color="#22c55e" />
             </div>
             <div>
-              <div
-                style={{ fontSize: 24, fontWeight: 700, color: "#22c55e" }}
-              >
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#22c55e" }}>
                 {totalActive - criticalCount - warningCount}
               </div>
               <div style={{ fontSize: 12, color: "#64748b" }}>Safe</div>
@@ -315,9 +317,7 @@ const LiveMonitor = () => {
               <ShieldAlert size={20} color="#f97316" />
             </div>
             <div>
-              <div
-                style={{ fontSize: 24, fontWeight: 700, color: "#f97316" }}
-              >
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#f97316" }}>
                 {warningCount}
               </div>
               <div style={{ fontSize: 12, color: "#64748b" }}>Warning</div>
@@ -347,9 +347,7 @@ const LiveMonitor = () => {
               <AlertTriangle size={20} color="#dc2626" />
             </div>
             <div>
-              <div
-                style={{ fontSize: 24, fontWeight: 700, color: "#dc2626" }}
-              >
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#dc2626" }}>
                 {criticalCount}
               </div>
               <div style={{ fontSize: 12, color: "#64748b" }}>Critical</div>
@@ -440,7 +438,8 @@ const LiveMonitor = () => {
                         <span style={{ fontSize: 12, color: "#64748b" }}>
                           Speed: {bus.currentStatus?.speed || 0} km/h
                           <br />
-                          Passengers: {bus.currentStatus?.currentOccupancy || 0}/{bus.capacity}
+                          Passengers: {bus.currentStatus?.currentOccupancy || 0}
+                          /{bus.capacity}
                         </span>
                         {bus.currentStatus?.distToCurve > 0 && (
                           <div
@@ -490,16 +489,13 @@ const LiveMonitor = () => {
               }}
             >
               {buses.length === 0 ? (
-                <p style={{ color: "#94a3b8", fontSize: 13 }}>
-                  No buses found
-                </p>
+                <p style={{ color: "#94a3b8", fontSize: 13 }}>No buses found</p>
               ) : (
                 buses.map((bus) => {
                   const risk = bus.currentStatus?.riskScore || 0;
                   const riskInfo = getRiskLevel(risk);
                   const hasGps =
-                    bus.currentStatus?.gps &&
-                    bus.currentStatus.gps.lat !== 0;
+                    bus.currentStatus?.gps && bus.currentStatus.gps.lat !== 0;
                   const isSelected = selectedBus?._id === bus._id;
 
                   return (
@@ -535,7 +531,13 @@ const LiveMonitor = () => {
                           Route {bus.routeId} • Cap: {bus.capacity}
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
                         {hasGps && (
                           <span
                             style={{
@@ -634,8 +636,7 @@ const LiveMonitor = () => {
                               display: "inline-block",
                             }}
                           >
-                            ⚠️ Curve Ahead:{" "}
-                            {status.distToCurve.toFixed(0)}m
+                            ⚠️ Curve Ahead: {status.distToCurve.toFixed(0)}m
                           </div>
                         )}
                       </div>
@@ -666,9 +667,7 @@ const LiveMonitor = () => {
                           >
                             {status?.speed?.toFixed(0) || 0}
                           </div>
-                          <div
-                            style={{ fontSize: 11, color: "#64748b" }}
-                          >
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
                             km/h
                           </div>
                         </div>
@@ -689,9 +688,7 @@ const LiveMonitor = () => {
                           >
                             {status?.currentOccupancy || 0}
                           </div>
-                          <div
-                            style={{ fontSize: 11, color: "#64748b" }}
-                          >
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
                             Passengers
                           </div>
                         </div>
@@ -714,9 +711,7 @@ const LiveMonitor = () => {
                           >
                             {status?.footboardStatus ? "YES" : "NO"}
                           </div>
-                          <div
-                            style={{ fontSize: 11, color: "#64748b" }}
-                          >
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
                             Footboard
                           </div>
                         </div>
@@ -739,9 +734,7 @@ const LiveMonitor = () => {
                               ? `${status.gps.lat.toFixed(3)}`
                               : "N/A"}
                           </div>
-                          <div
-                            style={{ fontSize: 11, color: "#64748b" }}
-                          >
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
                             Latitude
                           </div>
                         </div>
@@ -822,11 +815,9 @@ const LiveMonitor = () => {
                         >
                           {v.violationType}
                         </span>
-                        <span
-                          style={{ fontSize: 11, color: "#94a3b8" }}
-                        >
+                        <span style={{ fontSize: 11, color: "#94a3b8" }}>
                           {new Date(
-                            v.createdAt || v.timestamp
+                            v.createdAt || v.timestamp,
                           ).toLocaleTimeString()}
                         </span>
                       </div>
@@ -850,9 +841,7 @@ const LiveMonitor = () => {
           {/* GPS Feed Status */}
           <Card>
             <CardHeader>
-              <CardTitle style={{ fontSize: 14 }}>
-                GPS Feed Status
-              </CardTitle>
+              <CardTitle style={{ fontSize: 14 }}>GPS Feed Status</CardTitle>
             </CardHeader>
             <CardContent style={{ padding: "0 16px 16px" }}>
               {gpsFeeds.length === 0 ? (
@@ -875,9 +864,7 @@ const LiveMonitor = () => {
                       alignItems: "center",
                       padding: "8px 0",
                       borderBottom:
-                        i < gpsFeeds.length - 1
-                          ? "1px solid #f1f5f9"
-                          : "none",
+                        i < gpsFeeds.length - 1 ? "1px solid #f1f5f9" : "none",
                     }}
                   >
                     <div
@@ -905,9 +892,7 @@ const LiveMonitor = () => {
                         {feed.licensePlate}
                       </span>
                     </div>
-                    <span
-                      style={{ fontSize: 11, color: "#64748b" }}
-                    >
+                    <span style={{ fontSize: 11, color: "#64748b" }}>
                       {feed.speed?.toFixed(0) || 0} km/h •{" "}
                       {(feed.ageMs / 1000).toFixed(0)}s ago
                     </span>
