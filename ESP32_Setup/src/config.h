@@ -8,17 +8,17 @@
 
 // --- WiFi Settings ---
 // Connect to your phone's mobile hotspot
-const char* WIFI_SSID     = "Rashen's S24 Ultra";
-const char* WIFI_PASSWORD  = "jeskoodin";
+const char* WIFI_SSID     = "Sadan";
+const char* WIFI_PASSWORD  = "********";
 
 // --- Backend Server ---
 // Use your Mac's IP on the phone hotspot network
 // Find it with: ifconfig | grep inet (on Mac)
-const char* BACKEND_URL = "http://172.20.10.2:3000/api/iot/iot-data";
+const char* BACKEND_URL = "http://10.220.172.179:3000/api/iot/iot-data";
 
 // --- Bus Identity ---
 // Must match a bus registered in the backend database
-const char* LICENSE_PLATE = "NP-1234";
+const char* LICENSE_PLATE = "NA-1234";
 
 // --- Data Send Interval ---
 // How often to send data to backend (in milliseconds)
