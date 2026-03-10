@@ -1,7 +1,10 @@
 import Bus from "../models/Bus.model.js";
 import BusDataLog from "../models/BusDataLog.model.js";
 import ViolationLog from "../models/ViolationLog.model.js";
-import { getOccupancyPrediction, getSafetyPrediction } from "../services/ml.service.js";
+import {
+  getOccupancyPrediction,
+  getSafetyPrediction,
+} from "../services/ml.service.js";
 import { getRoadWeather } from "../services/weather.service.js";
 
 /**
@@ -242,26 +245,28 @@ export const getFleetOccupancy = async (req, res, next) => {
   try {
     const buses = await Bus.find().populate("currentStatus");
 
-    const detailedFleetData = buses.map((bus) => {
-      const currentLoad = bus.currentStatus?.currentOccupancy || 0;
-      const capacity = bus.capacity;
-      const occupancyPct = Math.round((currentLoad / capacity) * 100);
+    const detailedFleetData = buses
+      .map((bus) => {
+        const currentLoad = bus.currentStatus?.currentOccupancy || 0;
+        const capacity = bus.capacity;
+        const occupancyPct = Math.round((currentLoad / capacity) * 100);
 
-      let status = "Seated";
-      if (currentLoad === 0) status = "Empty";
-      else if (occupancyPct > 100 && occupancyPct <= 120) status = "Standing";
-      else if (occupancyPct > 120) status = "Overloaded";
+        let status = "Seated";
+        if (currentLoad === 0) status = "Empty";
+        else if (occupancyPct > 100 && occupancyPct <= 120) status = "Standing";
+        else if (occupancyPct > 120) status = "Overloaded";
 
-      return {
-        _id: bus._id,
-        licensePlate: bus.licensePlate,
-        routeId: bus.routeId,
-        occupancyPct,
-        currentLoad,
-        capacity,
-        status,
-      };
-    }).sort((a, b) => b.occupancyPct - a.occupancyPct); // Sort by most crowded
+        return {
+          _id: bus._id,
+          licensePlate: bus.licensePlate,
+          routeId: bus.routeId,
+          occupancyPct,
+          currentLoad,
+          capacity,
+          status,
+        };
+      })
+      .sort((a, b) => b.occupancyPct - a.occupancyPct); // Sort by most crowded
 
     res.json(detailedFleetData);
   } catch (error) {
@@ -327,7 +332,7 @@ export const getPrediction = async (req, res, next) => {
     if (!stop_id || !day_of_week || !time_of_day || !weather) {
       res.status(400);
       throw new Error(
-        "Missing required parameters: stop_id, day_of_week, time_of_day, and weather are required"
+        "Missing required parameters: stop_id, day_of_week, time_of_day, and weather are required",
       );
     }
 
@@ -350,7 +355,7 @@ export const getPrediction = async (req, res, next) => {
       stopId,
       day_of_week,
       time_of_day,
-      weather
+      weather,
     );
 
     res.json(prediction);
@@ -367,7 +372,15 @@ export const getPrediction = async (req, res, next) => {
 export const predictBusSafety = async (req, res, next) => {
   // ML-based safety prediction
   try {
-    const { n_seated, n_standing, speed_kmh, radius_m, is_wet, gradient_deg } = req.body;
+    const {
+      n_seated,
+      n_standing,
+      speed_kmh,
+      radius_m,
+      is_wet,
+      gradient_deg,
+      dist_to_curve_m,
+    } = req.body;
 
     // Call ML Service
     const result = await getSafetyPrediction({
@@ -377,6 +390,7 @@ export const predictBusSafety = async (req, res, next) => {
       radius_m,
       is_wet,
       gradient_deg,
+      dist_to_curve_m,
     });
 
     res.json(result);
@@ -446,7 +460,7 @@ export const getAvailableBuses = async (req, res, next) => {
   try {
     // 1. Find all users who are conductors and have an assigned bus
     const conductors = await import("../models/User.model.js").then(
-      (m) => m.default
+      (m) => m.default,
     );
     const assignedUsers = await conductors
       .find({
