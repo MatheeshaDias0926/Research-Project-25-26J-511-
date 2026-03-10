@@ -110,10 +110,15 @@ export const ingestIoTData = async (req, res, next) => {
       try {
         console.log(`[IoT] Running safety pipeline for ${licensePlate}...`);
 
+        // Calculate seated vs standing using actual bus seat capacity
+        const seatCapacity = bus.capacity || 55;
+        const actualSeated = Math.min(currentOccupancy, seatCapacity);
+        const actualStanding = Math.max(0, currentOccupancy - seatCapacity);
+
         // 3a. Get road geometry from Physics Model (curve radius, slope, distance)
         const physicsResult = await getPhysicsModelResult({
-          seated: Math.floor(currentOccupancy * 0.6), // Estimate: 60% seated
-          standing: Math.floor(currentOccupancy * 0.4), // 40% standing
+          seated: actualSeated,
+          standing: actualStanding,
           speed: resolvedSpeed,
           lat: resolvedGps.lat,
           lon: resolvedGps.lon,
@@ -136,8 +141,8 @@ export const ingestIoTData = async (req, res, next) => {
 
         // 3c. Call ML Safety Prediction
         safetyResult = await getSafetyPrediction({
-          n_seated: Math.floor(currentOccupancy * 0.6),
-          n_standing: Math.floor(currentOccupancy * 0.4),
+          n_seated: actualSeated,
+          n_standing: actualStanding,
           speed_kmh: resolvedSpeed,
           radius_m: radius_m,
           is_wet: weather.isWet ? 1 : 0,
