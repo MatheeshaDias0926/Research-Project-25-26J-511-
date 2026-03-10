@@ -2488,7 +2488,7 @@ const EdgeDeviceTab = () => {
                               </td>
                               <td style={tdStyle}>
                                 {s.confidence
-                                  ? `${(s.confidence * 100).toFixed(0)}%`
+                                  ? `${s.confidence.toFixed(1)}%`
                                   : "—"}
                               </td>
                               <td style={tdStyle}>
