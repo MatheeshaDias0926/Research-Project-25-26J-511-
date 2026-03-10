@@ -53,13 +53,19 @@ function App() {
             <Route element={<PrivateRoutes roles={["passenger"]} />}>
               <Route path="/passenger" element={<PassengerDashboard />} />
               <Route path="/passenger/prediction" element={<Prediction />} />
-              <Route path="/passenger/live-map" element={<PassengerDashboard />} />
+              <Route
+                path="/passenger/live-map"
+                element={<PassengerDashboard />}
+              />
             </Route>
 
             {/* Conductor Routes */}
             <Route element={<PrivateRoutes roles={["conductor"]} />}>
               <Route path="/conductor" element={<ConductorPanel />} />
-              <Route path="/conductor/maintenance" element={<ConductorPanel />} />
+              <Route
+                path="/conductor/maintenance"
+                element={<ConductorPanel />}
+              />
             </Route>
 
             {/* Driver Routes */}
@@ -87,7 +93,10 @@ function App() {
             </Route>
 
             {/* Legacy authority routes redirect to admin */}
-            <Route path="/authority/*" element={<Navigate to="/admin" replace />} />
+            <Route
+              path="/authority/*"
+              element={<Navigate to="/admin" replace />}
+            />
 
             {/* Default redirect for root */}
             <Route path="/" element={<RoleRedirect />} />
