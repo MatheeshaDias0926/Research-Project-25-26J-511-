@@ -63,9 +63,12 @@ const ConductorDashboard = () => {
         };
         setMyBus(busData); 
         
-        // Reverse Geocode if we have GPS data
-        if (busData.currentStatus?.gps) {
-            const { lat, lon } = statusRes.data.currentStatus.gps;
+        // Reverse Geocode — prefer liveLocation (Traccar GPS), fall back to IoT sensor GPS
+        const gpsData = busData.liveLocation?.lat != null
+            ? busData.liveLocation
+            : busData.currentStatus?.gps || null;
+        if (gpsData) {
+            const { lat, lon } = gpsData;
             try {
                 const geoRes = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                 const address = geoRes.data.address;
@@ -104,12 +107,15 @@ const ConductorDashboard = () => {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Extract Bus Location
-  const busLocation = myBus?.currentStatus?.gps 
-    ? [myBus.currentStatus.gps.lat, myBus.currentStatus.gps.lon]
+  // Extract Bus Location — prefer liveLocation (from Traccar/GPS), fall back to IoT sensor GPS
+  const gpsSource = myBus?.liveLocation?.lat != null
+    ? myBus.liveLocation
+    : myBus?.currentStatus?.gps || null;
+  const busLocation = gpsSource
+    ? [gpsSource.lat, gpsSource.lon]
     : [6.9271, 79.8612]; 
 
-  const hasLocationData = !!myBus?.currentStatus?.gps;
+  const hasLocationData = !!gpsSource;
 
   if (!user?.assignedBus) {
       return (

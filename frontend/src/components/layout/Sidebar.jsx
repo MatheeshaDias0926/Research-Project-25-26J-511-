@@ -14,6 +14,7 @@ import {
   FileWarning,
   Scan,
   ChevronRight,
+  MapPin,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -27,16 +28,20 @@ const Sidebar = () => {
   const links = [
     // Passenger Links
     { name: "Dashboard", href: "/passenger", icon: LayoutDashboard, roles: ["passenger"] },
+    { name: "Live Location", href: "/passenger/live-map", icon: MapPin, roles: ["passenger"] },
     { name: "Prediction", href: "/passenger/prediction", icon: Activity, roles: ["passenger"] },
     // Conductor Links
     { name: "Overview", href: "/conductor", icon: LayoutDashboard, roles: ["conductor"] },
+    { name: "Live Location", href: "/conductor/live-map", icon: MapPin, roles: ["conductor"] },
     { name: "Maintenance", href: "/conductor/maintenance", icon: Wrench, roles: ["conductor"] },
     // Driver Links
     { name: "Overview", href: "/driver", icon: LayoutDashboard, roles: ["driver"] },
+    { name: "Live Location", href: "/driver/live-map", icon: MapPin, roles: ["driver"] },
     { name: "Maintenance", href: "/driver/maintenance", icon: Wrench, roles: ["driver"] },
     { name: "Alert Log", href: "/driver/alerts", icon: FileWarning, roles: ["driver"] },
     // Admin Links
     { name: "Overview", href: "/admin", icon: LayoutDashboard, roles: ["authority", "admin"] },
+    { name: "Live Location", href: "/admin/live-map", icon: MapPin, roles: ["authority", "admin"] },
     { name: "Fleet Management", href: "/admin/fleet", icon: Bus, roles: ["authority", "admin"] },
     { name: "Bus Assignments", href: "/admin/assignments", icon: Link2, roles: ["authority", "admin"] },
     { name: "Employee Management", href: "/admin/employees", icon: Users, roles: ["authority", "admin"] },

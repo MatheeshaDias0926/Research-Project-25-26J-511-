@@ -238,29 +238,69 @@ class AlertQueue:
 # ═══════════════════════════════════════════════════════════════════════
 
 class MobileGPSReceiver:
-    """Receives GPS data from the driver's mobile phone over a local WiFi
-    socket connection.  The phone runs a companion app that connects to
-    this server and streams JSON GPS packets:
-        {"lat": 6.9271, "lon": 79.8612, "speed": 52.3, "accuracy": 3.2}
+    """Receives GPS data from the driver's mobile phone.
+
+    Supports TWO modes simultaneously:
+      1. **TCP socket** (port 5555) — raw JSON packets from a custom companion app:
+           {"lat": 6.9271, "lon": 79.8612, "speed": 52.3, "accuracy": 3.2}
+      2. **HTTP server** (port 8080) — Traccar Client (Android/iOS) sends
+           GET/POST with query params: ?id=DEVICE&lat=X&lon=Y&speed=Z
+           Speed from Traccar is in **m/s** and is converted to km/h.
 
     Works fully offline — the phone and Pi are on the same local WiFi
     hotspot (no internet required).
     """
 
-    def __init__(self, host="0.0.0.0", port=5555):
+    def __init__(self, host="0.0.0.0", tcp_port=5555, http_port=8080):
         self._host = host
-        self._port = port
+        self._tcp_port = tcp_port
+        self._http_port = http_port
         self._lock = threading.Lock()
         self._latest: dict | None = None
         self._running = False
         self._server_sock: socket.socket | None = None
+        self._http_server = None
+        # Backend URL + headers set by SmartBusPiClient after creation
+        self._backend_url: str | None = None
+        self._backend_headers: dict | None = None
+
+    def _forward_gps_to_backend(self, lat, lon, speed_kmh):
+        """Forward GPS to backend in real-time so the map updates immediately."""
+        if not self._backend_url or not self._backend_headers:
+            return
+        try:
+            import requests as _req
+            _req.get(
+                f"{self._backend_url}/api/edge-devices/gps-update",
+                params={"id": self._backend_headers.get("x-device-id", ""),
+                         "lat": lat, "lon": lon, "speed": speed_kmh / 3.6},
+                timeout=3,
+            )
+        except Exception as e:
+            log.debug(f"[GPS-HTTP] Failed to forward to backend: {e}")
+
+    def _update_gps(self, lat, lon, speed, accuracy=0):
+        """Thread-safe update of the latest GPS reading."""
+        with self._lock:
+            self._latest = {
+                "lat": float(lat),
+                "lon": float(lon),
+                "speed": float(speed),
+                "accuracy": float(accuracy),
+                "timestamp": time.time(),
+            }
 
     def start(self):
-        """Start the GPS socket server in a background thread."""
+        """Start both GPS receiver threads."""
         self._running = True
-        t = threading.Thread(target=self._listen_loop, daemon=True)
-        t.start()
-        log.info(f"[GPS] Socket server started on {self._host}:{self._port}")
+        # TCP socket (legacy / companion app)
+        t1 = threading.Thread(target=self._tcp_listen_loop, daemon=True)
+        t1.start()
+        log.info(f"[GPS] TCP socket server started on {self._host}:{self._tcp_port}")
+        # HTTP server (Traccar Client)
+        t2 = threading.Thread(target=self._http_listen_loop, daemon=True)
+        t2.start()
+        log.info(f"[GPS] HTTP server started on {self._host}:{self._http_port}  (Traccar Client)")
 
     def stop(self):
         self._running = False
@@ -269,30 +309,107 @@ class MobileGPSReceiver:
                 self._server_sock.close()
             except Exception:
                 pass
+        if self._http_server:
+            try:
+                self._http_server.shutdown()
+            except Exception:
+                pass
 
-    def _listen_loop(self):
+    # ── HTTP server for Traccar Client ──
+
+    def _http_listen_loop(self):
+        """Run a minimal HTTP server that accepts Traccar Client location updates."""
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        from urllib.parse import urlparse, parse_qs
+
+        receiver = self  # closure reference
+
+        class TraccarHandler(BaseHTTPRequestHandler):
+            """Handle Traccar Client OsmAnd-protocol requests."""
+
+            def _handle_request(self):
+                qs = parse_qs(urlparse(self.path).query)
+                lat_str = qs.get("lat", [None])[0]
+                lon_str = qs.get("lon", [None])[0]
+                speed_str = qs.get("speed", ["0"])[0]
+                accuracy_str = qs.get("hdop", qs.get("accuracy", ["0"]))[0]
+
+                if lat_str is None or lon_str is None:
+                    self.send_response(400)
+                    self.end_headers()
+                    self.wfile.write(b"Missing lat/lon")
+                    return
+
+                try:
+                    lat = float(lat_str)
+                    lon = float(lon_str)
+                    raw_speed = float(speed_str)
+                    # Traccar Client (OsmAnd protocol) sends speed in m/s → convert to km/h
+                    speed_kmh = raw_speed * 3.6
+                    accuracy = float(accuracy_str)
+                except (ValueError, TypeError):
+                    self.send_response(400)
+                    self.end_headers()
+                    self.wfile.write(b"Invalid numeric values")
+                    return
+
+                receiver._update_gps(lat, lon, speed_kmh, accuracy)
+                log.info(f"[GPS-HTTP] Traccar: lat={lat:.6f}, lon={lon:.6f}, "
+                         f"speed={speed_kmh:.1f} km/h")
+
+                # Forward GPS to backend in real-time (don't wait for heartbeat)
+                receiver._forward_gps_to_backend(lat, lon, speed_kmh)
+
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"OK")
+
+            def do_GET(self):
+                self._handle_request()
+
+            def do_POST(self):
+                self._handle_request()
+
+            def log_message(self, fmt, *args):
+                """Log all incoming HTTP requests for debugging."""
+                log.info(f"[GPS-HTTP] {self.client_address[0]} → {fmt % args}")
+
+        try:
+            self._http_server = HTTPServer((self._host, self._http_port), TraccarHandler)
+            self._http_server.timeout = 2
+            log.info(f"[GPS-HTTP] Traccar receiver ready on port {self._http_port}")
+            while self._running:
+                self._http_server.handle_request()
+        except OSError as e:
+            log.error(f"[GPS-HTTP] Failed to start HTTP server on port {self._http_port}: {e}")
+        except Exception as e:
+            log.error(f"[GPS-HTTP] Unexpected error: {e}")
+
+    # ── TCP socket (legacy companion app) ──
+
+    def _tcp_listen_loop(self):
         """Accept one mobile client at a time and read GPS packets."""
         self._server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._server_sock.settimeout(2.0)
-        self._server_sock.bind((self._host, self._port))
+        self._server_sock.bind((self._host, self._tcp_port))
         self._server_sock.listen(1)
-        log.info(f"[GPS] Waiting for mobile phone connection on port {self._port}...")
+        log.info(f"[GPS-TCP] Waiting for mobile phone connection on port {self._tcp_port}...")
 
         while self._running:
             try:
                 conn, addr = self._server_sock.accept()
-                log.info(f"[GPS] Mobile phone connected from {addr}")
-                self._handle_client(conn)
+                log.info(f"[GPS-TCP] Mobile phone connected from {addr}")
+                self._handle_tcp_client(conn)
             except socket.timeout:
                 continue
             except OSError:
                 break
             except Exception as e:
-                log.warning(f"[GPS] Accept error: {e}")
+                log.warning(f"[GPS-TCP] Accept error: {e}")
                 time.sleep(1)
 
-    def _handle_client(self, conn: socket.socket):
+    def _handle_tcp_client(self, conn: socket.socket):
         """Read newline-delimited JSON GPS packets from the mobile phone."""
         conn.settimeout(5.0)
         buf = b""
@@ -313,23 +430,20 @@ class MobileGPSReceiver:
                     try:
                         gps = json.loads(line.decode("utf-8"))
                         if "lat" in gps and "lon" in gps:
-                            with self._lock:
-                                self._latest = {
-                                    "lat": float(gps["lat"]),
-                                    "lon": float(gps["lon"]),
-                                    "speed": float(gps.get("speed", 0)),
-                                    "accuracy": float(gps.get("accuracy", 0)),
-                                    "timestamp": time.time(),
-                                }
-                            log.debug(f"[GPS] Received: lat={gps['lat']}, lon={gps['lon']}, "
+                            self._update_gps(
+                                gps["lat"], gps["lon"],
+                                gps.get("speed", 0),
+                                gps.get("accuracy", 0),
+                            )
+                            log.debug(f"[GPS-TCP] Received: lat={gps['lat']}, lon={gps['lon']}, "
                                       f"speed={gps.get('speed', 0)}")
                     except (json.JSONDecodeError, ValueError) as e:
-                        log.warning(f"[GPS] Bad packet: {e}")
+                        log.warning(f"[GPS-TCP] Bad packet: {e}")
         except Exception as e:
-            log.warning(f"[GPS] Client disconnected: {e}")
+            log.warning(f"[GPS-TCP] Client disconnected: {e}")
         finally:
             conn.close()
-            log.info("[GPS] Mobile phone disconnected")
+            log.info("[GPS-TCP] Mobile phone disconnected")
 
     @property
     def latest(self) -> dict | None:
@@ -832,7 +946,7 @@ class SmartBusPiClient:
                  no_face_alert_timeout=30,
                  rest_timeout=60, max_continuous_driving=360,
                  max_daily_driving=480, required_rest=360,
-                 cooldown=0):
+                 cooldown=0, http_gps_port=8080):
         self.backend_url = backend_url.rstrip("/")
         self.device_id = device_id
         # --- FIX: Handle both Int (local) and Str (URL) ---
@@ -875,8 +989,10 @@ class SmartBusPiClient:
         # Load previously verified driver from disk (offline resilience)
         self._load_verified_driver_cache()
 
-        # GPS from mobile phone
-        self.gps_receiver = MobileGPSReceiver()
+        # GPS from mobile phone (TCP socket + HTTP for Traccar Client)
+        self.gps_receiver = MobileGPSReceiver(http_port=http_gps_port)
+        self.gps_receiver._backend_url = self.backend_url
+        self.gps_receiver._backend_headers = self.headers
         self.latest_gps = None  # {lat, lon, speed, accuracy, timestamp}
 
         # Sub-systems
@@ -1232,7 +1348,7 @@ class SmartBusPiClient:
         log.info(f"  Headers : x-device-id={self.headers['x-device-id']}")
         log.info(f"  Camera  : {self.camera_index}")
         log.info(f"  Display : 480x320 (3.5\" RPi touch display)")
-        log.info(f"  GPS     : Socket server on port 5555 (mobile phone)")
+        log.info(f"  GPS     : TCP port 5555 + HTTP port {self.gps_receiver._http_port} (Traccar Client)")
         log.info(f"  Face DB : pickle={os.path.exists(FACE_PICKLE_PATH)}, "
                  f"json={os.path.exists(FACE_CACHE_PATH)}, "
                  f"loaded={len(self.face_verifier.encodings)} encodings")
@@ -1274,6 +1390,10 @@ class SmartBusPiClient:
         # 3.5-inch RPi touch display resolution: 480x320
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320)
+        # Minimize capture buffer to reduce lag (only keep latest frame)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        # Set FPS to reduce load
+        cap.set(cv2.CAP_PROP_FPS, 15)
 
         # Start mobile GPS socket server
         self.gps_receiver.start()
@@ -1294,12 +1414,24 @@ class SmartBusPiClient:
         ) as face_mesh:
 
             log.info("Running — press 'q' to quit (if display available)")
+            _frame_interval = 1.0 / 15  # target ~15 FPS to reduce CPU load
+            _last_frame_time = 0
 
             while True:
-                ret, frame = cap.read()
+                # Flush capture buffer to get the latest frame (prevents lag)
+                cap.grab()
+                ret, frame = cap.retrieve()
                 if not ret:
-                    time.sleep(0.1)
+                    ret, frame = cap.read()
+                    if not ret:
+                        time.sleep(0.1)
+                        continue
+
+                # Frame rate limiter
+                _now_frame = time.time()
+                if (_now_frame - _last_frame_time) < _frame_interval:
                     continue
+                _last_frame_time = _now_frame
 
                 h, w = frame.shape[:2]
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -1474,41 +1606,216 @@ class SmartBusPiClient:
         log.info("Client stopped.")
 
 
+CONFIG_FILE_PATH = os.path.join(SCRIPT_DIR, "pi_config.json")
+
+
+def _load_saved_config():
+    """Load previously saved config from pi_config.json."""
+    if os.path.exists(CONFIG_FILE_PATH):
+        try:
+            with open(CONFIG_FILE_PATH, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _save_config(cfg):
+    """Save config to pi_config.json for next boot."""
+    with open(CONFIG_FILE_PATH, "w") as f:
+        json.dump(cfg, f, indent=2)
+
+
+def _prompt(label, default=None, required=False, cast=None):
+    """Prompt the user for a value, showing the default."""
+    suffix = f" [{default}]" if default is not None else ""
+    while True:
+        val = input(f"  {label}{suffix}: ").strip()
+        if not val:
+            if default is not None:
+                val = str(default)
+            elif required:
+                print(f"    ⚠ This field is required.")
+                continue
+            else:
+                return default
+        if cast:
+            try:
+                return cast(val)
+            except ValueError:
+                print(f"    ⚠ Invalid value, expected {cast.__name__}")
+                continue
+        return val
+
+
+def interactive_setup(saved):
+    """Prompt the user for all config values interactively."""
+    print("")
+    print("╔═══════════════════════════════════════════════════════╗")
+    print("║   Smart Bus — Raspberry Pi 5 Edge Client Setup       ║")
+    print("╠═══════════════════════════════════════════════════════╣")
+    print("║   Enter values or press Enter to use [defaults]      ║")
+    print("╚═══════════════════════════════════════════════════════╝")
+    print("")
+
+    print("── Required Settings ──")
+    backend = _prompt("Backend URL (e.g. http://10.220.172.221:3000)",
+                      default=saved.get("backend"), required=True)
+    device_id = _prompt("Device ID (from admin panel, e.g. RPi5-BUS-001)",
+                        default=saved.get("device_id"), required=True)
+
+    print("")
+    print("── Camera & GPS ──")
+    camera = _prompt("Camera index or URL",
+                     default=saved.get("camera", "0"))
+    http_gps_port = _prompt("GPS HTTP port (for Traccar Client)",
+                            default=saved.get("http_gps_port", 8080), cast=int)
+
+    print("")
+    print("── Detection Thresholds (press Enter for defaults) ──")
+    ear_threshold = _prompt("EAR threshold (drowsiness)",
+                            default=saved.get("ear_threshold", 0.25), cast=float)
+    mar_threshold = _prompt("MAR threshold (yawning)",
+                            default=saved.get("mar_threshold", 0.50), cast=float)
+    drowsy_frames = _prompt("Drowsy frames count",
+                            default=saved.get("drowsy_frames", 15), cast=int)
+    yawn_frames = _prompt("Yawn frames count",
+                          default=saved.get("yawn_frames", 10), cast=int)
+    no_face_timeout = _prompt("No-face alert timeout (seconds)",
+                              default=saved.get("no_face_timeout", 30), cast=int)
+
+    print("")
+    print("── Intervals ──")
+    verify_interval = _prompt("Face re-verification interval (seconds)",
+                              default=saved.get("verify_interval", 300), cast=int)
+    heartbeat_interval = _prompt("Heartbeat interval (seconds)",
+                                 default=saved.get("heartbeat_interval", 60), cast=int)
+    cache_sync_interval = _prompt("Face cache sync interval (seconds)",
+                                  default=saved.get("cache_sync_interval", 1800), cast=int)
+
+    print("")
+    print("── Driving Time Rules ──")
+    rest_timeout = _prompt("Rest timeout — no face → resting (seconds)",
+                           default=saved.get("rest_timeout", 60), cast=int)
+    max_continuous = _prompt("Max continuous driving (minutes)",
+                             default=saved.get("max_continuous_driving", 360), cast=int)
+    max_daily = _prompt("Max daily driving (minutes)",
+                        default=saved.get("max_daily_driving", 480), cast=int)
+    required_rest = _prompt("Required rest after max driving (minutes)",
+                            default=saved.get("required_rest", 360), cast=int)
+    cooldown = _prompt("Cooldown after rest (minutes)",
+                       default=saved.get("cooldown", 0), cast=int)
+
+    print("")
+    print("── Hardware ──")
+    gpio_pin = _prompt("GPIO buzzer pin",
+                       default=saved.get("gpio_pin", 18), cast=int)
+
+    cfg = {
+        "backend": backend,
+        "device_id": device_id,
+        "camera": camera,
+        "http_gps_port": http_gps_port,
+        "ear_threshold": ear_threshold,
+        "mar_threshold": mar_threshold,
+        "drowsy_frames": drowsy_frames,
+        "yawn_frames": yawn_frames,
+        "no_face_timeout": no_face_timeout,
+        "verify_interval": verify_interval,
+        "heartbeat_interval": heartbeat_interval,
+        "cache_sync_interval": cache_sync_interval,
+        "rest_timeout": rest_timeout,
+        "max_continuous_driving": max_continuous,
+        "max_daily_driving": max_daily,
+        "required_rest": required_rest,
+        "cooldown": cooldown,
+        "gpio_pin": gpio_pin,
+    }
+
+    # Save for next boot
+    _save_config(cfg)
+    print("")
+    print(f"  ✓ Config saved to {CONFIG_FILE_PATH}")
+    print(f"    Next time, these values will be used as defaults.")
+    print("")
+
+    return cfg
+
+
 def main():
     parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2.4 - GPS socket, face pickle, strict verify)")
-    parser.add_argument("--backend", required=True, help="Backend URL (e.g. http://192.168.1.100:3000)")
-    parser.add_argument("--device-id", required=True, help="Device ID registered in admin panel")
-    parser.add_argument("--camera", type=str, default="0", help="Camera index or IP URL")
-    parser.add_argument("--ear-threshold", type=float, default=0.25, help="EAR threshold for drowsiness")
-    parser.add_argument("--mar-threshold", type=float, default=0.50, help="MAR threshold for yawning")
-    parser.add_argument("--verify-interval", type=int, default=300, help="Driver re-verification interval (seconds)")
-    parser.add_argument("--heartbeat-interval", type=int, default=60, help="Heartbeat interval (seconds)")
-    parser.add_argument("--cache-sync-interval", type=int, default=1800, help="Face cache sync interval (seconds)")
-    parser.add_argument("--gpio-pin", type=int, default=18, help="GPIO pin for buzzer (default: 18)")
-    parser.add_argument("--no-face-timeout", type=int, default=30, help="Seconds without face before alert")
-    parser.add_argument("--rest-timeout", type=int, default=60, help="Seconds without face to switch to resting")
-    parser.add_argument("--max-continuous-driving", type=int, default=360, help="Max continuous driving minutes (default 6h)")
-    parser.add_argument("--max-daily-driving", type=int, default=480, help="Max daily driving minutes (default 8h)")
-    parser.add_argument("--required-rest", type=int, default=360, help="Required rest minutes after max continuous driving (default 6h)")
-    parser.add_argument("--cooldown", type=int, default=0, help="Extra cooldown minutes after rest before next drive (default 0)")
+    parser.add_argument("--backend", default=None, help="Backend URL (e.g. http://192.168.1.100:3000)")
+    parser.add_argument("--device-id", default=None, help="Device ID registered in admin panel")
+    parser.add_argument("--camera", type=str, default=None, help="Camera index or IP URL")
+    parser.add_argument("--ear-threshold", type=float, default=None, help="EAR threshold for drowsiness")
+    parser.add_argument("--mar-threshold", type=float, default=None, help="MAR threshold for yawning")
+    parser.add_argument("--verify-interval", type=int, default=None, help="Driver re-verification interval (seconds)")
+    parser.add_argument("--heartbeat-interval", type=int, default=None, help="Heartbeat interval (seconds)")
+    parser.add_argument("--cache-sync-interval", type=int, default=None, help="Face cache sync interval (seconds)")
+    parser.add_argument("--gpio-pin", type=int, default=None, help="GPIO pin for buzzer (default: 18)")
+    parser.add_argument("--no-face-timeout", type=int, default=None, help="Seconds without face before alert")
+    parser.add_argument("--rest-timeout", type=int, default=None, help="Seconds without face to switch to resting")
+    parser.add_argument("--max-continuous-driving", type=int, default=None, help="Max continuous driving minutes (default 6h)")
+    parser.add_argument("--max-daily-driving", type=int, default=None, help="Max daily driving minutes (default 8h)")
+    parser.add_argument("--required-rest", type=int, default=None, help="Required rest minutes after max continuous driving (default 6h)")
+    parser.add_argument("--cooldown", type=int, default=None, help="Extra cooldown minutes after rest before next drive (default 0)")
+    parser.add_argument("--http-gps-port", type=int, default=None, help="HTTP port for Traccar Client GPS (default 8080)")
+    parser.add_argument("--interactive", "-i", action="store_true", help="Force interactive setup prompt")
     args = parser.parse_args()
 
+    # Load previously saved config
+    saved = _load_saved_config()
+
+    # Determine if we need interactive mode:
+    #   1. --interactive flag
+    #   2. No --backend AND no saved config
+    need_interactive = args.interactive or (args.backend is None and not saved.get("backend"))
+
+    if need_interactive:
+        cfg = interactive_setup(saved)
+    else:
+        # Merge: CLI args > saved config > defaults
+        cfg = {
+            "backend":               args.backend or saved.get("backend"),
+            "device_id":             args.device_id or saved.get("device_id"),
+            "camera":                args.camera or saved.get("camera", "0"),
+            "http_gps_port":         args.http_gps_port or saved.get("http_gps_port", 8080),
+            "ear_threshold":         args.ear_threshold if args.ear_threshold is not None else saved.get("ear_threshold", 0.25),
+            "mar_threshold":         args.mar_threshold if args.mar_threshold is not None else saved.get("mar_threshold", 0.50),
+            "no_face_timeout":       args.no_face_timeout or saved.get("no_face_timeout", 30),
+            "verify_interval":       args.verify_interval or saved.get("verify_interval", 300),
+            "heartbeat_interval":    args.heartbeat_interval or saved.get("heartbeat_interval", 60),
+            "cache_sync_interval":   args.cache_sync_interval or saved.get("cache_sync_interval", 1800),
+            "rest_timeout":          args.rest_timeout or saved.get("rest_timeout", 60),
+            "max_continuous_driving": args.max_continuous_driving or saved.get("max_continuous_driving", 360),
+            "max_daily_driving":     args.max_daily_driving or saved.get("max_daily_driving", 480),
+            "required_rest":         args.required_rest or saved.get("required_rest", 360),
+            "cooldown":              args.cooldown if args.cooldown is not None else saved.get("cooldown", 0),
+            "gpio_pin":              args.gpio_pin or saved.get("gpio_pin", 18),
+        }
+
+    if not cfg.get("backend") or not cfg.get("device_id"):
+        print("[ERROR] Backend URL and Device ID are required.")
+        print("        Run with --interactive or provide --backend and --device-id")
+        return
+
     client = SmartBusPiClient(
-        backend_url=args.backend,
-        device_id=args.device_id,
-        camera_index=args.camera,
-        ear_threshold=args.ear_threshold,
-        mar_threshold=args.mar_threshold,
-        verify_interval=args.verify_interval,
-        heartbeat_interval=args.heartbeat_interval,
-        cache_sync_interval=args.cache_sync_interval,
-        gpio_pin=args.gpio_pin,
-        no_face_alert_timeout=args.no_face_timeout,
-        rest_timeout=args.rest_timeout,
-        max_continuous_driving=args.max_continuous_driving,
-        max_daily_driving=args.max_daily_driving,
-        required_rest=args.required_rest,
-        cooldown=args.cooldown,
+        backend_url=cfg["backend"],
+        device_id=cfg["device_id"],
+        camera_index=cfg["camera"],
+        ear_threshold=cfg["ear_threshold"],
+        mar_threshold=cfg["mar_threshold"],
+        verify_interval=cfg["verify_interval"],
+        heartbeat_interval=cfg["heartbeat_interval"],
+        cache_sync_interval=cfg["cache_sync_interval"],
+        gpio_pin=cfg["gpio_pin"],
+        no_face_alert_timeout=cfg["no_face_timeout"],
+        rest_timeout=cfg["rest_timeout"],
+        max_continuous_driving=cfg["max_continuous_driving"],
+        max_daily_driving=cfg["max_daily_driving"],
+        required_rest=cfg["required_rest"],
+        cooldown=cfg["cooldown"],
+        http_gps_port=cfg["http_gps_port"],
     )
     client.run()
 

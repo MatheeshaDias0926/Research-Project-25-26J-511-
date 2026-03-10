@@ -84,7 +84,7 @@ const BusLocationMap = ({ role = "passenger", onToggleVisibility, height = "500p
   }, [fetchLocations, refreshInterval]);
 
   const positions = buses
-    .filter((b) => b.liveLocation?.lat && b.liveLocation?.lon)
+    .filter((b) => b.liveLocation?.lat != null && b.liveLocation?.lon != null)
     .map((b) => [b.liveLocation.lat, b.liveLocation.lon]);
 
   const defaultCenter = [7.8731, 80.7718]; // Sri Lanka center

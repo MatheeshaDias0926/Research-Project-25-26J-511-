@@ -26,6 +26,7 @@ export const getBusStatus = async (req, res, next) => {
         licensePlate: bus.licensePlate,
         capacity: bus.capacity,
         routeId: bus.routeId,
+        liveLocation: bus.liveLocation,
       },
       currentStatus: bus.currentStatus,
     });
