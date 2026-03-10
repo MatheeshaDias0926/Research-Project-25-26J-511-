@@ -15,6 +15,7 @@ import edgeDeviceRoutes from "./api/edgeDevice.routes.js";
 import sosRoutes from "./api/sos.routes.js";
 import attendanceRoutes from "./api/attendance.routes.js";
 import assignmentRoutes from "./api/assignment.routes.js";
+import violationRoutes from "./api/violation.routes.js";
 
 // Connect to Database
 connectDB();
@@ -36,6 +37,7 @@ app.use("/api/edge-devices", edgeDeviceRoutes);
 app.use("/api/sos", sosRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/assignments", assignmentRoutes);
+app.use("/api", violationRoutes);
 
 // Root route
 app.get("/", (req, res) => {

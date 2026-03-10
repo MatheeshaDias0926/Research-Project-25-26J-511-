@@ -27,6 +27,14 @@ import ConductorPanel from "./pages/conductor/ConductorPanel";
 // Driver Panel (unified tabbed)
 import DriverPanel from "./pages/driver/DriverPanel";
 
+import ViolationsFeed from "./pages/authority/ViolationsFeed";
+import LiveDetection from "./pages/authority/RealTimeStreaming";
+import MaintenanceDashboard from "./pages/authority/MaintenanceDashboard";
+import IoTSimulator from "./pages/authority/IoTSimulator";
+import SafetyTheories from "./pages/authority/SafetyTheories";
+import AuthorityScenarioSimulator from "./pages/authority/AuthorityScenarioSimulator";
+import ConductorManagement from "./pages/authority/ConductorManagement";
+
 // Placeholders for now
 const NotFound = () => (
   <div style={{ padding: 32, textAlign: "center", fontSize: 20 }}>
@@ -79,6 +87,13 @@ function App() {
               <Route path="/admin/sos" element={<AdminPanel />} />
               <Route path="/admin/face-recognition" element={<AdminPanel />} />
               <Route path="/admin/live-map" element={<AdminPanel />} />
+              <Route path="/admin/violations" element={<ViolationsFeed />} />
+              <Route path="/admin/live-detection" element={<LiveDetection />} />
+              <Route path="/admin/maintenance" element={<MaintenanceDashboard />} />
+              <Route path="/admin/iot" element={<IoTSimulator />} />
+              <Route path="/admin/safety" element={<SafetyTheories />} />
+              <Route path="/admin/simulator" element={<AuthorityScenarioSimulator />} />
+              <Route path="/admin/conductors" element={<ConductorManagement />} />
             </Route>
 
             {/* Legacy authority routes redirect to admin */}

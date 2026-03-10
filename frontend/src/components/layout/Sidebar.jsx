@@ -14,6 +14,8 @@ import {
   FileWarning,
   Scan,
   ChevronRight,
+  AlertTriangle, // Added missing import
+  Navigation, // Added missing import
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -28,14 +30,17 @@ const Sidebar = () => {
     // Passenger Links
     { name: "Dashboard", href: "/passenger", icon: LayoutDashboard, roles: ["passenger"] },
     { name: "Prediction", href: "/passenger/prediction", icon: Activity, roles: ["passenger"] },
+    
     // Conductor Links
     { name: "Overview", href: "/conductor", icon: LayoutDashboard, roles: ["conductor"] },
     { name: "Maintenance", href: "/conductor/maintenance", icon: Wrench, roles: ["conductor"] },
+    
     // Driver Links
     { name: "Overview", href: "/driver", icon: LayoutDashboard, roles: ["driver"] },
     { name: "Maintenance", href: "/driver/maintenance", icon: Wrench, roles: ["driver"] },
     { name: "Alert Log", href: "/driver/alerts", icon: FileWarning, roles: ["driver"] },
-    // Admin Links
+    
+    // Admin Links (for both authority and admin roles)
     { name: "Overview", href: "/admin", icon: LayoutDashboard, roles: ["authority", "admin"] },
     { name: "Fleet Management", href: "/admin/fleet", icon: Bus, roles: ["authority", "admin"] },
     { name: "Bus Assignments", href: "/admin/assignments", icon: Link2, roles: ["authority", "admin"] },
@@ -43,6 +48,16 @@ const Sidebar = () => {
     { name: "Edge Devices", href: "/admin/edge-devices", icon: Cpu, roles: ["authority", "admin"] },
     { name: "SOS Alerts", href: "/admin/sos", icon: Siren, roles: ["authority", "admin"] },
     { name: "Face Recognition", href: "/admin/face-recognition", icon: Scan, roles: ["authority", "admin"] },
+    { name: "Live Map", href: "/admin/live-map", icon: Navigation, roles: ["authority", "admin"] },
+    
+    // FIXED: Use the new admin routes instead of authority routes
+    { name: "Violations", href: "/admin/violations", icon: AlertTriangle, roles: ["authority", "admin"] },
+    { name: "Live Detection", href: "/admin/live-detection", icon: Navigation, roles: ["authority", "admin"] },
+    { name: "Maintenance", href: "/admin/maintenance", icon: Wrench, roles: ["authority", "admin"] },
+    { name: "IoT Simulator", href: "/admin/iot", icon: Cpu, roles: ["authority", "admin"] },
+    { name: "Safety Theories", href: "/admin/safety", icon: FileWarning, roles: ["authority", "admin"] },
+    { name: "Scenario Simulator", href: "/admin/simulator", icon: Activity, roles: ["authority", "admin"] },
+    { name: "Conductors", href: "/admin/conductors", icon: Users, roles: ["authority", "admin"] },
   ];
 
   const filteredLinks = links.filter((link) => link.roles.includes(role));
@@ -63,6 +78,7 @@ const Sidebar = () => {
     cursor: "pointer",
     position: "relative",
     letterSpacing: "0.01em",
+    textDecoration: "none", // Added to remove underline from links
   });
 
   return (
@@ -165,11 +181,15 @@ const Sidebar = () => {
             fontWeight: 500,
             borderRadius: "var(--radius-md)",
             marginBottom: 4,
+            textDecoration: "none", // Added
             background: location.pathname === "/profile" ? "rgba(255,255,255,0.08)" : "transparent",
             color: location.pathname === "/profile" ? "#fff" : "var(--sidebar-text)",
             transition: "all var(--transition-base)",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sidebar-hover-bg)"; e.currentTarget.style.color = "#fff"; }}
+          onMouseEnter={(e) => { 
+            e.currentTarget.style.background = "var(--sidebar-hover-bg)"; 
+            e.currentTarget.style.color = "#fff"; 
+          }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = location.pathname === "/profile" ? "rgba(255,255,255,0.08)" : "transparent";
             e.currentTarget.style.color = location.pathname === "/profile" ? "#fff" : "var(--sidebar-text)";
@@ -192,11 +212,17 @@ const Sidebar = () => {
             display: "flex", width: "100%", alignItems: "center", gap: 12,
             padding: "10px 14px", fontSize: "var(--text-sm)", fontWeight: 500,
             color: "var(--sidebar-text)", borderRadius: "var(--radius-md)",
-            background: "transparent", cursor: "pointer",
+            background: "transparent", cursor: "pointer", border: "none", // Added border: none
             transition: "all var(--transition-base)",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; e.currentTarget.style.color = "#f87171"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--sidebar-text)"; }}
+          onMouseEnter={(e) => { 
+            e.currentTarget.style.background = "rgba(239,68,68,0.1)"; 
+            e.currentTarget.style.color = "#f87171"; 
+          }}
+          onMouseLeave={(e) => { 
+            e.currentTarget.style.background = "transparent"; 
+            e.currentTarget.style.color = "var(--sidebar-text)"; 
+          }}
         >
           <LogOut style={{ height: 18, width: 18 }} />
           Sign Out

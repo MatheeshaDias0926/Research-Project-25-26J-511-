@@ -65,7 +65,7 @@ SPEED_LIMIT_API_URL = f"{SPEED_BACKEND_BASE}/api/speed-limit"
 STATUS_API_URL = f"{SPEED_BACKEND_BASE}/api/status"
 VIOLATION_API_URL = f"{VIOLATION_BACKEND_BASE}/api/add-violations"
 
-DUMMY_BUS_ID = "691978294f5541d466eaa7e0"
+DUMMY_BUS_ID = "69aca3b6497548a22127c79f"
 HARDCODED_SPEED = 80  # km/h (Used for testing violations)
 
 # Speed source configuration
