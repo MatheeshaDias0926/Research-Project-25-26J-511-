@@ -8,13 +8,13 @@
 
 // --- WiFi Settings ---
 // Connect to your phone's mobile hotspot
-const char* WIFI_SSID     = "Sadan";
-const char* WIFI_PASSWORD  = "********";
+const char* WIFI_SSID     = "Dialog 4G 509";
+const char* WIFI_PASSWORD  = thushan2021
 
 // --- Backend Server ---
 // Use your Mac's IP on the phone hotspot network
 // Find it with: ifconfig | grep inet (on Mac)
-const char* BACKEND_URL = "http://10.220.172.179:3000/api/iot/iot-data";
+const char* BACKEND_URL = "http://192.168.8.169:3000/api/iot/iot-data";
 
 // --- Bus Identity ---
 // Must match a bus registered in the backend database

@@ -45,6 +45,12 @@ unsigned long lastSendTime = 0;
 // WiFi reconnect
 unsigned long lastWifiCheck = 0;
 
+// BOOT button (GPIO 0) for test mode
+#define BOOT_BUTTON_PIN 0
+bool lastButtonState = HIGH;
+unsigned long lastButtonDebounce = 0;
+const int TEST_PASSENGER_COUNT = 55;
+
 // Offline data buffer (stores data when WiFi is down)
 struct OfflineData {
   int occupancy;
@@ -92,6 +98,9 @@ void setup() {
   pinMode(SENSOR2_PIN, INPUT);
   Serial.println("IR Sensors initialized");
 
+  // Configure BOOT button (GPIO 0) for test mode
+  pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
+
   // Configure buzzer pin
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
@@ -118,6 +127,23 @@ void loop() {
 
   // Process passenger counting state machine
   processCountingLogic();
+
+  // Check BOOT button press → toggle 55 passengers for testing
+  bool buttonReading = digitalRead(BOOT_BUTTON_PIN);
+  if (buttonReading == LOW && lastButtonState == HIGH && (millis() - lastButtonDebounce > 300)) {
+    lastButtonDebounce = millis();
+    if (passengerCount == TEST_PASSENGER_COUNT) {
+      passengerCount = 0;
+      Serial.println("\n[TEST] Reset passenger count to 0");
+    } else {
+      passengerCount = TEST_PASSENGER_COUNT;
+      Serial.println("\n[TEST] Set passenger count to 55!");
+    }
+    updateDisplay();
+    playBuzzer(100, 2000);
+    playBuzzer(100, 2500);
+  }
+  lastButtonState = buttonReading;
 
   // Check for footboard detection
   checkFootboardDetection();
@@ -356,6 +382,7 @@ void sendDataToBackend(bool isFootboardViolation) {
 
   http.begin(BACKEND_URL);
   http.addHeader("Content-Type", "application/json");
+  http.setTimeout(15000);  // 15s timeout — backend safety pipeline can take 10s+
 
   int httpResponseCode = http.POST(jsonString);
 
