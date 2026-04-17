@@ -19,17 +19,169 @@ import {
   getLastSafetyState,
 } from "../services/safety-throttle.js";
 
+// ─── In-memory manual occupancy overrides (for Test Run Interface) ───────────
+// Map<licensePlate, { occupancy: number, setAt: number }>
+const manualOccupancyOverrides = new Map();
+
 /**
- * @desc    Receive GPS feed from mobile app
+ * Set or clear a manual occupancy override for a bus.
+ * Used by the Test Run Interface when no IR sensors are available.
+ */
+export const setManualOccupancy = (licensePlate, occupancy) => {
+  if (occupancy === null || occupancy === undefined) {
+    manualOccupancyOverrides.delete(licensePlate);
+  } else {
+    manualOccupancyOverrides.set(licensePlate, {
+      occupancy: parseInt(occupancy),
+      setAt: Date.now(),
+    });
+  }
+};
+
+/**
+ * Get manual occupancy for a bus if override is active (< 10 min old).
+ */
+export const getManualOccupancy = (licensePlate) => {
+  const override = manualOccupancyOverrides.get(licensePlate);
+  if (!override) return null;
+  if (Date.now() - override.setAt > 10 * 60 * 1000) {
+    manualOccupancyOverrides.delete(licensePlate);
+    return null;
+  }
+  return override.occupancy;
+};
+
+// ─── Async Safety Pipeline ────────────────────────────────────────────────────
+/**
+ * Run the full physics+ML safety pipeline asynchronously.
+ * Updates the BusDataLog record AFTER completion.
+ * This decouples ESP32 response time from the slow physics model.
+ */
+const runSafetyPipelineAsync = async (logId, busId, params) => {
+  const { resolvedGps, resolvedSpeed, currentOccupancy, licensePlate, capacity } = params;
+
+  try {
+    const hasValidGps = resolvedGps.lat !== 0 && resolvedGps.lon !== 0;
+    if (!hasValidGps || resolvedSpeed <= 0) return;
+
+    if (!shouldRunSafety(licensePlate)) {
+      // Throttled — reuse cached state (log already has 0 by default, update it)
+      const lastState = getLastSafetyState(licensePlate);
+      if (lastState) {
+        await BusDataLog.findByIdAndUpdate(logId, {
+          riskScore: lastState.riskScore,
+          distToCurve: lastState.distToCurve,
+        });
+      }
+      return;
+    }
+
+    const seatCapacity = capacity || 55;
+    const actualSeated = Math.min(currentOccupancy, seatCapacity);
+    const actualStanding = Math.max(0, currentOccupancy - seatCapacity);
+
+    const physicsCacheParams = {
+      lat: resolvedGps.lat,
+      lon: resolvedGps.lon,
+      speed: resolvedSpeed,
+      seated: actualSeated,
+      standing: actualStanding,
+    };
+
+    let physicsResult = getCachedPhysics(physicsCacheParams);
+    let riskScore = 0;
+    let distToCurve = 0;
+    let safetyResult = null;
+
+    if (physicsResult) {
+      // Cache hit — only fetch weather
+      const weather = await getRoadWeather(resolvedGps.lat, resolvedGps.lon);
+      const radius_m = parseFloat(physicsResult["Sharpest curve radius ahead"]?.replace(" m", "")) || 10000;
+      const dist_to_curve_m = parseFloat(physicsResult["Distance to sharpest curve"]?.replace(" m", "")) || 0;
+      const gradient_deg = parseFloat(physicsResult["Road slope"]?.replace("°", "")) || 0;
+
+      safetyResult = await getSafetyPrediction({
+        n_seated: actualSeated,
+        n_standing: actualStanding,
+        speed_kmh: resolvedSpeed,
+        radius_m,
+        is_wet: weather.isWet ? 1 : 0,
+        gradient_deg,
+        dist_to_curve_m,
+      });
+
+      riskScore = safetyResult.risk_score || 0;
+      distToCurve = dist_to_curve_m;
+      console.log(`[IoT Async] ML (cached physics): risk=${riskScore.toFixed(3)}`);
+    } else {
+      // Cache miss — run weather + physics in parallel
+      const [weather, freshPhysicsResult] = await Promise.all([
+        getRoadWeather(resolvedGps.lat, resolvedGps.lon),
+        getPhysicsModelResult({
+          seated: actualSeated,
+          standing: actualStanding,
+          speed: resolvedSpeed,
+          lat: resolvedGps.lat,
+          lon: resolvedGps.lon,
+          friction: 0.65,
+        }),
+      ]);
+
+      physicsResult = freshPhysicsResult;
+      setCachedPhysics(physicsCacheParams, physicsResult);
+
+      const radius_m = parseFloat(physicsResult["Sharpest curve radius ahead"]?.replace(" m", "")) || 10000;
+      const dist_to_curve_m = parseFloat(physicsResult["Distance to sharpest curve"]?.replace(" m", "")) || 0;
+      const gradient_deg = parseFloat(physicsResult["Road slope"]?.replace("°", "")) || 0;
+
+      console.log(
+        `[IoT Async] Physics: radius=${radius_m.toFixed(0)}m, dist=${dist_to_curve_m.toFixed(0)}m, slope=${gradient_deg.toFixed(1)}°`,
+      );
+
+      safetyResult = await getSafetyPrediction({
+        n_seated: actualSeated,
+        n_standing: actualStanding,
+        speed_kmh: resolvedSpeed,
+        radius_m,
+        is_wet: weather.isWet ? 1 : 0,
+        gradient_deg,
+        dist_to_curve_m,
+      });
+
+      riskScore = safetyResult.risk_score || 0;
+      distToCurve = dist_to_curve_m;
+      console.log(
+        `[IoT Async] ML Safety: risk=${riskScore.toFixed(3)}, source=${safetyResult.source}`,
+      );
+    }
+
+    if (riskScore > 0.7) {
+      console.log(
+        `[IoT Async] ⚠️  HIGH RISK: ${licensePlate} score=${riskScore.toFixed(2)} at (${resolvedGps.lat.toFixed(4)}, ${resolvedGps.lon.toFixed(4)})`,
+      );
+    }
+
+    // Update the log record with safety results
+    await BusDataLog.findByIdAndUpdate(logId, {
+      riskScore,
+      distToCurve,
+    });
+
+    // Also update the bus's currentStatus pointer (still points to same logId, but record is now enriched)
+    updateSafetyState(licensePlate, { riskScore, distToCurve, safetyResult });
+
+    console.log(`[IoT Async] Pipeline complete for ${licensePlate}: risk=${riskScore.toFixed(3)}`);
+  } catch (err) {
+    console.error(`[IoT Async] Safety pipeline error for ${licensePlate}: ${err.message}`);
+  }
+};
+
+// ─── GPS Feed Endpoint ────────────────────────────────────────────────────────
+
+/**
+ * @desc    Receive GPS feed from mobile app (legacy — still supported)
  * @route   POST /api/iot/gps-feed
- * @access  Public (from conductor's phone)
- *
- * @body    {
- *   "licensePlate": "NP-1234",
- *   "lat": 6.9271,
- *   "lon": 79.8612,
- *   "speed": 45.2
- * }
+ * @access  Public
  */
 export const receiveGpsFeed = (req, res) => {
   const { licensePlate, lat, lon, speed } = req.body;
@@ -62,237 +214,129 @@ export const getActiveGpsFeeds = (req, res) => {
   res.json({ activeFeeds: feeds.length, feeds });
 };
 
+// ─── IoT Data Ingestion ───────────────────────────────────────────────────────
+
 /**
- * @desc    Ingest IoT data from ESP32 with auto-ML safety pipeline
+ * @desc    Ingest IoT data from ESP32 with async ML safety pipeline
  * @route   POST /api/iot/iot-data
- * @access  Public
+ * @access  Public (from ESP32 device)
  *
  * @body    {
- *   "licensePlate": "NP-1234",
+ *   "licensePlate": "NA-1234",
  *   "currentOccupancy": 45,
  *   "gps": { "lat": 6.9271, "lon": 79.8612 },
- *   "footboardStatus": true,
- *   "speed": 10
+ *   "footboardStatus": false,
+ *   "speed": 45.2,
+ *   "gpsMeta": { "fixed": true, "satellites": 6, "hdop": 1.2, "source": "esp32_neo6m" }
  * }
+ *
+ * IMPORTANT: This endpoint now responds IMMEDIATELY after saving the log.
+ * The safety pipeline (physics + ML) runs asynchronously in the background.
+ * This prevents ESP32 from timing out waiting for the 10-second physics model.
  */
 export const ingestIoTData = async (req, res, next) => {
-  const { licensePlate, currentOccupancy, gps, footboardStatus, speed } =
-    req.body;
+  const { licensePlate, currentOccupancy, gps, footboardStatus, speed, gpsMeta } = req.body;
 
   try {
-    // Validate required fields
     if (!licensePlate || currentOccupancy === undefined) {
       res.status(400);
-      throw new Error(
-        "Missing required fields: licensePlate or currentOccupancy",
-      );
+      throw new Error("Missing required fields: licensePlate or currentOccupancy");
     }
 
-    // 1. Find the bus by its license plate
+    // 1. Find the bus
     const bus = await Bus.findOne({ licensePlate });
     if (!bus) {
       res.status(404);
-      throw new Error(`Bus not found with license plate: ${licensePlate}`);
+      throw new Error(`Bus not found: ${licensePlate}`);
     }
 
-    // 2. Resolve GPS: prefer phone GPS from cache, fallback to ESP32 payload
-    let resolvedGps = gps || { lat: 0, lon: 0 };
+    // 2. Resolve GPS:
+    //    Priority: ESP32 GPS (from NEO-6M) > Phone GPS cache > 0,0
+    let resolvedGps = { lat: 0, lon: 0 };
     let resolvedSpeed = speed || 0;
-    let gpsSource = "esp32";
+    let gpsSource = "none";
 
-    const phoneGps = getLatestGps(licensePlate);
-    if (phoneGps) {
-      resolvedGps = { lat: phoneGps.lat, lon: phoneGps.lon };
-      resolvedSpeed = phoneGps.speed || resolvedSpeed;
-      gpsSource = "phone";
+    const hasEsp32Gps = gps && gps.lat !== 0 && gps.lon !== 0;
+
+    if (hasEsp32Gps) {
+      // ESP32 has a direct GPS fix from NEO-6M — use it
+      resolvedGps = { lat: gps.lat, lon: gps.lon };
+      resolvedSpeed = speed || 0;
+      gpsSource = gpsMeta?.source || "esp32";
       console.log(
-        `[IoT] GPS filled from phone: (${resolvedGps.lat.toFixed(4)}, ${resolvedGps.lon.toFixed(4)}) @ ${resolvedSpeed.toFixed(1)} km/h`,
+        `[IoT] GPS from ESP32 NEO-6M: (${resolvedGps.lat.toFixed(4)}, ${resolvedGps.lon.toFixed(4)}) @ ${resolvedSpeed.toFixed(1)} km/h | Sats: ${gpsMeta?.satellites || "?"} | HDOP: ${gpsMeta?.hdop || "?"}`,
       );
-    } else if (!gps || (gps.lat === 0 && gps.lon === 0)) {
-      console.log(
-        `[IoT] No phone GPS available for ${licensePlate}, using ESP32 GPS`,
-      );
-    }
-
-    // 3. Run Safety Pipeline (only if we have valid GPS)
-    let riskScore = 0;
-    let distToCurve = 0;
-    let safetyResult = null;
-
-    const hasValidGps = resolvedGps.lat !== 0 && resolvedGps.lon !== 0;
-
-    if (hasValidGps && resolvedSpeed > 0) {
-      // Check throttle: only run expensive pipeline every ~5s per bus
-      if (shouldRunSafety(licensePlate)) {
-        try {
-          console.log(`[IoT] Running safety pipeline for ${licensePlate}...`);
-
-          // Calculate seated vs standing using actual bus seat capacity
-          const seatCapacity = bus.capacity || 55;
-          const actualSeated = Math.min(currentOccupancy, seatCapacity);
-          const actualStanding = Math.max(0, currentOccupancy - seatCapacity);
-
-          // Check physics cache first
-          const physicsCacheParams = {
-            lat: resolvedGps.lat,
-            lon: resolvedGps.lon,
-            speed: resolvedSpeed,
-            seated: actualSeated,
-            standing: actualStanding,
-          };
-          let physicsResult = getCachedPhysics(physicsCacheParams);
-
-          if (physicsResult) {
-            // Cache hit — only need weather for ML (also cached)
-            const weather = await getRoadWeather(
-              resolvedGps.lat,
-              resolvedGps.lon,
-            );
-
-            const radiusStr = physicsResult["Sharpest curve radius ahead"];
-            const distStr = physicsResult["Distance to sharpest curve"];
-            const slopeStr = physicsResult["Road slope"];
-
-            const radius_m = parseFloat(radiusStr?.replace(" m", "")) || 10000;
-            const dist_to_curve_m = parseFloat(distStr?.replace(" m", "")) || 0;
-            const gradient_deg = parseFloat(slopeStr?.replace("°", "")) || 0;
-
-            safetyResult = await getSafetyPrediction({
-              n_seated: actualSeated,
-              n_standing: actualStanding,
-              speed_kmh: resolvedSpeed,
-              radius_m,
-              is_wet: weather.isWet ? 1 : 0,
-              gradient_deg,
-              dist_to_curve_m,
-            });
-
-            riskScore = safetyResult.risk_score || 0;
-            distToCurve = dist_to_curve_m;
-
-            console.log(
-              `[IoT] ML Safety (cached physics): risk=${riskScore.toFixed(3)}, source=${safetyResult.source}`,
-            );
-          } else {
-            // Cache miss — run weather + physics in PARALLEL (they're independent)
-            const [weather, freshPhysicsResult] = await Promise.all([
-              getRoadWeather(resolvedGps.lat, resolvedGps.lon),
-              getPhysicsModelResult({
-                seated: actualSeated,
-                standing: actualStanding,
-                speed: resolvedSpeed,
-                lat: resolvedGps.lat,
-                lon: resolvedGps.lon,
-                friction: 0.65, // Default friction; weather result used for ML below
-              }),
-            ]);
-
-            physicsResult = freshPhysicsResult;
-
-            // Cache the physics result for future requests at this location
-            setCachedPhysics(physicsCacheParams, physicsResult);
-
-            const radiusStr = physicsResult["Sharpest curve radius ahead"];
-            const distStr = physicsResult["Distance to sharpest curve"];
-            const slopeStr = physicsResult["Road slope"];
-
-            const radius_m = parseFloat(radiusStr?.replace(" m", "")) || 10000;
-            const dist_to_curve_m = parseFloat(distStr?.replace(" m", "")) || 0;
-            const gradient_deg = parseFloat(slopeStr?.replace("°", "")) || 0;
-
-            console.log(
-              `[IoT] Physics: radius=${radius_m.toFixed(0)}m, dist=${dist_to_curve_m.toFixed(0)}m, slope=${gradient_deg.toFixed(1)}°, weather=${weather.condition}`,
-            );
-
-            // ML depends on physics results
-            safetyResult = await getSafetyPrediction({
-              n_seated: actualSeated,
-              n_standing: actualStanding,
-              speed_kmh: resolvedSpeed,
-              radius_m,
-              is_wet: weather.isWet ? 1 : 0,
-              gradient_deg,
-              dist_to_curve_m,
-            });
-
-            riskScore = safetyResult.risk_score || 0;
-            distToCurve = dist_to_curve_m;
-
-            console.log(
-              `[IoT] ML Safety: risk=${riskScore.toFixed(3)}, stopping=${safetyResult.stopping_distance?.toFixed(1)}m, source=${safetyResult.source}`,
-            );
-          }
-
-          // Log high risk alerts
-          if (riskScore > 0.7) {
-            console.log(
-              `[IoT] ⚠️  HIGH RISK ALERT for ${licensePlate}: score=${riskScore.toFixed(2)} at (${resolvedGps.lat.toFixed(4)}, ${resolvedGps.lon.toFixed(4)})`,
-            );
-          }
-
-          // Update throttle state with fresh results
-          updateSafetyState(licensePlate, {
-            riskScore,
-            distToCurve,
-            safetyResult,
-          });
-        } catch (safetyError) {
-          console.error(`[IoT] Safety pipeline error: ${safetyError.message}`);
-          // Continue saving data even if safety pipeline fails
-        }
+    } else {
+      // Fallback: try phone GPS cache
+      const phoneGps = getLatestGps(licensePlate);
+      if (phoneGps) {
+        resolvedGps = { lat: phoneGps.lat, lon: phoneGps.lon };
+        resolvedSpeed = phoneGps.speed || resolvedSpeed;
+        gpsSource = "phone";
+        console.log(
+          `[IoT] GPS from phone cache: (${resolvedGps.lat.toFixed(4)}, ${resolvedGps.lon.toFixed(4)}) @ ${resolvedSpeed.toFixed(1)} km/h`,
+        );
       } else {
-        // Throttled: reuse last known safety results
-        const lastState = getLastSafetyState(licensePlate);
-        if (lastState) {
-          riskScore = lastState.riskScore;
-          distToCurve = lastState.distToCurve;
-          safetyResult = lastState.safetyResult;
-          console.log(
-            `[IoT] Safety throttled for ${licensePlate}, reusing: risk=${riskScore.toFixed(3)}`,
-          );
-        }
+        console.log(`[IoT] No GPS available for ${licensePlate} — safety pipeline skipped`);
       }
     }
 
-    // 4. Create a new log entry with resolved data
+    // 3. Check manual occupancy override (Test Run Interface)
+    const manualOccupancy = getManualOccupancy(licensePlate);
+    const effectiveOccupancy = manualOccupancy !== null ? manualOccupancy : currentOccupancy;
+    if (manualOccupancy !== null) {
+      console.log(`[IoT] Manual occupancy override for ${licensePlate}: ${effectiveOccupancy}`);
+    }
+
+    // 4. Save log immediately (with riskScore = 0 initially — async pipeline will update it)
     const newLog = new BusDataLog({
       busId: bus._id,
-      currentOccupancy,
+      currentOccupancy: effectiveOccupancy,
       gps: resolvedGps,
       footboardStatus: footboardStatus || false,
       speed: resolvedSpeed,
-      riskScore: riskScore,
-      distToCurve: distToCurve,
-      gpsSource: gpsSource,
+      riskScore: 0,        // Will be updated by async pipeline
+      distToCurve: 0,      // Will be updated by async pipeline
+      gpsSource,
     });
     await newLog.save();
 
-    // 5. Update the bus's 'currentStatus' to point to this latest log
+    // 5. Update bus currentStatus
     bus.currentStatus = newLog._id;
     await bus.save();
 
-    // 6. Check violations (pass bus to avoid redundant DB query)
+    // 6. Check violations (fast — no external calls)
     await checkAndLogViolation(bus, newLog);
 
+    // 7. Respond to ESP32 IMMEDIATELY — before safety pipeline
     res.status(201).json({
-      message: "Data ingested successfully",
+      message: "Data received",
       gpsSource,
-      safetyPipeline: safetyResult
-        ? {
-            riskScore: riskScore,
-            stoppingDistance: safetyResult.stopping_distance,
-            source: safetyResult.source,
-          }
-        : "skipped (no valid GPS or speed=0)",
-      log: newLog,
+      logId: newLog._id,
+      occupancy: effectiveOccupancy,
+      gps: resolvedGps,
     });
+
+    // 8. Run safety pipeline ASYNCHRONOUSLY (doesn't block ESP32)
+    const hasValidGps = resolvedGps.lat !== 0 && resolvedGps.lon !== 0;
+    if (hasValidGps && resolvedSpeed > 0) {
+      setImmediate(() => {
+        runSafetyPipelineAsync(newLog._id, bus._id, {
+          resolvedGps,
+          resolvedSpeed,
+          currentOccupancy: effectiveOccupancy,
+          licensePlate,
+          capacity: bus.capacity,
+        });
+      });
+    }
   } catch (error) {
     next(error);
   }
 };
 
 /**
- * @desc    Ingest mock IoT data (legacy endpoint - kept for backward compatibility)
+ * @desc    Ingest mock IoT data (legacy endpoint — kept for backward compatibility)
  * @route   POST /api/iot/mock-data
  * @access  Public
  */

@@ -15,6 +15,7 @@ import edgeDeviceRoutes from "./api/edgeDevice.routes.js";
 import sosRoutes from "./api/sos.routes.js";
 import attendanceRoutes from "./api/attendance.routes.js";
 import assignmentRoutes from "./api/assignment.routes.js";
+import testRunRoutes from "./api/test-run.routes.js";
 
 // Connect to Database
 connectDB();
@@ -36,6 +37,7 @@ app.use("/api/edge-devices", edgeDeviceRoutes);
 app.use("/api/sos", sosRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/assignments", assignmentRoutes);
+app.use("/api/test-run", testRunRoutes);  // Research Demo — Test Run Interface (no auth)
 
 // Root route
 app.get("/", (req, res) => {
@@ -52,6 +54,7 @@ app.get("/", (req, res) => {
       sos: "/api/sos",
       attendance: "/api/attendance",
       assignments: "/api/assignments",
+      testRun: "/api/test-run",
     },
   });
 });

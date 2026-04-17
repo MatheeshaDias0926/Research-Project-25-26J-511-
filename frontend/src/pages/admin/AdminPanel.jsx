@@ -69,6 +69,7 @@ import AuthorityScenarioSimulator from "../authority/AuthorityScenarioSimulator"
 import AuthorityPhysicsCheck from "../authority/AuthorityPhysicsCheck";
 import SafetyTheories from "../authority/SafetyTheories";
 import ViolationsFeed from "../authority/ViolationsFeed";
+import TestRunInterface from "../authority/TestRunInterface";
 
 // ─── Tab Navigation ────────────────────────────────────────
 const TABS = [
@@ -85,6 +86,7 @@ const TABS = [
   { key: "physics-check", label: "Physics Check", icon: AlertTriangle },
   { key: "safety-theories", label: "Safety Theories", icon: BookOpen },
   { key: "violations", label: "Violations Feed", icon: AlertTriangle },
+  { key: "test-run", label: "🚍 Test Run", icon: Play },
 ];
 
 const tabStyle = (active) => ({
@@ -4342,6 +4344,7 @@ const AdminPanel = () => {
     if (path === "/admin/physics-check") return "physics-check";
     if (path === "/admin/safety-theories") return "safety-theories";
     if (path === "/admin/violations") return "violations";
+    if (path === "/admin/test-run") return "test-run";
     return "overview";
   };
 
@@ -4377,6 +4380,8 @@ const AdminPanel = () => {
         return <SafetyTheories />;
       case "violations":
         return <ViolationsFeed />;
+      case "test-run":
+        return <TestRunInterface />;
       default:
         return <OverviewTab />;
     }

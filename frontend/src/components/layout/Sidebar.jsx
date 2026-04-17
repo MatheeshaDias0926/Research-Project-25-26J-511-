@@ -161,6 +161,12 @@ const Sidebar = () => {
       icon: FileWarning,
       roles: ["authority", "admin"],
     },
+    {
+      name: "Test Run (Demo)",
+      href: "/admin/test-run",
+      icon: Play,
+      roles: ["authority", "admin"],
+    },
   ];
 
   const filteredLinks = links.filter((link) => link.roles.includes(role));
