@@ -11,7 +11,6 @@ import Input from "../../components/ui/Input";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { Play, Square, AlertTriangle, ShieldCheck, MapPin, Gauge, Users, Clock, Trash2, Crosshair } from "lucide-react";
-import axios from "axios";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -80,7 +79,7 @@ const TestRunInterface = () => {
   useEffect(() => {
     const fetchBuses = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/test-run/buses");
+        const res = await api.get("/test-run/buses");
         setBuses(res.data);
         if (res.data.length > 0) setSelectedBus(res.data[0].licensePlate);
       } catch (err) {
@@ -149,7 +148,7 @@ const TestRunInterface = () => {
   const fetchBusStatus = async () => {
     if (!selectedBus) return;
     try {
-      const res = await axios.get(`http://localhost:3000/api/test-run/status/${selectedBus}`);
+      const res = await api.get(`/test-run/status/${selectedBus}`);
       const newData = res.data;
       
       // Check for critical transition
@@ -172,7 +171,7 @@ const TestRunInterface = () => {
   const fetchWarnings = async () => {
     if (!selectedBus) return;
     try {
-      const res = await axios.get(`http://localhost:3000/api/test-run/warnings/${selectedBus}?minutes=60`);
+      const res = await api.get(`/test-run/warnings/${selectedBus}?minutes=60`);
       setWarnings(res.data.warnings || []);
     } catch (err) {
       console.error("Failed to fetch warnings", err);
@@ -184,7 +183,7 @@ const TestRunInterface = () => {
     if (!selectedBus) return;
     try {
       const val = manualOccupancy.trim() === "" ? null : parseInt(manualOccupancy);
-      await axios.post("http://localhost:3000/api/test-run/set-occupancy", {
+      await api.post("/test-run/set-occupancy", {
         licensePlate: selectedBus,
         occupancy: val
       });
@@ -448,6 +447,12 @@ const TestRunInterface = () => {
                       </div>
                       <div style={{ color: "#334155" }}>
                         Score: <strong>{w.riskScore.toFixed(3)}</strong> | Speed: {w.speed}km/h | Curve: {w.distToCurve.toFixed(0)}m
+                        
+                        {/* Show specific violations if they occurred during this log */}
+                        <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                           {w.footboard && <span style={{ fontSize: 10, background: "#ef4444", color: "white", padding: "2px 6px", borderRadius: 4 }}>Footboard Violation</span>}
+                           {w.occupancy > (busData?.capacity || 55) && <span style={{ fontSize: 10, background: "#f97316", color: "white", padding: "2px 6px", borderRadius: 4 }}>Overcrowded ({w.occupancy}/{busData?.capacity || 55})</span>}
+                        </div>
                       </div>
                     </div>
                   ))}
