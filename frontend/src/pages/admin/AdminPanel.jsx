@@ -43,6 +43,7 @@ import {
   EyeOff,
   Radio,
   BookOpen,
+  AlertOctagon,
 } from "lucide-react";
 import BusLocationMap from "../../components/ui/BusLocationMap";
 import {
@@ -68,6 +69,7 @@ import IoTSimulator from "../authority/IoTSimulator";
 import AuthorityScenarioSimulator from "../authority/AuthorityScenarioSimulator";
 import AuthorityPhysicsCheck from "../authority/AuthorityPhysicsCheck";
 import SafetyTheories from "../authority/SafetyTheories";
+import ViolationsTab from "./ViolationsTab";
 
 // ─── Tab Navigation ────────────────────────────────────────
 const TABS = [
@@ -75,6 +77,7 @@ const TABS = [
   { key: "live-map", label: "Live Map", icon: MapPin },
   { key: "fleet", label: "Fleet Management", icon: Bus },
   { key: "assignments", label: "Bus Assignments", icon: Link2 },
+  { key: "violations", label: "Violations", icon: AlertOctagon },
   { key: "employees", label: "Employee Management", icon: Users },
   { key: "edge-devices", label: "Edge Device Management", icon: Cpu },
   { key: "sos", label: "SOS Alerts", icon: Siren },
@@ -965,7 +968,6 @@ const AssignmentsTab = () => {
     { key: "assign-driver", label: "Assign Driver" },
     { key: "assign-conductor", label: "Assign Conductor" },
     { key: "assign-device", label: "Assign Edge Device" },
-    { key: "current", label: "Current Assignments" },
   ];
 
   if (loading) return <div style={{ padding: 32 }}>Loading...</div>;
@@ -1239,7 +1241,8 @@ const AssignmentsTab = () => {
         </Card>
       )}
 
-      {subTab === "current" && (
+      <div style={{ marginTop: 24 }}>
+        <h3 style={{ fontSize: "var(--text-lg)", fontWeight: 600, marginBottom: 16 }}>Current Assignments</h3>
         <Card>
           <CardContent style={{ padding: 0 }}>
             <div style={{ overflowX: "auto" }}>
@@ -1347,7 +1350,7 @@ const AssignmentsTab = () => {
             </div>
           </CardContent>
         </Card>
-      )}
+      </div>
     </div>
   );
 };
@@ -4412,6 +4415,7 @@ const AdminPanel = () => {
   const getActiveTab = () => {
     if (path === "/admin/fleet") return "fleet";
     if (path === "/admin/assignments") return "assignments";
+    if (path === "/admin/violations") return "violations";
     if (path === "/admin/employees") return "employees";
     if (path === "/admin/edge-devices") return "edge-devices";
     if (path === "/admin/sos") return "sos";
@@ -4437,6 +4441,8 @@ const AdminPanel = () => {
         return <FleetTab />;
       case "assignments":
         return <AssignmentsTab />;
+      case "violations":
+        return <ViolationsTab />;
       case "employees":
         return <EmployeeTab />;
       case "edge-devices":

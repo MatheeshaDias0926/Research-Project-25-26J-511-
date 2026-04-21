@@ -44,6 +44,7 @@ const Sidebar = () => {
     { name: "Live Location", href: "/admin/live-map", icon: MapPin, roles: ["authority", "admin"] },
     { name: "Fleet Management", href: "/admin/fleet", icon: Bus, roles: ["authority", "admin"] },
     { name: "Bus Assignments", href: "/admin/assignments", icon: Link2, roles: ["authority", "admin"] },
+    { name: "Violations", href: "/admin/violations", icon: FileWarning, roles: ["authority", "admin"] },
     { name: "Employee Management", href: "/admin/employees", icon: Users, roles: ["authority", "admin"] },
     { name: "Edge Devices", href: "/admin/edge-devices", icon: Cpu, roles: ["authority", "admin"] },
     { name: "SOS Alerts", href: "/admin/sos", icon: Siren, roles: ["authority", "admin"] },

@@ -75,6 +75,27 @@ export const getBusByLicensePlate = async (req, res, next) => {
 };
 
 /**
+ * @desc    Get all violations across the entire fleet
+ * @route   GET /api/bus/analytics/all-violations
+ * @access  Private (Authority only)
+ */
+export const getAllViolations = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    
+    const violations = await ViolationLog.find()
+      .populate("busId", "licensePlate routeId")
+      .populate("driverRef", "name licenseNumber")
+      .sort({ createdAt: -1 })
+      .limit(limit);
+      
+    res.json(violations);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Get violation history for a bus
  * @route   GET /api/bus/:busId/violations
  * @access  Private (Authority only)

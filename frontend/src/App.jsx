@@ -77,6 +77,7 @@ function App() {
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/admin/fleet" element={<AdminPanel />} />
               <Route path="/admin/assignments" element={<AdminPanel />} />
+              <Route path="/admin/violations" element={<AdminPanel />} />
               <Route path="/admin/employees" element={<AdminPanel />} />
               <Route path="/admin/edge-devices" element={<AdminPanel />} />
               <Route path="/admin/sos" element={<AdminPanel />} />

@@ -13,6 +13,7 @@ import {
   getViolationAnalytics,
   getViolationTrends,
   getFleetOccupancy,
+  getAllViolations,
 } from "../controllers/bus.controller.js";
 import { getPhysicsModel } from "../controllers/physics.controller.js";
 import {
@@ -53,6 +54,13 @@ router.get("/available", protect, isAuthority, getAvailableBuses);
  * @access  Private (Authority only)
  */
 router.get("/analytics/violations", protect, isAuthority, getViolationAnalytics);
+
+/**
+ * @route   GET /api/bus/analytics/all-violations
+ * @desc    Get latest violations across all fleet
+ * @access  Private (Authority only)
+ */
+router.get("/analytics/all-violations", protect, isAuthority, getAllViolations);
 
 /**
  * @route   GET /api/bus/analytics/trends
