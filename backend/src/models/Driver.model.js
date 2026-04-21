@@ -3,7 +3,9 @@ import mongoose from "mongoose";
 const driverSchema = new mongoose.Schema(
     {
         name: { type: String, required: true },
+        nic: { type: String, required: true, unique: true },
         licenseNumber: { type: String, required: true, unique: true },
+        licenseExpiryDate: { type: Date, required: true },
         photoUrl: { type: String, default: "" }, // Cloudinary URL (set during face registration)
         faceEncoding: { type: [Number], default: [] }, // 128-d vector from ML service
         status: {

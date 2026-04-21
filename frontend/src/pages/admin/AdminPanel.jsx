@@ -1370,6 +1370,8 @@ const EmployeeTab = () => {
     fullName: "",
     nic: "",
     licenceNumber: "",
+    conductorLicenseNumber: "",
+    licenseExpiryDate: "",
     contactNumber: "",
     profileImage: "",
   });
@@ -1400,6 +1402,8 @@ const EmployeeTab = () => {
       fullName: "",
       nic: "",
       licenceNumber: "",
+      conductorLicenseNumber: "",
+      licenseExpiryDate: "",
       contactNumber: "",
       profileImage: "",
     });
@@ -1426,7 +1430,9 @@ const EmployeeTab = () => {
         role: employeeType,
         fullName: form.fullName,
         nic: form.nic,
-        licenceNumber: form.licenceNumber,
+        licenceNumber: employeeType === "driver" ? form.licenceNumber : undefined,
+        conductorLicenseNumber: employeeType === "conductor" ? form.conductorLicenseNumber : undefined,
+        licenseExpiryDate: form.licenseExpiryDate,
         contactNumber: form.contactNumber,
         profileImage: form.profileImage,
       });
@@ -1445,6 +1451,8 @@ const EmployeeTab = () => {
         fullName: form.fullName,
         nic: form.nic,
         licenceNumber: form.licenceNumber,
+        conductorLicenseNumber: form.conductorLicenseNumber,
+        licenseExpiryDate: form.licenseExpiryDate,
         contactNumber: form.contactNumber,
         profileImage: form.profileImage,
       });
@@ -1476,6 +1484,8 @@ const EmployeeTab = () => {
       fullName: user.fullName || "",
       nic: user.nic || "",
       licenceNumber: user.licenceNumber || "",
+      conductorLicenseNumber: user.conductorLicenseNumber || "",
+      licenseExpiryDate: user.licenseExpiryDate ? user.licenseExpiryDate.split('T')[0] : "",
       contactNumber: user.contactNumber || "",
       profileImage: user.profileImage || "",
     });
@@ -1663,6 +1673,50 @@ const EmployeeTab = () => {
                   required
                 />
               </div>
+              {employeeType === "driver" && (
+                <div>
+                  <label
+                    style={{
+                      fontSize: "var(--text-sm)",
+                      fontWeight: 500,
+                      display: "block",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Driver Licence Number *
+                  </label>
+                  <input
+                    style={inputStyle}
+                    value={form.licenceNumber}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, licenceNumber: e.target.value }))
+                    }
+                    required
+                  />
+                </div>
+              )}
+              {employeeType === "conductor" && (
+                <div>
+                  <label
+                    style={{
+                      fontSize: "var(--text-sm)",
+                      fontWeight: 500,
+                      display: "block",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Conductor Licence Number *
+                  </label>
+                  <input
+                    style={inputStyle}
+                    value={form.conductorLicenseNumber}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, conductorLicenseNumber: e.target.value }))
+                    }
+                    required
+                  />
+                </div>
+              )}
               <div>
                 <label
                   style={{
@@ -1672,14 +1726,16 @@ const EmployeeTab = () => {
                     marginBottom: 4,
                   }}
                 >
-                  Licence Number
+                  License Expiry Date *
                 </label>
                 <input
+                  type="date"
                   style={inputStyle}
-                  value={form.licenceNumber}
+                  value={form.licenseExpiryDate}
                   onChange={(e) =>
-                    setForm((p) => ({ ...p, licenceNumber: e.target.value }))
+                    setForm((p) => ({ ...p, licenseExpiryDate: e.target.value }))
                   }
+                  required
                 />
               </div>
               <div>

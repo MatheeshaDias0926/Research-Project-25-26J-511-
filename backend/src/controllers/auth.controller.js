@@ -49,29 +49,54 @@ export const registerUser = async (req, res, next) => {
       role: role || "passenger",
     };
 
-    // Handle Bus Assignment (only for conductors)
-    if (role === "conductor" && req.body.busId) {
+    let assignedBusId = null;
+
+    // Handle Bus Assignment (only for conductors/drivers during registration)
+    if ((role === "conductor" || role === "driver") && req.body.busId) {
       const { busId } = req.body;
 
       // 1. Check if bus exists
+      const Bus = (await import("../models/Bus.model.js")).default;
       const bus = await Bus.findById(busId);
       if (!bus) {
         res.status(404);
         throw new Error("Bus not found");
       }
-
-      // 2. Check if bus is already assigned
-      const isAssigned = await User.findOne({ assignedBus: busId });
-      if (isAssigned) {
-        res.status(400);
-        throw new Error("Bus is already assigned to another conductor");
-      }
-
-      userPayload.assignedBus = busId;
+      
+      assignedBusId = busId;
     }
 
     // Create user
     const user = await User.create(userPayload);
+
+    // Create profiles if driver/conductor
+    if (role === "driver") {
+       const Driver = (await import("../models/Driver.model.js")).default;
+       const driverData = {
+         name: username,
+         nic: req.body.nic || "NOT_PROVIDED_" + Date.now(),
+         licenseNumber: req.body.licenceNumber || "NOT_PROVIDED_" + Date.now(),
+         licenseExpiryDate: req.body.licenseExpiryDate || new Date(Date.now() + 31536000000), // default +1 year
+         userId: user._id
+       };
+       if (assignedBusId) driverData.assignedBus = assignedBusId;
+       const driver = await Driver.create(driverData);
+       user.driverProfile = driver._id;
+       await user.save();
+    } else if (role === "conductor") {
+       const Conductor = (await import("../models/Conductor.model.js")).default;
+       const condData = {
+         name: username,
+         nic: req.body.nic || "NOT_PROVIDED_" + Date.now(),
+         conductorLicenseNumber: req.body.conductorLicenseNumber || "NOT_PROVIDED_" + Date.now(),
+         licenseExpiryDate: req.body.licenseExpiryDate || new Date(Date.now() + 31536000000),
+         userId: user._id
+       };
+       if (assignedBusId) condData.assignedBus = assignedBusId;
+       const conductor = await Conductor.create(condData);
+       user.conductorProfile = conductor._id;
+       await user.save();
+    }
 
     if (user) {
       res.status(201).json({
@@ -109,14 +134,26 @@ export const loginUser = async (req, res, next) => {
 
     // Check if user exists and password matches
     if (user && (await user.matchPassword(password))) {
-      // Populate assignedBus if it exists
-      await user.populate("assignedBus");
+      // Populate assignedBus from role-specific profiles
+      if (user.role === "driver" && user.driverProfile) {
+        await user.populate({ path: "driverProfile", populate: { path: "assignedBus" } });
+      } else if (user.role === "conductor" && user.conductorProfile) {
+        await user.populate({ path: "conductorProfile", populate: { path: "assignedBus" } });
+      }
+
+      // Determine assignedBus based on role
+      let assignedBus = null;
+      if (user.role === "driver" && user.driverProfile) {
+        assignedBus = user.driverProfile.assignedBus;
+      } else if (user.role === "conductor" && user.conductorProfile) {
+        assignedBus = user.conductorProfile.assignedBus;
+      }
 
       res.json({
         _id: user._id,
         username: user.username,
         role: user.role,
-        assignedBus: user.assignedBus, // Return the populated bus object
+        assignedBus: assignedBus, // Return the mapped bus object
         token: generateToken(user._id),
       });
     } else {
@@ -137,10 +174,17 @@ export const getUserProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id)
       .select("-password")
-      .populate("assignedBus"); // Populate assignedBus
+      .populate({ path: "driverProfile", populate: { path: "assignedBus" } })
+      .populate({ path: "conductorProfile", populate: { path: "assignedBus" } });
 
     if (user) {
-      res.json(user);
+      const userObj = user.toObject();
+      if (user.role === "driver" && user.driverProfile) {
+        userObj.assignedBus = user.driverProfile.assignedBus;
+      } else if (user.role === "conductor" && user.conductorProfile) {
+        userObj.assignedBus = user.conductorProfile.assignedBus;
+      }
+      res.json(userObj);
     } else {
       res.status(404);
       throw new Error("User not found");
@@ -230,8 +274,21 @@ export const getConductors = async (req, res, next) => {
   try {
     const conductors = await User.find({ role: "conductor" })
       .select("-password")
-      .populate("assignedBus", "licensePlate routeId");
-    res.json(conductors);
+      .populate({
+        path: "conductorProfile",
+        populate: { path: "assignedBus", select: "licensePlate routeId" }
+      });
+    
+    // Map assignedBus to root level for backward compatibility
+    const mappedConductors = conductors.map(c => {
+      const obj = c.toObject();
+      obj.assignedBus = c.conductorProfile?.assignedBus || null;
+      obj.nic = c.conductorProfile?.nic;
+      obj.licenceNumber = c.conductorProfile?.conductorLicenseNumber;
+      return obj;
+    });
+
+    res.json(mappedConductors);
   } catch (error) {
     next(error);
   }
@@ -246,9 +303,21 @@ export const getDriverUsers = async (req, res, next) => {
   try {
     const drivers = await User.find({ role: "driver" })
       .select("-password")
-      .populate("driverProfile")
-      .populate("assignedBus", "licensePlate routeId");
-    res.json(drivers);
+      .populate({
+        path: "driverProfile",
+        populate: { path: "assignedBus", select: "licensePlate routeId" }
+      });
+      
+    // Map driverProfile variables to root level
+    const mappedDrivers = drivers.map(d => {
+      const obj = d.toObject();
+      obj.assignedBus = d.driverProfile?.assignedBus || null;
+      obj.nic = d.driverProfile?.nic;
+      obj.licenceNumber = d.driverProfile?.licenseNumber;
+      return obj;
+    });
+
+    res.json(mappedDrivers);
   } catch (error) {
     next(error);
   }
@@ -267,8 +336,33 @@ export const getAllUsers = async (req, res, next) => {
 
     const users = await User.find(filter)
       .select("-password")
-      .populate("assignedBus", "licensePlate routeId");
-    res.json(users);
+      .populate({
+        path: "driverProfile",
+        populate: { path: "assignedBus", select: "licensePlate routeId" }
+      })
+      .populate({
+        path: "conductorProfile",
+        populate: { path: "assignedBus", select: "licensePlate routeId" }
+      });
+      
+    // Map variables to root level
+    const mappedUsers = users.map(u => {
+      const obj = u.toObject();
+      if (u.role === "driver" && u.driverProfile) {
+        obj.assignedBus = u.driverProfile.assignedBus || null;
+        obj.nic = u.driverProfile.nic;
+        obj.licenceNumber = u.driverProfile.licenseNumber;
+        obj.licenseExpiryDate = u.driverProfile.licenseExpiryDate;
+      } else if (u.role === "conductor" && u.conductorProfile) {
+        obj.assignedBus = u.conductorProfile.assignedBus || null;
+        obj.nic = u.conductorProfile.nic;
+        obj.conductorLicenseNumber = u.conductorProfile.conductorLicenseNumber;
+        obj.licenseExpiryDate = u.conductorProfile.licenseExpiryDate;
+      }
+      return obj;
+    });
+
+    res.json(mappedUsers);
   } catch (error) {
     next(error);
   }
@@ -281,7 +375,7 @@ export const getAllUsers = async (req, res, next) => {
  */
 export const adminCreateUser = async (req, res, next) => {
   try {
-    const { username, password, role, busId, fullName, nic, licenceNumber, contactNumber, profileImage } = req.body;
+    const { username, password, role, busId, fullName, nic, licenceNumber, conductorLicenseNumber, licenseExpiryDate, contactNumber, profileImage } = req.body;
 
     if (!username || !password || !role) {
       res.status(400);
@@ -299,36 +393,92 @@ export const adminCreateUser = async (req, res, next) => {
       throw new Error("Username already exists");
     }
 
+    // Pre-validate required fields for Driver and Conductor before creating the User record
+    const Driver = (await import("../models/Driver.model.js")).default;
+    const Conductor = (await import("../models/Conductor.model.js")).default;
+    let existingDriver = null;
+    let existingConductor = null;
+
+    if (role === "driver") {
+      if (licenceNumber) {
+        existingDriver = await Driver.findOne({ licenseNumber: licenceNumber });
+      }
+      if (!existingDriver && (!licenceNumber || !nic || !licenseExpiryDate)) {
+        res.status(400);
+        throw new Error("License number, NIC, and expiry date are required for new driver profiles");
+      }
+    } else if (role === "conductor") {
+      if (conductorLicenseNumber) {
+        existingConductor = await Conductor.findOne({ conductorLicenseNumber: conductorLicenseNumber });
+      }
+      if (!existingConductor && (!conductorLicenseNumber || !nic || !licenseExpiryDate)) {
+        res.status(400);
+        throw new Error("Conductor License number, NIC, and expiry date are required for new conductor profiles");
+      }
+    }
+
     const userPayload = { username, password, role };
     if (fullName) userPayload.fullName = fullName;
-    if (nic) userPayload.nic = nic;
-    if (licenceNumber) userPayload.licenceNumber = licenceNumber;
     if (contactNumber) userPayload.contactNumber = contactNumber;
     if (profileImage) userPayload.profileImage = profileImage;
 
-    if (busId) {
-      const bus = await Bus.findById(busId);
-      if (!bus) {
-        res.status(404);
-        throw new Error("Bus not found");
-      }
-      userPayload.assignedBus = busId;
-    }
-
     const user = await User.create(userPayload);
 
-    // Auto-create a Driver model record when role is "driver"
+    // Link or create a Driver model record when role is "driver"
     if (role === "driver") {
-      const Driver = (await import("../models/Driver.model.js")).default;
-      const driverData = {
-        name: fullName || username,
-        licenseNumber: licenceNumber || username,
-        contactNumber: contactNumber || "",
-        photoUrl: profileImage || "",
-        userId: user._id,
-      };
-      const driver = await Driver.create(driverData);
-      user.driverProfile = driver._id;
+      if (existingDriver) {
+        // Link existing driver to this user
+        existingDriver.userId = user._id;
+        // Optionally update other fields if they were provided during registration
+        if (fullName) existingDriver.name = fullName;
+        if (contactNumber) existingDriver.contactNumber = contactNumber;
+        if (profileImage) existingDriver.photoUrl = profileImage;
+        if (nic) existingDriver.nic = nic;
+        if (licenseExpiryDate) existingDriver.licenseExpiryDate = licenseExpiryDate;
+        if (busId) existingDriver.assignedBus = busId;
+        await existingDriver.save();
+        user.driverProfile = existingDriver._id;
+      } else {
+        // Create new driver profile
+        const driverData = {
+          name: fullName || username,
+          nic: nic,
+          licenseNumber: licenceNumber,
+          licenseExpiryDate: licenseExpiryDate,
+          contactNumber: contactNumber || "",
+          photoUrl: profileImage || "",
+          userId: user._id,
+        };
+        if (busId) driverData.assignedBus = busId;
+        const newDriver = await Driver.create(driverData);
+        user.driverProfile = newDriver._id;
+      }
+      await user.save();
+    } else if (role === "conductor") {
+      if (existingConductor) {
+        existingConductor.userId = user._id;
+        if (fullName) existingConductor.name = fullName;
+        if (contactNumber) existingConductor.contactNumber = contactNumber;
+        if (profileImage) existingConductor.photoUrl = profileImage;
+        if (nic) existingConductor.nic = nic;
+        if (licenseExpiryDate) existingConductor.licenseExpiryDate = licenseExpiryDate;
+        if (busId) existingConductor.assignedBus = busId;
+        await existingConductor.save();
+        user.conductorProfile = existingConductor._id;
+      } else {
+        const conductorData = {
+          name: fullName || username,
+          nic: nic,
+          conductorLicenseNumber: conductorLicenseNumber,
+          licenseExpiryDate: licenseExpiryDate,
+          contactNumber: contactNumber || "",
+          photoUrl: profileImage || "",
+          userId: user._id,
+        };
+        if (busId) conductorData.assignedBus = busId;
+        const newConductor = await Conductor.create(conductorData);
+        user.conductorProfile = newConductor._id;
+      }
       await user.save();
     }
 
@@ -337,11 +487,8 @@ export const adminCreateUser = async (req, res, next) => {
       username: user.username,
       role: user.role,
       fullName: user.fullName,
-      nic: user.nic,
-      licenceNumber: user.licenceNumber,
       contactNumber: user.contactNumber,
       profileImage: user.profileImage,
-      assignedBus: user.assignedBus,
     });
   } catch (error) {
     next(error);
@@ -361,25 +508,47 @@ export const updateUser = async (req, res, next) => {
       throw new Error("User not found");
     }
 
-    const { fullName, nic, licenceNumber, contactNumber, profileImage } = req.body;
+    const { fullName, nic, licenceNumber, conductorLicenseNumber, licenseExpiryDate, contactNumber, profileImage } = req.body;
     if (fullName !== undefined) user.fullName = fullName;
-    if (nic !== undefined) user.nic = nic;
-    if (licenceNumber !== undefined) user.licenceNumber = licenceNumber;
     if (contactNumber !== undefined) user.contactNumber = contactNumber;
     if (profileImage !== undefined) user.profileImage = profileImage;
 
     await user.save();
+
+    // Also update driver/conductor model
+    if (user.role === "driver" && user.driverProfile) {
+      const Driver = (await import("../models/Driver.model.js")).default;
+      const driver = await Driver.findById(user.driverProfile);
+      if (driver) {
+        if (fullName !== undefined) driver.name = fullName;
+        if (contactNumber !== undefined) driver.contactNumber = contactNumber;
+        if (profileImage !== undefined) driver.photoUrl = profileImage;
+        if (nic !== undefined) driver.nic = nic;
+        if (licenceNumber !== undefined) driver.licenseNumber = licenceNumber;
+        if (licenseExpiryDate !== undefined) driver.licenseExpiryDate = licenseExpiryDate;
+        await driver.save();
+      }
+    } else if (user.role === "conductor" && user.conductorProfile) {
+      const Conductor = (await import("../models/Conductor.model.js")).default;
+      const conductor = await Conductor.findById(user.conductorProfile);
+      if (conductor) {
+        if (fullName !== undefined) conductor.name = fullName;
+        if (contactNumber !== undefined) conductor.contactNumber = contactNumber;
+        if (profileImage !== undefined) conductor.photoUrl = profileImage;
+        if (nic !== undefined) conductor.nic = nic;
+        if (conductorLicenseNumber !== undefined) conductor.conductorLicenseNumber = conductorLicenseNumber;
+        if (licenseExpiryDate !== undefined) conductor.licenseExpiryDate = licenseExpiryDate;
+        await conductor.save();
+      }
+    }
 
     res.json({
       _id: user._id,
       username: user.username,
       role: user.role,
       fullName: user.fullName,
-      nic: user.nic,
-      licenceNumber: user.licenceNumber,
       contactNumber: user.contactNumber,
       profileImage: user.profileImage,
-      assignedBus: user.assignedBus,
     });
   } catch (error) {
     next(error);
