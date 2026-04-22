@@ -31,6 +31,13 @@ const unsigned long SEND_INTERVAL = 1000;  // 1 second
 #define SENSOR2_PIN  19   // IR Sensor 2 (Inner) - Inside bus
 
 // ============================================================
+//  TM1637 Display & Buzzer
+// ============================================================
+#define DISPLAY_CLK  22   // TM1637 Display Clock
+#define DISPLAY_DIO  23   // TM1637 Display Data
+#define BUZZER_PIN   21   // Buzzer signal pin
+
+// ============================================================
 //  NEO-6M GPS Module — UART2 (Hardware Serial)
 //  Wiring: NEO-6M TX → ESP32 GPIO16 (RX2)
 //          NEO-6M RX ← ESP32 GPIO17 (TX2)

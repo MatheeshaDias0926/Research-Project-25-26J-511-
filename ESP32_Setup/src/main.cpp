@@ -3,6 +3,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <TinyGPSPlus.h>
+#include <TM1637Display.h>
 #include "config.h"
 
 // ============================================================
@@ -82,6 +83,11 @@ OfflineData offlineBuffer[MAX_BUFFER];
 int bufferCount = 0;
 
 // ============================================================
+//  TM1637 Display & Buzzer
+// ============================================================
+TM1637Display display(DISPLAY_CLK, DISPLAY_DIO);
+
+// ============================================================
 //  Function Declarations
 // ============================================================
 void connectWiFi();
@@ -93,6 +99,12 @@ void checkFootboardDetection();
 void sendDataToBackend(bool isFootboardViolation);
 void sendBufferedData();
 void printGpsStatus();
+void updateDisplay();
+void showFootboardWarning();
+void playBuzzer(int duration, int frequency);
+void playEntrySound();
+void playExitSound();
+void playFootboardWarning();
 
 // ============================================================
 //  SETUP
@@ -115,6 +127,22 @@ void setup() {
   pinMode(SENSOR1_PIN, INPUT);
   pinMode(SENSOR2_PIN, INPUT);
   Serial.println(F("[INIT] IR Sensors ready (GPIO 18, 19)"));
+
+  // Configure buzzer pin
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
+  Serial.println(F("[INIT] Buzzer ready (GPIO 21)"));
+
+  // Initialize TM1637 Display
+  display.setBrightness(0x0f);
+  display.clear();
+  updateDisplay();
+  Serial.println(F("[INIT] TM1637 Display ready (GPIO 22/23)"));
+
+  // Startup beep
+  playBuzzer(200, 1000);
+  delay(100);
+  playBuzzer(200, 1500);
 
   // Configure BOOT button
   pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
@@ -154,6 +182,8 @@ void loop() {
       Serial.print(F("\n[TEST] Set passenger count → "));
       Serial.println(TEST_PASSENGER_COUNT);
     }
+    updateDisplay();
+    playBuzzer(150, 2000);
   }
   lastButtonState = buttonReading;
 
@@ -304,10 +334,14 @@ void processCountingLogic() {
       passengerCount++;
       Serial.print(F("*** PERSON ENTERED (timeout) — Occupancy: "));
       Serial.println(passengerCount);
+      updateDisplay();
+      playEntrySound();
     } else if ((currentState == SENSOR2_TRIGGERED || currentState == BOTH_TRIGGERED_OUT) && sensor1WasTriggered) {
       passengerCount = max(0, passengerCount - 1);
       Serial.print(F("*** PERSON EXITED (timeout) — Occupancy: "));
       Serial.println(passengerCount);
+      updateDisplay();
+      playExitSound();
     }
     currentState = IDLE;
     sensor1WasTriggered = false;
@@ -342,6 +376,8 @@ void processCountingLogic() {
         passengerCount++;
         Serial.print(F("\n=== PERSON ENTERED === Occupancy: "));
         Serial.println(passengerCount);
+        updateDisplay();
+        playEntrySound();
         currentState = IDLE;
         sensor1WasTriggered = false;
         sensor2WasTriggered = false;
@@ -361,6 +397,8 @@ void processCountingLogic() {
         passengerCount = max(0, passengerCount - 1);
         Serial.print(F("\n=== PERSON EXITED === Occupancy: "));
         Serial.println(passengerCount);
+        updateDisplay();
+        playExitSound();
         currentState = IDLE;
         sensor1WasTriggered = false;
         sensor2WasTriggered = false;
@@ -388,6 +426,8 @@ void checkFootboardDetection() {
       if (!sensor2WasTriggered && sensor2State == HIGH) {
         footboardDetected = true;
         Serial.println(F("\n!!! FOOTBOARD VIOLATION DETECTED !!!"));
+        showFootboardWarning();
+        playFootboardWarning();
         sendDataToBackend(true);  // Immediate footboard violation send
 
         sensor1BlockedStartTime = 0;
@@ -539,4 +579,51 @@ void sendBufferedData() {
 
   bufferCount = 0;
   Serial.println(F("[BUFFER] All buffered data sent!"));
+}
+
+// ============================================================
+//  TM1637 DISPLAY
+// ============================================================
+void updateDisplay() {
+  display.showNumberDec(passengerCount, false);
+}
+
+void showFootboardWarning() {
+  for (int i = 0; i < 3; i++) {
+    display.clear();
+    delay(200);
+    display.showNumberDec(8888, true);
+    delay(200);
+  }
+  updateDisplay();  // Restore passenger count
+}
+
+// ============================================================
+//  BUZZER
+// ============================================================
+void playBuzzer(int duration, int frequency) {
+  tone(BUZZER_PIN, frequency, duration);
+  delay(duration);
+  noTone(BUZZER_PIN);
+}
+
+void playEntrySound() {
+  playBuzzer(100, 1000);
+  delay(50);
+  playBuzzer(100, 1500);
+}
+
+void playExitSound() {
+  playBuzzer(100, 1500);
+  delay(50);
+  playBuzzer(100, 1000);
+}
+
+void playFootboardWarning() {
+  for (int i = 0; i < 6; i++) {
+    playBuzzer(200, 800);
+    delay(50);
+    playBuzzer(200, 1200);
+    delay(50);
+  }
 }
