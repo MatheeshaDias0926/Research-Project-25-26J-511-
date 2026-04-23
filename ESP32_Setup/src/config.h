@@ -14,7 +14,7 @@ const char* WIFI_PASSWORD = "123456788";
 // --- Backend Server ---
 // Use your Mac's IP on the shared WiFi network
 // Find it with: ifconfig | grep inet (on Mac)
-const char* BACKEND_URL = "http://192.168.8.169:3000/api/iot/iot-data";
+const char* BACKEND_URL = "http://192.168.43.207:3000/api/iot/iot-data";
 
 // --- Bus Identity ---
 // Must match a bus registered in the backend database
