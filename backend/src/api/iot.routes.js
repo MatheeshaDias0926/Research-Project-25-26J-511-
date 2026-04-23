@@ -5,9 +5,18 @@ import {
   receiveGpsFeed,
   getActiveGpsFeeds,
   receiveOverlandGps,
+  receiveCvEvent,
 } from "../controllers/iot.controller.js";
 
 const router = express.Router();
+
+/**
+ * @route   POST /api/iot/cv-event
+ * @desc    Receive CV passenger count events (IN/OUT) from ML tracking script
+ * @access  Public
+ */
+router.post("/cv-event", receiveCvEvent);
+
 
 /**
  * @route   POST /api/iot/gps-feed

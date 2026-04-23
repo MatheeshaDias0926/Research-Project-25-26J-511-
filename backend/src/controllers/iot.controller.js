@@ -75,6 +75,48 @@ export const getSpeedMultiplier = (licensePlate) => {
   return override.multiplier;
 };
 
+// ─── Sensor Fusion Pipeline (IR + CV) ─────────────────────────────────────────
+// We maintain queues to fuse events from the ESP32 (IR sensors) and Python CV (YOLOv8)
+// Map<licensePlate, { source: string, direction: string, timestamp: number, matched: boolean }[]>
+const fusionEventQueue = new Map();
+const lastIrOccupancyMap = new Map();
+const trueOccupancyMap = new Map();
+
+/**
+ * Process an event (IN/OUT) from either IR or CV.
+ * Deduplicates events if the other sensor reported it within 3 seconds.
+ * Returns true if this is a NEW event (should increment/decrement count).
+ */
+const processFusionEvent = (licensePlate, source, direction) => {
+  if (!fusionEventQueue.has(licensePlate)) {
+    fusionEventQueue.set(licensePlate, []);
+  }
+  const queue = fusionEventQueue.get(licensePlate);
+  const now = Date.now();
+  
+  // Clean up events older than 3 seconds
+  const activeQueue = queue.filter(e => now - e.timestamp < 3000);
+  
+  // Look for unmatched event from the OTHER source for the SAME direction
+  const matchIndex = activeQueue.findIndex(e => e.source !== source && e.direction === direction && !e.matched);
+  
+  let isNewCrossing = false;
+  if (matchIndex !== -1) {
+    // Found a match! This event was already counted by the other sensor.
+    activeQueue[matchIndex].matched = true;
+    console.log(`[Sensor Fusion] 🎯 ${direction.toUpperCase()} event confirmed by BOTH ${source} and ${activeQueue[matchIndex].source} (HIGH CONFIDENCE)`);
+  } else {
+    // No match yet. This is a new crossing.
+    activeQueue.push({ source, direction, timestamp: now, matched: false });
+    isNewCrossing = true;
+    console.log(`[Sensor Fusion] ⏳ ${direction.toUpperCase()} event detected by ${source} only (Awaiting confirmation...)`);
+  }
+  
+  fusionEventQueue.set(licensePlate, activeQueue);
+  return isNewCrossing;
+};
+
+
 // ─── Async Safety Pipeline ────────────────────────────────────────────────────
 /**
  * Run the full physics+ML safety pipeline asynchronously.
@@ -447,9 +489,35 @@ export const ingestIoTData = async (req, res, next) => {
       }
     }
 
-    // 3. Check manual occupancy override (Test Run Interface)
+    // 3. Sensor Fusion Logic
+    let fusedOccupancy = trueOccupancyMap.get(licensePlate);
+    if (fusedOccupancy === undefined) {
+      fusedOccupancy = currentOccupancy; // initialize
+    }
+
+    const lastIrOcc = lastIrOccupancyMap.get(licensePlate);
+    if (lastIrOcc !== undefined && currentOccupancy !== lastIrOcc) {
+      const diff = currentOccupancy - lastIrOcc;
+      const direction = diff > 0 ? "in" : "out";
+      const loops = Math.abs(diff);
+      
+      for (let i = 0; i < loops; i++) {
+        if (processFusionEvent(licensePlate, 'IR', direction)) {
+          fusedOccupancy += (direction === "in" ? 1 : -1);
+        }
+      }
+      fusedOccupancy = Math.max(0, fusedOccupancy);
+    } else if (lastIrOcc === undefined) {
+      // First payload from ESP32
+      fusedOccupancy = currentOccupancy;
+    }
+    
+    lastIrOccupancyMap.set(licensePlate, currentOccupancy);
+    trueOccupancyMap.set(licensePlate, fusedOccupancy);
+
+    // 4. Check manual occupancy override (Test Run Interface)
     const manualOccupancy = getManualOccupancy(licensePlate);
-    const effectiveOccupancy = manualOccupancy !== null ? manualOccupancy : currentOccupancy;
+    const effectiveOccupancy = manualOccupancy !== null ? manualOccupancy : fusedOccupancy;
     if (manualOccupancy !== null) {
       console.log(`[IoT] Manual occupancy override for ${licensePlate}: ${effectiveOccupancy}`);
     }
@@ -560,5 +628,41 @@ export const ingestMockData = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * @desc    Receive CV Passenger Count Events from Python tracking script
+ * @route   POST /api/iot/cv-event
+ * @access  Public
+ */
+export const receiveCvEvent = async (req, res) => {
+  const { licensePlate, direction } = req.body;
+  
+  if (!licensePlate || !direction) {
+    return res.status(400).json({ error: "Missing fields: licensePlate, direction" });
+  }
+
+  try {
+    let fusedOccupancy = trueOccupancyMap.get(licensePlate);
+    if (fusedOccupancy === undefined) {
+      // If ESP32 hasn't sent data yet, initialize from DB
+      const bus = await Bus.findOne({ licensePlate });
+      fusedOccupancy = bus ? (bus.currentOccupancy || 0) : 0;
+    }
+
+    if (processFusionEvent(licensePlate, 'CV', direction)) {
+      fusedOccupancy += (direction === "in" ? 1 : -1);
+      fusedOccupancy = Math.max(0, fusedOccupancy);
+      trueOccupancyMap.set(licensePlate, fusedOccupancy);
+
+      // Update bus DB so dashboard updates instantly
+      await Bus.findOneAndUpdate({ licensePlate }, { currentOccupancy: fusedOccupancy });
+    }
+
+    res.json({ result: "ok", fusedOccupancy });
+  } catch (err) {
+    console.error("[CV Event] Error:", err.message);
+    res.status(500).json({ error: "Server error processing CV event" });
   }
 };

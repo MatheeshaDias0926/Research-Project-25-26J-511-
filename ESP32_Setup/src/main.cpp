@@ -348,30 +348,47 @@ void processCountingLogic() {
     sensor2WasTriggered = false;
   }
 
+  // If stuck in a non-idle state for too long (e.g. 2 seconds), reset to avoid deadlock
+  if (currentState != IDLE && (millis() - lastStateChange > 2000)) {
+    currentState = IDLE;
+    sensor1WasTriggered = false;
+    sensor2WasTriggered = false;
+    Serial.println(F("[IR] Timeout. Resetting state to IDLE."));
+  }
+
   switch (currentState) {
     case IDLE:
-      sensor1WasTriggered = false;
-      sensor2WasTriggered = false;
       if (sensor1State == LOW) {
         currentState = SENSOR1_TRIGGERED;
-        sensor1WasTriggered = true;
         lastStateChange = millis();
+        // Serial.println(F("[IR] S1 Triggered -> Waiting for S2..."));
       } else if (sensor2State == LOW) {
         currentState = SENSOR2_TRIGGERED;
-        sensor2WasTriggered = true;
         lastStateChange = millis();
+        // Serial.println(F("[IR] S2 Triggered -> Waiting for S1..."));
       }
       break;
 
     case SENSOR1_TRIGGERED:
+      // A person is walking IN. They hit S1 first. Now they hit S2.
       if (sensor2State == LOW) {
-        sensor2WasTriggered = true;
         currentState = BOTH_TRIGGERED_IN;
         lastStateChange = millis();
+        // Serial.println(F("[IR] S2 Hit! Waiting for both to clear..."));
+      }
+      break;
+
+    case SENSOR2_TRIGGERED:
+      // A person is walking OUT. They hit S2 first. Now they hit S1.
+      if (sensor1State == LOW) {
+        currentState = BOTH_TRIGGERED_OUT;
+        lastStateChange = millis();
+        // Serial.println(F("[IR] S1 Hit! Waiting for both to clear..."));
       }
       break;
 
     case BOTH_TRIGGERED_IN:
+      // Both sensors have been hit in the IN sequence. Wait for person to fully pass (both HIGH).
       if (sensor1State == HIGH && sensor2State == HIGH) {
         passengerCount++;
         Serial.print(F("\n=== PERSON ENTERED === Occupancy: "));
@@ -379,20 +396,11 @@ void processCountingLogic() {
         updateDisplay();
         playEntrySound();
         currentState = IDLE;
-        sensor1WasTriggered = false;
-        sensor2WasTriggered = false;
-      }
-      break;
-
-    case SENSOR2_TRIGGERED:
-      if (sensor1State == LOW) {
-        sensor1WasTriggered = true;
-        currentState = BOTH_TRIGGERED_OUT;
-        lastStateChange = millis();
       }
       break;
 
     case BOTH_TRIGGERED_OUT:
+      // Both sensors have been hit in the OUT sequence. Wait for person to fully pass (both HIGH).
       if (sensor1State == HIGH && sensor2State == HIGH) {
         passengerCount = max(0, passengerCount - 1);
         Serial.print(F("\n=== PERSON EXITED === Occupancy: "));
@@ -400,8 +408,6 @@ void processCountingLogic() {
         updateDisplay();
         playExitSound();
         currentState = IDLE;
-        sensor1WasTriggered = false;
-        sensor2WasTriggered = false;
       }
       break;
   }
