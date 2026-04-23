@@ -1,6 +1,6 @@
 import Bus from "../models/Bus.model.js";
 import BusDataLog from "../models/BusDataLog.model.js";
-import { setManualOccupancy, getManualOccupancy } from "./iot.controller.js";
+import { setManualOccupancy, getManualOccupancy, setSpeedMultiplier, getSpeedMultiplier } from "./iot.controller.js";
 
 /**
  * @desc    Get latest bus status for the Test Run Interface
@@ -27,8 +27,8 @@ export const getTestRunStatus = async (req, res, next) => {
 
     const status = bus.currentStatus;
 
-    // Check if manual occupancy override is active
     const manualOccupancy = getManualOccupancy(licensePlate);
+    const speedMultiplier = getSpeedMultiplier(licensePlate);
 
     res.json({
       licensePlate: bus.licensePlate,
@@ -36,6 +36,8 @@ export const getTestRunStatus = async (req, res, next) => {
       routeId: bus.routeId,
       manualOccupancyActive: manualOccupancy !== null,
       manualOccupancy: manualOccupancy,
+      speedMultiplier: speedMultiplier,
+      speedMultiplierActive: speedMultiplier > 1,
       status: status
         ? {
             logId: status._id,
@@ -152,6 +154,33 @@ export const getTestRunWarnings = async (req, res, next) => {
         footboard: log.footboardStatus,
         gpsSource: log.gpsSource,
       })),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Set or clear speed multiplier for ML pipeline
+ * @route   POST /api/test-run/set-speed-multiplier
+ * @access  Public (no auth — for research demo use)
+ *
+ * @body    { "licensePlate": "NA-1234", "multiplier": 2 }
+ *          To clear: { "licensePlate": "NA-1234", "multiplier": null }
+ */
+export const setTestRunSpeedMultiplier = async (req, res, next) => {
+  try {
+    const { licensePlate, multiplier } = req.body;
+    if (!licensePlate) return res.status(400).json({ error: "licensePlate is required" });
+
+    setSpeedMultiplier(licensePlate, multiplier);
+
+    res.json({
+      message: multiplier && multiplier > 1
+        ? `Speed multiplier set to ${multiplier}x for ${licensePlate}`
+        : `Speed multiplier cleared for ${licensePlate}`,
+      licensePlate,
+      multiplier: multiplier && multiplier > 1 ? parseFloat(multiplier) : 1,
     });
   } catch (err) {
     next(err);

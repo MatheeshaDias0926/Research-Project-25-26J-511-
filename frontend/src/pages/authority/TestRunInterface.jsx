@@ -10,7 +10,7 @@ import L from "leaflet";
 import axios from "axios";
 import {
   Play, Square, AlertTriangle, ShieldCheck, MapPin, Gauge, Users, Clock,
-  Trash2, Navigation, Route, Satellite, Smartphone,
+  Trash2, Navigation, Route, Satellite, Smartphone, Zap,
 } from "lucide-react";
 
 // Fix Leaflet marker icon issue
@@ -63,6 +63,7 @@ const TestRunInterface = () => {
   const [selectedBus, setSelectedBus] = useState("");
   const [busData, setBusData] = useState(null);
   const [manualOccupancy, setManualOccupancy] = useState("");
+  const [speedMultiplier, setSpeedMultiplierInput] = useState("");
   const [isTestActive, setIsTestActive] = useState(false);
   const [warnings, setWarnings] = useState([]);
   const [followBus, setFollowBus] = useState(true);
@@ -203,6 +204,15 @@ const TestRunInterface = () => {
       await api.post("/test-run/set-occupancy", { licensePlate: selectedBus, occupancy: val });
       fetchBusStatus();
     } catch (err) { alert("Failed to set occupancy"); }
+  };
+
+  const handleSetSpeedMultiplier = async () => {
+    if (!selectedBus) return;
+    try {
+      const val = speedMultiplier.trim() === "" ? null : parseFloat(speedMultiplier);
+      await api.post("/test-run/set-speed-multiplier", { licensePlate: selectedBus, multiplier: val });
+      fetchBusStatus();
+    } catch (err) { alert("Failed to set speed multiplier"); }
   };
 
   const getRiskColor = (s) => { if (!s) return "#22c55e"; if (s > 0.7) return "#dc2626"; if (s > 0.5) return "#f97316"; if (s > 0.3) return "#eab308"; return "#22c55e"; };
@@ -407,6 +417,30 @@ const TestRunInterface = () => {
               <div style={{ display: "flex", gap: 6 }}>
                 <Input type="number" placeholder="Manual count" value={manualOccupancy} onChange={e => setManualOccupancy(e.target.value)} style={{ flex: 1 }} />
                 <Button onClick={handleSetOccupancy} size="sm">Set</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Speed Multiplier */}
+          <Card style={{ border: busData?.speedMultiplierActive ? "2px solid #f97316" : "1px solid #e2e8f0" }}>
+            <CardHeader style={{ padding: "12px 16px 6px" }}>
+              <CardTitle style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                <Zap size={14} /> Speed Multiplier
+                {busData?.speedMultiplierActive && <span style={{ fontSize: 10, color: "#f97316", background: "#fff7ed", padding: "1px 6px", borderRadius: 3, fontWeight: 700 }}>{busData.speedMultiplier}×</span>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent style={{ padding: "0 16px 14px" }}>
+              <p style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>Amplify GPS speed for ML model. Drive at 30 km/h with 2× = ML sees 60 km/h.</p>
+              <div style={{ display: "flex", gap: 6 }}>
+                <select value={speedMultiplier} onChange={e => setSpeedMultiplierInput(e.target.value)}
+                  style={{ flex: 1, padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}>
+                  <option value="">Off (1×)</option>
+                  <option value="1.5">1.5× Speed</option>
+                  <option value="2">2× Speed</option>
+                  <option value="3">3× Speed</option>
+                  <option value="4">4× Speed</option>
+                </select>
+                <Button onClick={handleSetSpeedMultiplier} size="sm">Apply</Button>
               </div>
             </CardContent>
           </Card>

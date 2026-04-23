@@ -25,7 +25,6 @@ const manualOccupancyOverrides = new Map();
 
 /**
  * Set or clear a manual occupancy override for a bus.
- * Used by the Test Run Interface when no IR sensors are available.
  */
 export const setManualOccupancy = (licensePlate, occupancy) => {
   if (occupancy === null || occupancy === undefined) {
@@ -49,6 +48,31 @@ export const getManualOccupancy = (licensePlate) => {
     return null;
   }
   return override.occupancy;
+};
+
+// ─── In-memory speed multiplier (for Test Run — simulating higher speeds) ────
+// Map<licensePlate, { multiplier: number, setAt: number }>
+const speedMultiplierOverrides = new Map();
+
+export const setSpeedMultiplier = (licensePlate, multiplier) => {
+  if (multiplier === null || multiplier === undefined || multiplier <= 1) {
+    speedMultiplierOverrides.delete(licensePlate);
+  } else {
+    speedMultiplierOverrides.set(licensePlate, {
+      multiplier: parseFloat(multiplier),
+      setAt: Date.now(),
+    });
+  }
+};
+
+export const getSpeedMultiplier = (licensePlate) => {
+  const override = speedMultiplierOverrides.get(licensePlate);
+  if (!override) return 1;
+  if (Date.now() - override.setAt > 30 * 60 * 1000) {
+    speedMultiplierOverrides.delete(licensePlate);
+    return 1;
+  }
+  return override.multiplier;
 };
 
 // ─── Async Safety Pipeline ────────────────────────────────────────────────────
@@ -322,12 +346,14 @@ export const receiveOverlandGps = async (req, res) => {
     bus.currentStatus = newLog._id;
     await bus.save();
 
-    // Run safety pipeline async (same as ESP32 ingestion)
-    if (latestLocation.speed > 0) {
+    // Run safety pipeline async with speed multiplier applied
+    const speedMultiplier = getSpeedMultiplier(licensePlate);
+    const pipelineSpeed = latestLocation.speed * speedMultiplier;
+    if (pipelineSpeed > 0) {
       setImmediate(() => {
         runSafetyPipelineAsync(newLog._id, bus._id, {
           resolvedGps,
-          resolvedSpeed: latestLocation.speed,
+          resolvedSpeed: pipelineSpeed,
           currentOccupancy,
           licensePlate,
           capacity: bus.capacity,
@@ -335,8 +361,9 @@ export const receiveOverlandGps = async (req, res) => {
       });
     }
 
+    const multiplierTag = speedMultiplier > 1 ? ` [×${speedMultiplier} → ${pipelineSpeed.toFixed(1)} km/h for ML]` : "";
     console.log(
-      `[Overland] ${licensePlate}: (${latestLocation.lat.toFixed(4)}, ${latestLocation.lon.toFixed(4)}) @ ${latestLocation.speed.toFixed(1)} km/h [${processedCount}/${locations.length} valid] → BusDataLog created`,
+      `[Overland] ${licensePlate}: (${latestLocation.lat.toFixed(4)}, ${latestLocation.lon.toFixed(4)}) @ ${latestLocation.speed.toFixed(1)} km/h${multiplierTag} | occ=${currentOccupancy} [${processedCount}/${locations.length}]`,
     );
   } catch (err) {
     console.error(`[Overland] Error creating BusDataLog for ${licensePlate}: ${err.message}`);
