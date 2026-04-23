@@ -8,8 +8,8 @@
 
 // --- WiFi Settings ---
 // Connect to your phone's mobile hotspot OR campus/home WiFi
-const char* WIFI_SSID     = "Dialog 4G 509";
-const char* WIFI_PASSWORD = "thushan2021";
+const char* WIFI_SSID     = "Wi-fi";
+const char* WIFI_PASSWORD = "123456788";
 
 // --- Backend Server ---
 // Use your Mac's IP on the shared WiFi network

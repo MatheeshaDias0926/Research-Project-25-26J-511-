@@ -205,6 +205,86 @@ export const receiveGpsFeed = (req, res) => {
 };
 
 /**
+ * @desc    Receive GPS data from Overland iOS app
+ * @route   POST /api/iot/overland
+ * @access  Public (from phone running Overland)
+ *
+ * Configure Overland's endpoint URL as:
+ *   http://<YOUR_MAC_IP>:3000/api/iot/overland?licensePlate=NA-1234
+ *
+ * Overland payload (GeoJSON Feature batch):
+ * {
+ *   "locations": [{
+ *     "type": "Feature",
+ *     "geometry": { "type": "Point", "coordinates": [lon, lat] },
+ *     "properties": { "timestamp": "...", "speed": 4, "horizontal_accuracy": 30 }
+ *   }]
+ * }
+ */
+export const receiveOverlandGps = (req, res) => {
+  // Respond IMMEDIATELY — Overland expects a fast 200
+  res.json({ result: "ok" });
+
+  const licensePlate = req.query.licensePlate || req.body.licensePlate;
+  if (!licensePlate) {
+    console.log("[Overland] ⚠️  No licensePlate in query string — ignoring batch");
+    return;
+  }
+
+  const locations = req.body.locations;
+  if (!Array.isArray(locations) || locations.length === 0) {
+    console.log("[Overland] Empty or missing locations array");
+    return;
+  }
+
+  let processedCount = 0;
+  let latestLocation = null;
+
+  for (const loc of locations) {
+    let lat, lon, speed;
+
+    // Format A: Real Overland GeoJSON Feature
+    if (loc.geometry && loc.geometry.coordinates) {
+      // GeoJSON coordinates are [longitude, latitude]
+      lon = loc.geometry.coordinates[0];
+      lat = loc.geometry.coordinates[1];
+      speed = loc.properties?.speed || 0;
+    }
+    // Format B: Simple {lat, lon} (fallback for custom senders)
+    else if (loc.lat !== undefined && loc.lon !== undefined) {
+      lat = loc.lat;
+      lon = loc.lon;
+      speed = loc.speed || 0;
+    }
+    // Unknown format — skip
+    else {
+      continue;
+    }
+
+    // Validate coordinates (Sri Lanka approximate bounding box)
+    if (lat < 4.0 || lat > 12.0 || lon < 79.0 || lon > 83.0) {
+      continue;
+    }
+
+    // Convert speed from m/s to km/h (Overland sends m/s)
+    const speedKmh = speed < 100 ? speed * 3.6 : speed; // If already large, assume km/h
+
+    latestLocation = { lat, lon, speed: speedKmh };
+    processedCount++;
+  }
+
+  // Update GPS cache with the LATEST valid location from the batch
+  if (latestLocation) {
+    updateGps(licensePlate, latestLocation.lat, latestLocation.lon, latestLocation.speed);
+    console.log(
+      `[Overland] ${licensePlate}: (${latestLocation.lat.toFixed(4)}, ${latestLocation.lon.toFixed(4)}) @ ${latestLocation.speed.toFixed(1)} km/h [${processedCount}/${locations.length} valid]`,
+    );
+  } else {
+    console.log(`[Overland] ${licensePlate}: No valid Sri Lanka coordinates in ${locations.length} locations`);
+  }
+};
+
+/**
  * @desc    Get active GPS feeds (monitoring)
  * @route   GET /api/iot/gps-feeds
  * @access  Public

@@ -4,6 +4,7 @@ import {
   ingestMockData,
   receiveGpsFeed,
   getActiveGpsFeeds,
+  receiveOverlandGps,
 } from "../controllers/iot.controller.js";
 
 const router = express.Router();
@@ -38,5 +39,15 @@ router.post("/iot-data", ingestIoTData);
  * @access  Public
  */
 router.post("/mock-data", ingestMockData);
+
+/**
+ * @route   POST /api/iot/overland
+ * @desc    Receive GPS data from Overland iOS app (GeoJSON batch)
+ * @access  Public (from phone running Overland)
+ *
+ * Configure Overland URL as:
+ *   http://<MAC_IP>:3000/api/iot/overland?licensePlate=NA-1234
+ */
+router.post("/overland", receiveOverlandGps);
 
 export default router;

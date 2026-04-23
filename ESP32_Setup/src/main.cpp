@@ -123,9 +123,9 @@ void setup() {
   Serial.println(F("Sensors:   IR on GPIO18/19"));
   Serial.println(F("----------------------------------------"));
 
-  // Configure IR sensor pins
-  pinMode(SENSOR1_PIN, INPUT);
-  pinMode(SENSOR2_PIN, INPUT);
+  // Configure IR sensor pins (PULLUP prevents floating pin noise)
+  pinMode(SENSOR1_PIN, INPUT_PULLUP);
+  pinMode(SENSOR2_PIN, INPUT_PULLUP);
   Serial.println(F("[INIT] IR Sensors ready (GPIO 18, 19)"));
 
   // Configure buzzer pin
