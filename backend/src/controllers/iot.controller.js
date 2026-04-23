@@ -221,7 +221,7 @@ export const receiveGpsFeed = (req, res) => {
  *   }]
  * }
  */
-export const receiveOverlandGps = (req, res) => {
+export const receiveOverlandGps = async (req, res) => {
   // Respond IMMEDIATELY — Overland expects a fast 200
   res.json({ result: "ok" });
 
@@ -273,14 +273,61 @@ export const receiveOverlandGps = (req, res) => {
     processedCount++;
   }
 
-  // Update GPS cache with the LATEST valid location from the batch
-  if (latestLocation) {
-    updateGps(licensePlate, latestLocation.lat, latestLocation.lon, latestLocation.speed);
-    console.log(
-      `[Overland] ${licensePlate}: (${latestLocation.lat.toFixed(4)}, ${latestLocation.lon.toFixed(4)}) @ ${latestLocation.speed.toFixed(1)} km/h [${processedCount}/${locations.length} valid]`,
-    );
-  } else {
+  if (!latestLocation) {
     console.log(`[Overland] ${licensePlate}: No valid Sri Lanka coordinates in ${locations.length} locations`);
+    return;
+  }
+
+  // 1. Update GPS cache (for when ESP32 is also running)
+  updateGps(licensePlate, latestLocation.lat, latestLocation.lon, latestLocation.speed);
+
+  // 2. Also create a BusDataLog entry directly so Test Run page works without ESP32
+  try {
+    const bus = await Bus.findOne({ licensePlate });
+    if (!bus) {
+      console.log(`[Overland] Bus not found: ${licensePlate}`);
+      return;
+    }
+
+    // Check manual occupancy override
+    const manualOccupancy = getManualOccupancy(licensePlate);
+    const currentOccupancy = manualOccupancy !== null ? manualOccupancy : 0;
+
+    const resolvedGps = { lat: latestLocation.lat, lon: latestLocation.lon };
+
+    const newLog = new BusDataLog({
+      busId: bus._id,
+      currentOccupancy,
+      gps: resolvedGps,
+      footboardStatus: false,
+      speed: latestLocation.speed,
+      riskScore: 0,
+      distToCurve: 0,
+      gpsSource: "phone",
+    });
+    await newLog.save();
+
+    bus.currentStatus = newLog._id;
+    await bus.save();
+
+    // Run safety pipeline async (same as ESP32 ingestion)
+    if (latestLocation.speed > 0) {
+      setImmediate(() => {
+        runSafetyPipelineAsync(newLog._id, bus._id, {
+          resolvedGps,
+          resolvedSpeed: latestLocation.speed,
+          currentOccupancy,
+          licensePlate,
+          capacity: bus.capacity,
+        });
+      });
+    }
+
+    console.log(
+      `[Overland] ${licensePlate}: (${latestLocation.lat.toFixed(4)}, ${latestLocation.lon.toFixed(4)}) @ ${latestLocation.speed.toFixed(1)} km/h [${processedCount}/${locations.length} valid] → BusDataLog created`,
+    );
+  } catch (err) {
+    console.error(`[Overland] Error creating BusDataLog for ${licensePlate}: ${err.message}`);
   }
 };
 
