@@ -266,8 +266,8 @@ export const receiveOverlandGps = async (req, res) => {
       continue;
     }
 
-    // Convert speed from m/s to km/h (Overland sends m/s)
-    const speedKmh = speed < 100 ? speed * 3.6 : speed; // If already large, assume km/h
+    // Convert speed from m/s to km/h (Overland sends m/s), clamp negatives
+    const speedKmh = Math.max(0, speed < 100 ? speed * 3.6 : speed);
 
     latestLocation = { lat, lon, speed: speedKmh };
     processedCount++;
@@ -289,9 +289,21 @@ export const receiveOverlandGps = async (req, res) => {
       return;
     }
 
-    // Check manual occupancy override
+    // Check manual occupancy override, else carry forward ESP32's latest occupancy
     const manualOccupancy = getManualOccupancy(licensePlate);
-    const currentOccupancy = manualOccupancy !== null ? manualOccupancy : 0;
+    let currentOccupancy = 0;
+    let footboardStatus = false;
+
+    if (manualOccupancy !== null) {
+      currentOccupancy = manualOccupancy;
+    } else if (bus.currentStatus) {
+      // Read the latest log to carry forward ESP32's occupancy + footboard
+      const lastLog = await BusDataLog.findById(bus.currentStatus).lean();
+      if (lastLog) {
+        currentOccupancy = lastLog.currentOccupancy || 0;
+        footboardStatus = lastLog.footboardStatus || false;
+      }
+    }
 
     const resolvedGps = { lat: latestLocation.lat, lon: latestLocation.lon };
 
@@ -299,7 +311,7 @@ export const receiveOverlandGps = async (req, res) => {
       busId: bus._id,
       currentOccupancy,
       gps: resolvedGps,
-      footboardStatus: false,
+      footboardStatus,
       speed: latestLocation.speed,
       riskScore: 0,
       distToCurve: 0,
