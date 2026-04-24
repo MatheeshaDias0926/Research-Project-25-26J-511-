@@ -489,35 +489,13 @@ export const ingestIoTData = async (req, res, next) => {
       }
     }
 
-    // 3. Sensor Fusion Logic
-    let fusedOccupancy = trueOccupancyMap.get(licensePlate);
-    if (fusedOccupancy === undefined) {
-      fusedOccupancy = currentOccupancy; // initialize
-    }
-
-    const lastIrOcc = lastIrOccupancyMap.get(licensePlate);
-    if (lastIrOcc !== undefined && currentOccupancy !== lastIrOcc) {
-      const diff = currentOccupancy - lastIrOcc;
-      const direction = diff > 0 ? "in" : "out";
-      const loops = Math.abs(diff);
-      
-      for (let i = 0; i < loops; i++) {
-        if (processFusionEvent(licensePlate, 'IR', direction)) {
-          fusedOccupancy += (direction === "in" ? 1 : -1);
-        }
-      }
-      fusedOccupancy = Math.max(0, fusedOccupancy);
-    } else if (lastIrOcc === undefined) {
-      // First payload from ESP32
-      fusedOccupancy = currentOccupancy;
-    }
-    
-    lastIrOccupancyMap.set(licensePlate, currentOccupancy);
-    trueOccupancyMap.set(licensePlate, fusedOccupancy);
+    // 3. Sensor Fusion Logic is REMOVED: Trust incoming payload completely
+    // Since CV script is now the sole source of truth, currentOccupancy is the absolute occupancy
+    trueOccupancyMap.set(licensePlate, currentOccupancy);
 
     // 4. Check manual occupancy override (Test Run Interface)
     const manualOccupancy = getManualOccupancy(licensePlate);
-    const effectiveOccupancy = manualOccupancy !== null ? manualOccupancy : fusedOccupancy;
+    const effectiveOccupancy = manualOccupancy !== null ? manualOccupancy : currentOccupancy;
     if (manualOccupancy !== null) {
       console.log(`[IoT] Manual occupancy override for ${licensePlate}: ${effectiveOccupancy}`);
     }

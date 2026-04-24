@@ -16,7 +16,21 @@ const router = express.Router();
  * @access  Public
  */
 router.post("/cv-event", receiveCvEvent);
-
+/**
+ * @route   GET /api/iot/bus/:licensePlate
+ * @desc    Fetch initial bus occupancy for the CV tracking script
+ * @access  Public
+ */
+router.get("/bus/:licensePlate", async (req, res) => {
+  try {
+    const Bus = (await import("../models/Bus.model.js")).default;
+    const bus = await Bus.findOne({ licensePlate: req.params.licensePlate });
+    if (!bus) return res.status(404).json({ error: "Bus not found" });
+    res.json({ currentOccupancy: bus.currentOccupancy || 0 });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 /**
  * @route   POST /api/iot/gps-feed
