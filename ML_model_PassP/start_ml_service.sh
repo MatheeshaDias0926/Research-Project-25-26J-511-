@@ -22,13 +22,7 @@ fi
 
 echo "✓ Safety Model found"
 
-# Check for occupancy model (Optional)
-if [ ! -f "xgb_bus_model.joblib" ]; then
-    echo "⚠️ Occupancy Model not found (Running in Safety-Only mode)"
-else
-    echo "✓ Occupancy Model found"
-fi
-echo ""
+
 
 # Kill any existing service on port 5001
 echo "Checking for existing service on port 5001..."

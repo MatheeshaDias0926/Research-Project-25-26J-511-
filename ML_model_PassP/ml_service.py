@@ -19,18 +19,6 @@ CORS(app)
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Occupancy Model
-MODEL_PATH = os.path.join(_DIR, 'xgb_bus_model.joblib')
-occupancy_model = None
-if os.path.exists(MODEL_PATH):
-    try:
-        occupancy_model = joblib.load(MODEL_PATH)
-        print("[OK] Occupancy Model loaded successfully!")
-    except Exception as e:
-         print(f"[WARN] Failed to load Occupancy Model: {e}")
-else:
-    print(f"[INFO] Occupancy Model not found ({MODEL_PATH}). Service will run in Safety-Only mode.")
-
 # Safety Model
 SAFETY_MODEL_PATH = os.path.join(_DIR, 'safety_model.joblib')
 safety_model = None
@@ -44,52 +32,6 @@ else:
     print(f"[WARN] Safety model not found ({SAFETY_MODEL_PATH}). /predict-safety endpoint will fail.")
 
 
-# ---------------------------------------------------------------------
-# HELPERS
-# ---------------------------------------------------------------------
-
-# Define the feature columns (must match training data)
-categorical_features = ['route_id', 'day_of_week', 'time_of_day', 'weather']
-numerical_features = ['stop_id']
-
-# Store encoder columns (these were determined during training)
-ENCODER_COLUMNS = [
-    'stop_id',
-    'route_id_B',
-    'day_of_week_Monday',
-    'day_of_week_Saturday',
-    'day_of_week_Sunday',
-    'day_of_week_Thursday',
-    'day_of_week_Tuesday',
-    'day_of_week_Wednesday',
-    'time_of_day_12-14',
-    'time_of_day_14-16',
-    'time_of_day_16-18',
-    'time_of_day_18-20',
-    'time_of_day_20-22',
-    'time_of_day_6-8',
-    'time_of_day_8-10',
-    'weather_rain'
-]
-
-def prepare_features(route_id, stop_id, day_of_week, time_of_day, weather):
-    """
-    Prepare input features for prediction using the same encoding as training.
-    """
-    input_data = {
-        'route_id': route_id,
-        'stop_id': stop_id,
-        'day_of_week': day_of_week,
-        'time_of_day': time_of_day,
-        'weather': weather
-    }
-    
-    df = pd.DataFrame([input_data])
-    df_encoded = pd.get_dummies(df, columns=categorical_features, drop_first=True)
-    df_encoded = df_encoded.reindex(columns=ENCODER_COLUMNS, fill_value=0)
-    
-    return df_encoded
-
 
 # ---------------------------------------------------------------------
 # ROUTES
@@ -100,57 +42,9 @@ def health_check():
     """Health check endpoint to verify service is running."""
     return jsonify({
         'status': 'healthy',
-        'model_loaded': occupancy_model is not None,
         'safety_loaded': safety_model is not None,
         'service': 'ML Prediction Service'
     }), 200
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    """Prediction endpoint for Occupancy."""
-    try:
-        data = request.get_json()
-        required_fields = ['route_id', 'stop_id', 'day_of_week', 'time_of_day', 'weather']
-        missing_fields = [field for field in required_fields if field not in data]
-        
-        if missing_fields:
-            return jsonify({'error': f"Missing required fields: {', '.join(missing_fields)}"}), 400
-        
-        route_id = data['route_id']
-        stop_id = int(data['stop_id'])
-        day_of_week = data['day_of_week']
-        time_of_day = data['time_of_day']
-        weather = data['weather']
-        
-        if stop_id < 1:
-            return jsonify({'error': 'stop_id must be a positive number'}), 400
-        if weather not in ['rain', 'not_rain']:
-            return jsonify({'error': "weather must be 'rain' or 'not_rain'"}), 400
-        
-        features = prepare_features(route_id, stop_id, day_of_week, time_of_day, weather)
-        
-        if occupancy_model:
-            prediction = occupancy_model.predict(features)[0]
-            prediction = max(0, min(prediction, 75))
-            
-            response = {
-                'predicted_occupancy': round(float(prediction), 1),
-                'route_id': route_id,
-                'stop_id': stop_id,
-                'day_of_week': day_of_week,
-                'time_of_day': time_of_day,
-                'weather': weather,
-                'confidence': 0.92
-            }
-            return jsonify(response), 200
-        else:
-             return jsonify({'error': 'Occupancy model is disabled or missing'}), 503
-        
-    except ValueError as e:
-        return jsonify({'error': f'Invalid input value: {str(e)}'}), 400
-    except Exception as e:
-        print(f"Error during prediction: {str(e)}")
-        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
 
 @app.route('/predict-safety', methods=['POST'])
 def predict_safety():
@@ -194,9 +88,8 @@ def predict_safety():
 def model_info():
     """Get information about the loaded model."""
     return jsonify({
-        'model_type': 'XGBoost Regressor',
-        'model_path': MODEL_PATH,
-        'features': ENCODER_COLUMNS,
+        'model_type': 'Random Forest Regressor',
+        'model_path': SAFETY_MODEL_PATH,
     }), 200
 
 # ---------------------------------------------------------------------
@@ -211,7 +104,6 @@ if __name__ == '__main__':
     print(f"{'='*60}")
     print(f"Port: {PORT}")
     print(f"Health check:      http://localhost:{PORT}/health")
-    print(f"Predict occupancy: POST http://localhost:{PORT}/predict")
     print(f"Predict safety:    POST http://localhost:{PORT}/predict-safety")
     print(f"{'='*60}\n")
     

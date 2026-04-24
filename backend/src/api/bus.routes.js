@@ -5,7 +5,6 @@ import {
   getBusByLicensePlate,
   getBusViolations,
   getBusDataLogs,
-  getPrediction,
   createBus,
   getAvailableBuses,
   predictBusSafety,
@@ -67,13 +66,6 @@ router.get("/analytics/trends", protect, isAuthority, getViolationTrends);
  * @access  Private (Authority only)
  */
 router.get("/analytics/occupancy", protect, isAuthority, getFleetOccupancy);
-
-/**
- * @route   GET /api/bus/predict/:routeId
- * @desc    Get ML-based occupancy prediction for a route (Passenger App)
- * @access  Private (Passenger)
- */
-router.get("/predict/:routeId", protect, isPassenger, getPrediction);
 
 /**
  * @route   POST /api/bus/predict-safety

@@ -2,19 +2,14 @@
 
 ## Overview
 
-This machine learning service powers the "Smart Bus" platform, providing two critical predictive capabilities:
+This machine learning service powers the "Smart Bus" platform, providing a critical predictive capability:
 
-1.  **Safety & Rollover Predictor (Primary)** 🛡️
+1.  **Safety & Rollover Predictor** 🛡️
 
     - **Goal**: Prevent accidents by predicting rollover risk and stopping distances in real-time.
     - **Engine**: Random Forest Regressor (Multi-Output).
     - **Physics**: Calibrated for Sri Lankan roads (Ashok Leyland Viking specs).
     - **Features**: Speed, Curve Radius, Load Distribution, Weather (Wet/Dry).
-
-2.  **Passenger Occupancy Predictor (Optional)** 👥
-    - **Goal**: Forecast future crowding to improve fleet scheduling.
-    - **Engine**: XGBoost Regressor.
-    - **Features**: Route, Time, Day, Weather.
 
 ## Files Structure
 
@@ -23,14 +18,10 @@ This machine learning service powers the "Smart Bus" platform, providing two cri
   - `ml_service.py`: Flask REST API serving both models.
   - `start_ml_service.sh`: Helper script to launch the service.
 
-- **Model 1: Safety (Physics-Informed)**
+- **Model: Safety (Physics-Informed)**
 
   - `train_safety_model.py`: Generates synthetic physics data and trains the model.
   - `safety_model.joblib`: The trained Random Forest model.
-
-- **Model 2: Occupancy (Historical)**
-  - `datasetGen.py`: Generates synthetic historical passenger data.
-  - `xgb_bus_model.joblib`: The trained XGBoost model.
 
 ## Quick Start
 
@@ -44,19 +35,11 @@ pip install -r requirements.txt
 
 ### 2. Train Models
 
-**Safety Model (Mandatory):**
+**Safety Model:**
 
 ```bash
 python train_safety_model.py
 # Output: safety_model.joblib (Tuned for SL conditions)
-```
-
-**Occupancy Model (Optional):**
-
-```bash
-python datasetGen.py
-jupyter notebook .ipynb  # Run cells to train
-# Output: xgb_bus_model.joblib
 ```
 
 ### 3. Start Service
@@ -114,32 +97,7 @@ Calculates the risk of tipping over and the distance required to stop.
 }
 ```
 
-### 2. Predict Occupancy (Crowding) 👥
-
-**POST** `/predict`
-
-**Request:**
-
-```json
-{
-  "route_id": "A",
-  "stop_id": 5,
-  "day_of_week": "Monday",
-  "time_of_day": "8-10",
-  "weather": "rain"
-}
-```
-
-**Response:**
-
-```json
-{
-  "predicted_occupancy": 45.2,
-  "confidence": 0.92
-}
-```
-
-### 3. Health Check
+### 2. Health Check
 
 **GET** `/health`
 
@@ -156,6 +114,5 @@ Returns status of loaded models.
 
 - `flask` (API Server)
 - `scikit-learn` (Random Forest)
-- `xgboost` (Occupancy Model)
 - `pandas` & `numpy` (Data Processing)
 - `joblib` (Model Persistence)

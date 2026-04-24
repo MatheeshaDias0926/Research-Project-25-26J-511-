@@ -1,10 +1,7 @@
 import Bus from "../models/Bus.model.js";
 import BusDataLog from "../models/BusDataLog.model.js";
 import ViolationLog from "../models/ViolationLog.model.js";
-import {
-  getOccupancyPrediction,
-  getSafetyPrediction,
-} from "../services/ml.service.js";
+import { getSafetyPrediction } from "../services/ml.service.js";
 import { getRoadWeather } from "../services/weather.service.js";
 
 /**
@@ -314,55 +311,6 @@ export const getBusDataLogs = async (req, res, next) => {
   }
 };
 
-/**
- * @desc    Get ML-based occupancy prediction for a route
- * @route   GET /api/bus/predict/:routeId
- * @access  Private (Passenger)
- * @query   stop_id - Bus stop number (required)
- * @query   day_of_week - Day of the week (required)
- * @query   time_of_day - Time bin e.g., '8-10', '18-20' (required)
- * @query   weather - Weather condition: rain/not_rain (required)
- */
-export const getPrediction = async (req, res, next) => {
-  try {
-    const { routeId } = req.params;
-    const { stop_id, day_of_week, time_of_day, weather } = req.query;
-
-    // Validate required parameters
-    if (!stop_id || !day_of_week || !time_of_day || !weather) {
-      res.status(400);
-      throw new Error(
-        "Missing required parameters: stop_id, day_of_week, time_of_day, and weather are required",
-      );
-    }
-
-    // Validate stop_id is a number
-    const stopId = parseInt(stop_id);
-    if (isNaN(stopId) || stopId < 1) {
-      res.status(400);
-      throw new Error("stop_id must be a valid positive number");
-    }
-
-    // Validate weather condition
-    if (!["rain", "not_rain"].includes(weather)) {
-      res.status(400);
-      throw new Error("weather must be either 'rain' or 'not_rain'");
-    }
-
-    // Call the ML service
-    const prediction = await getOccupancyPrediction(
-      routeId,
-      stopId,
-      day_of_week,
-      time_of_day,
-      weather,
-    );
-
-    res.json(prediction);
-  } catch (error) {
-    next(error);
-  }
-};
 
 /**
  * @desc    Get ML-based Safety Prediction (Rollover & Stopping)
