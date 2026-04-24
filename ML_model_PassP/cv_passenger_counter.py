@@ -11,7 +11,7 @@ import supervision as sv
 # For testing with your laptop webcam, use 0
 CAMERA_URL = 0 
 
-BACKEND_URL = "http://127.0.0.1:5000/api/iot/cv-event"
+BACKEND_URL = "http://127.0.0.1:3000/api/iot/cv-event"
 LICENSE_PLATE = "NP-1234" # Should match the bus in the database
 
 def send_event(direction):
@@ -49,18 +49,19 @@ def main():
     print(f"Stream Resolution: {width}x{height}")
 
     # Define a counting line across the middle of the frame
-    # Adjust this based on how the camera is mounted over the footboard!
     START = sv.Point(0, height // 2)
     END = sv.Point(width, height // 2)
     
     line_zone = sv.LineZone(start=START, end=END)
-    line_zone_annotator = sv.LineZoneAnnotator(thickness=2, text_thickness=2, text_scale=1.0)
+    # Set color to Red (BGR format in opencv, but supervision uses its own Color object)
+    color = sv.Color(r=255, g=0, b=0)
+    line_zone_annotator = sv.LineZoneAnnotator(thickness=2, text_thickness=2, text_scale=1.0, color=color)
     
     # Bounding box annotator
     box_annotator = sv.BoxAnnotator(thickness=2)
-    # Tracker handles assigning persistent IDs to people
-    tracker = sv.ByteTrack()
 
+    tracker = sv.ByteTrack()
+    
     # Track previous counts to detect when an increment happens
     prev_in = 0
     prev_out = 0
@@ -74,7 +75,7 @@ def main():
             print("Failed to grab frame. Stream ended or disconnected.")
             break
 
-        # Run YOLO inference (detecting only class 0 = 'person')
+        # Run YOLO inference
         result = model(frame, classes=[0], verbose=False)[0]
         
         # Convert Ultralytics results to Supervision Detections
@@ -83,13 +84,11 @@ def main():
         # Update tracker with current detections
         detections = tracker.update_with_detections(detections)
         
-        # If we have tracked objects, check if they cross the line
-        if len(detections) > 0:
+        # Only process if we have successfully tracked objects with IDs
+        if len(detections) > 0 and detections.tracker_id is not None:
             crossed_in, crossed_out = line_zone.trigger(detections=detections)
             
-            # Check if totals increased
             if line_zone.in_count > prev_in:
-                # Count increased, meaning 1 or more people crossed IN
                 new_crossings = line_zone.in_count - prev_in
                 for _ in range(new_crossings):
                     send_event("in")
@@ -101,17 +100,17 @@ def main():
                     send_event("out")
                 prev_out = line_zone.out_count
 
-        # Visualizations (draw boxes and line)
-        labels = [
-            f"ID:{tracker_id}"
-            for tracker_id in detections.tracker_id
-        ] if detections.tracker_id is not None else []
-        
-        # We need a LabelAnnotator in recent supervision versions
+            labels = [f"ID:{tracker_id}" for tracker_id in detections.tracker_id]
+        else:
+            labels = ["Person" for _ in range(len(detections))]
+
+        # Visualizations
         label_annotator = sv.LabelAnnotator()
         
         annotated_frame = box_annotator.annotate(scene=frame.copy(), detections=detections)
-        annotated_frame = label_annotator.annotate(scene=annotated_frame, detections=detections, labels=labels)
+        if len(detections) > 0:
+            annotated_frame = label_annotator.annotate(scene=annotated_frame, detections=detections, labels=labels)
+            
         annotated_frame = line_zone_annotator.annotate(annotated_frame, line_counter=line_zone)
 
         # Show the video feed
