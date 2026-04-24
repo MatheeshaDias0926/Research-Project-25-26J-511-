@@ -38,12 +38,6 @@ const Sidebar = () => {
       icon: LayoutDashboard,
       roles: ["passenger"],
     },
-    {
-      name: "Prediction",
-      href: "/passenger/prediction",
-      icon: Activity,
-      roles: ["passenger"],
-    },
     // Conductor Links
     {
       name: "Overview",

@@ -14,9 +14,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Profile from "./pages/auth/Profile";
 
-// Passenger Pages
 import PassengerDashboard from "./pages/passenger/PassengerDashboard";
-import Prediction from "./pages/passenger/Prediction";
 
 // Admin Panel (unified tabbed)
 import AdminPanel from "./pages/admin/AdminPanel";
@@ -52,7 +50,6 @@ function App() {
             {/* Passenger Routes */}
             <Route element={<PrivateRoutes roles={["passenger"]} />}>
               <Route path="/passenger" element={<PassengerDashboard />} />
-              <Route path="/passenger/prediction" element={<Prediction />} />
               <Route
                 path="/passenger/live-map"
                 element={<PassengerDashboard />}

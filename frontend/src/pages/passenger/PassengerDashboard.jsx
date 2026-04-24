@@ -184,19 +184,6 @@ const PassengerDashboard = () => {
                                 <MapPin size={14} />
                                 {status?.gps ? "Tracking Active" : "No GPS Signal"}
                             </div>
-                            <Link
-                                to={`/passenger/prediction`}
-                                style={{
-                                    fontSize: 14,
-                                    fontWeight: 600,
-                                    color: "var(--color-primary-500)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 4
-                                }}
-                            >
-                                View full details &rarr;
-                            </Link>
                         </div>
                     </CardContent>
                 </Card>
