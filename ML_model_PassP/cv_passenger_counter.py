@@ -117,6 +117,7 @@ def main():
     
     prev_in = 0
     prev_out = 0
+    footboard_entry_times = {} # Maps tracker_id -> timestamp they entered the footboard zone
     
     print("CV Passenger Counter started. Press 'q' to quit.")
     print("-------------------------------------------------")
@@ -136,12 +137,34 @@ def main():
         # Update tracker with current detections
         detections = tracker.update_with_detections(detections)
         
-        # Check Footboard Status (Are any detections inside the footboard polygon?)
-        if len(detections) > 0:
+        # Check Footboard Status (Are any detections inside the footboard polygon for > 5s?)
+        if len(detections) > 0 and detections.tracker_id is not None:
             fb_detections = footboard_zone.trigger(detections=detections)
+            current_time = time.time()
+            
+            active_fb_ids = set()
+            for is_in_zone, t_id in zip(fb_detections, detections.tracker_id):
+                if is_in_zone:
+                    active_fb_ids.add(t_id)
+                    if t_id not in footboard_entry_times:
+                        footboard_entry_times[t_id] = current_time
+            
+            # Clean up IDs that left the zone
+            for t_id in list(footboard_entry_times.keys()):
+                if t_id not in active_fb_ids:
+                    del footboard_entry_times[t_id]
+                    
+            # Check if anyone has been in the zone for >= 5 seconds
+            is_violation = False
+            for t_id, entry_time in footboard_entry_times.items():
+                if current_time - entry_time >= 5.0:
+                    is_violation = True
+                    break
+                    
             with lock:
-                footboard_status = np.any(fb_detections)
+                footboard_status = is_violation
         else:
+            footboard_entry_times.clear()
             with lock:
                 footboard_status = False
 
