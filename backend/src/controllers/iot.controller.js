@@ -529,13 +529,16 @@ export const ingestIoTData = async (req, res, next) => {
       gps: resolvedGps,
     });
 
-    // 8. Run safety pipeline ASYNCHRONOUSLY (doesn't block ESP32)
+    // 8. Run safety pipeline ASYNCHRONOUSLY (doesn't block ESP32/CV script)
+    const speedMultiplier = getSpeedMultiplier(licensePlate);
+    const pipelineSpeed = resolvedSpeed * speedMultiplier;
+
     const hasValidGps = resolvedGps.lat !== 0 && resolvedGps.lon !== 0;
-    if (hasValidGps && resolvedSpeed > 0) {
+    if (hasValidGps && pipelineSpeed > 0) {
       setImmediate(() => {
         runSafetyPipelineAsync(newLog._id, bus._id, {
           resolvedGps,
-          resolvedSpeed,
+          resolvedSpeed: pipelineSpeed,
           currentOccupancy: effectiveOccupancy,
           licensePlate,
           capacity: bus.capacity,

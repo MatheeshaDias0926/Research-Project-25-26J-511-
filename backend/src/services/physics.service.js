@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PHYSICS_TIMEOUT_MS = 10_000; // Kill subprocess after 10 seconds
+const PHYSICS_TIMEOUT_MS = 25_000; // Kill subprocess after 25 seconds
 
 /**
  * @desc    Call the Physics Model Python script and return parsed output.

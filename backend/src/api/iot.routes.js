@@ -24,9 +24,10 @@ router.post("/cv-event", receiveCvEvent);
 router.get("/bus/:licensePlate", async (req, res) => {
   try {
     const Bus = (await import("../models/Bus.model.js")).default;
-    const bus = await Bus.findOne({ licensePlate: req.params.licensePlate });
+    const bus = await Bus.findOne({ licensePlate: req.params.licensePlate }).populate("currentStatus");
     if (!bus) return res.status(404).json({ error: "Bus not found" });
-    res.json({ currentOccupancy: bus.currentOccupancy || 0 });
+    const currentOcc = bus.currentStatus ? bus.currentStatus.currentOccupancy : 0;
+    res.json({ currentOccupancy: currentOcc });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
