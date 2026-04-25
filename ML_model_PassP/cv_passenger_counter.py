@@ -13,7 +13,7 @@ import supervision as sv
 CAMERA_URL = 0 
 
 API_BASE_URL = "http://127.0.0.1:3000/api/iot"
-LICENSE_PLATE = "NP-1234" # Should match the bus in the database
+LICENSE_PLATE = "NA-1234" # Should match the bus in the database
 
 # Global State
 current_occupancy = 0
@@ -50,7 +50,7 @@ def data_sender_loop():
                 "footboardStatus": bool(fb),
                 "speed": 0 # Backend automatically falls back to phone speed cache
             }
-            res = requests.post(f"{API_BASE_URL}/iot-data", json=payload, timeout=2)
+            res = requests.post(f"{API_BASE_URL}/iot-data", json=payload, timeout=5)
             print(f"[IoT Data] Sent Occupancy: {max(0, occ)}, Footboard: {fb} -> Response: {res.status_code}")
         except Exception as e:
             print(f"[Error] Failed to send IoT data: {e}")
