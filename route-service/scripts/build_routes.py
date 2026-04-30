@@ -88,43 +88,9 @@ def main():
     east = max(lons) + bbox_buf
     west = min(lons) - bbox_buf
 
-    ox.settings.use_cache = True
-    ox.settings.log_console = True
-
-    graph_path = OUT_GRAPH / "colombo_bbox.graphml"
-
-    # OSMnx v2 expects bbox as (left, bottom, right, top) => (west, south, east, north)
-    bbox = (west, south, east, north)
-
-    if graph_path.exists():
-        print(f"Loading cached graph: {graph_path}")
-        G = ox.load_graphml(graph_path)
-    else:
-        print("Downloading OSM road network (this can take a bit the first time)...")
-        G = ox.graph_from_bbox(bbox, network_type="drive", simplify=True)
-        ox.save_graphml(G, graph_path)
-        print(f"Saved graph cache to: {graph_path}")
-
-    
-    nodes_gdf = ox.graph_to_gdfs(G, nodes=True, edges=False)
-
-    node_ids = nodes_gdf.index.to_numpy()
-    node_lat_rad = np.radians(nodes_gdf["y"].to_numpy())
-    node_lon_rad = np.radians(nodes_gdf["x"].to_numpy())
-    R = 6371000.0  # meters
-
-    def nearest_node_id(lat: float, lon: float):
-        lat1 = np.radians(lat)
-        lon1 = np.radians(lon)
-
-        dlat = node_lat_rad - lat1
-        dlon = node_lon_rad - lon1
-
-        a = (np.sin(dlat / 2) ** 2) + (np.cos(lat1) * np.cos(node_lat_rad) * (np.sin(dlon / 2) ** 2))
-        c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-        dist = R * c
-
-        return node_ids[int(dist.argmin())]
+    # MAPLESS MODE: Skipping graph download due to disk space
+    G = None 
+    print("Running in Mapless Mode (Straight-Line)...")
 
     index = {"routes": []}
 
@@ -134,21 +100,9 @@ def main():
         buffer_m = float(r.get("buffer_m", 80))
         wpts = r["waypoints"]
 
-        # nearest nodes without scikit-learn
-        nodes = [nearest_node_id(lat, lon) for lat, lon in wpts]
 
-        full_nodes = []
-        for a, b in zip(nodes[:-1], nodes[1:]):
-            path = ox.shortest_path(G, a, b, weight="length")
-            if not path:
-                raise RuntimeError(f"Could not build path for route {route_no} segment {a}->{b}")
-
-            if not full_nodes:
-                full_nodes.extend(path)
-            else:
-                full_nodes.extend(path[1:])  # avoid duplicate join node
-
-        geom = _route_geom_from_nodes(G, full_nodes)
+        # NO-DISK-SPACE MODE: Just use a direct line between waypoints
+        geom = LineString([(lon, lat) for lat, lon in wpts])
         geom = _simplify_in_meters(geom, simplify_tol_m)
 
         if geom is None:

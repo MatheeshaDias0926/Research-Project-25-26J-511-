@@ -75,7 +75,7 @@ ACTIVE_BUS_LICENSE_PLATE = os.environ.get("BUS_LICENSE_PLATE", "NP-2345")
 
 # Speed source configuration
 # Set to True to use GPS speed, False to use hardcoded speed
-USE_GPS_SPEED = True  # Now using real GPS speed from your phone!
+USE_GPS_SPEED = False  # Now using real GPS speed from your phone!
 
 
 #Check correct bus route

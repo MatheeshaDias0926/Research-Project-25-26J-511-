@@ -1,5 +1,14 @@
 {
-  "bus_001": { "routeNo": "138" },
-  "bus_002": { "routeNo": "100" },
-  "69aca3b6497548a22127c79f": { "routeNo": "138" }
+  "bus_001": {
+    "routeNo": "138"
+  },
+  "bus_002": {
+    "routeNo": "100"
+  },
+  "69aca3b6497548a22127c79f": {
+    "routeNo": "138"
+  },
+  "69f2d328bf4a01aeeb3ec29e": {
+    "routeNo": "GALLE-ROAD-01"
+  }
 }
