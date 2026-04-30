@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 
 const FLASK_BASE = "http://localhost:5000";
 const BUS_API_BASE = "http://localhost:3000/api";
-const DEFAULT_BUS_ID = "691978294f5541d466eaa7e0";
+const DEFAULT_BUS_ID = "69f2d328bf4a01aeeb3ec29e"; // NP-2345
 const ROUTE_POLL_MS = 5000;
 
 const getActiveBusId = () => localStorage.getItem("activeBusId") || DEFAULT_BUS_ID;

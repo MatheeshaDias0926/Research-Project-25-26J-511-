@@ -67,10 +67,11 @@ STATUS_API_URL = f"{SPEED_BACKEND_BASE}/api/status"
 TRAFFIC_VIOLATION_API_URL = f"{VIOLATION_BACKEND_BASE}/api/bus/violations/traffic"
 ROUTE_VIOLATION_API_URL = f"{VIOLATION_BACKEND_BASE}/api/bus/violations/route"
 
-DUMMY_BUS_ID = "691978294f5541d466eaa7e0"  # Matches simulation DEFAULT_BUS_ID
+DUMMY_BUS_ID = "69f2d328bf4a01aeeb3ec29e"  # NP-2345
+PHONE_APP_BUS_ID = "691978294f5541d466eaa7e0" # The ID your phone app is sending
 HARDCODED_SPEED = 50  # km/h (Used for testing violations)
 ACTIVE_BUS_ID = os.environ.get("BUS_ID", DUMMY_BUS_ID)
-ACTIVE_BUS_LICENSE_PLATE = os.environ.get("BUS_LICENSE_PLATE", "NP-1234")
+ACTIVE_BUS_LICENSE_PLATE = os.environ.get("BUS_LICENSE_PLATE", "NP-2345")
 
 # Speed source configuration
 # Set to True to use GPS speed, False to use hardcoded speed
@@ -89,7 +90,10 @@ _last_route_violation_post_ts = {}
 
 def get_latest_telemetry(bus_id):
     try:
-        r = requests.get(f"{TELEMETRY_API_URL}?busId={bus_id}", timeout=5)
+        # BRIDGE: If we are looking for our new bus, check the ID the phone is actually sending
+        query_id = PHONE_APP_BUS_ID if bus_id == DUMMY_BUS_ID else bus_id
+        
+        r = requests.get(f"{TELEMETRY_API_URL}?busId={query_id}", timeout=5)
         r.raise_for_status()
         data = r.json()
 
