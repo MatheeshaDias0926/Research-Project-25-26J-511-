@@ -303,7 +303,7 @@ export default function LiveDetection() {
   const isOnRoute = Boolean(route?.onRoute);
   const routeStatus = route?.status || "unknown";
   const matchedRouteNo = route?.matchedRouteNo || "N/A";
-  const expectedRouteNo = selectedBusId === "69f2d328bf4a01aeeb3ec29e" ? "138" : (route?.expectedRouteNo || "Not assigned");
+  const expectedRouteNo = route?.expectedRouteNo || "Not assigned";
   const distanceToMatched =
     typeof route?.distanceToMatched_m === "number"
       ? route.distanceToMatched_m.toFixed(2)
@@ -415,14 +415,11 @@ export default function LiveDetection() {
               }}
             >
               {buses.length === 0 && <option value="">No buses available</option>}
-              {buses.map((bus) => {
-                const displayRouteId = bus._id === "69f2d328bf4a01aeeb3ec29e" ? "138" : bus.routeId;
-                return (
-                  <option key={bus._id} value={bus._id}>
-                    {bus.licensePlate} - Route {displayRouteId}
-                  </option>
-                );
-              })}
+              {buses.map((bus) => (
+                <option key={bus._id} value={bus._id}>
+                  {bus.licensePlate} - Route {bus.routeId}
+                </option>
+              ))}
             </select>
           )}
           <p style={{ marginTop: 10, color: "#64748b", fontSize: 13 }}>

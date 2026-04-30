@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import time
 import concurrent.futures
+from threading import Lock
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -48,6 +49,12 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 mqtt = create_mqtt_app(app)
 
 processing_frame = False
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+
+# Status cache to avoid hammering the backend every frame
+_status_cache = {}
+_status_cache_lock = Lock()
+STATUS_CACHE_TTL = 1.0  # seconds
 
 
 # -----------------------------
@@ -282,12 +289,30 @@ def post_speed_limit(bus_id, limit_kmh, confidence=None):
 
 
 def get_speed_status(bus_id):
+    """Fetch status with simple caching to improve performance"""
+    now = time.time()
+    
+    with _status_cache_lock:
+        cached = _status_cache.get(bus_id)
+        if cached and (now - cached['ts'] < STATUS_CACHE_TTL):
+            return cached['data']
+
     try:
         # BRIDGE: Redirect to phone ID for real-time status
         query_id = PHONE_APP_BUS_ID if bus_id == DUMMY_BUS_ID else bus_id
-        r = requests.get(f"{STATUS_API_URL}?busId={query_id}", timeout=3)
-        return r.json()
+        r = requests.get(f"{STATUS_API_URL}?busId={query_id}", timeout=2)
+        data = r.json()
+        
+        with _status_cache_lock:
+            _status_cache[bus_id] = {'data': data, 'ts': now}
+            
+        return data
     except Exception as e:
+        # On error, try to return stale data if available
+        with _status_cache_lock:
+            cached = _status_cache.get(bus_id)
+            if cached:
+                return cached['data']
         return {"error": str(e)}
 
 
@@ -400,10 +425,12 @@ def trigger_mqtt_buzzer():
     """Trigger the physical buzzer on the IoT device"""
     msg = {"buzzerState": 1}
     try:
-        mqtt.publish("buzzer/control", json.dumps(msg))
-        print("🔔 MQTT Buzzer triggered!")
+        # Use a topic that the IoT device is expected to listen to
+        topic = "buzzer/control"
+        mqtt.publish(topic, json.dumps(msg))
+        print(f"🔔 [MQTT] Buzzer trigger sent to topic: {topic}")
     except Exception as e:
-        print("MQTT Buzzer error:", e)
+        print(f"❌ [MQTT] Buzzer trigger failed: {e}")
 
 
 # -----------------------------
@@ -423,16 +450,22 @@ def handle_frame(data):
         bus_id = str(data.get("busId") or ACTIVE_BUS_ID).strip() or ACTIVE_BUS_ID
         img = base64_to_image(data["image"])
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            future_speed = executor.submit(run_detect, speed_model, img, True)
-            future_red = executor.submit(run_detect, red_model, img, False)
-            future_line = executor.submit(run_classify, line_model, img)
-            future_status = executor.submit(get_speed_status, bus_id)
+        # Early validation: skip if frame is too dark/invalid
+        if not is_valid_frame(img):
+            processing_frame = False
+            return
 
-            speed = future_speed.result()
-            red = future_red.result()
-            line = future_line.result()
-            status = future_status.result()
+        # Use the global executor instead of creating a new one
+        future_speed = executor.submit(run_detect, speed_model, img, True)
+        future_red = executor.submit(run_detect, red_model, img, False)
+        future_line = executor.submit(run_classify, line_model, img)
+        future_status = executor.submit(get_speed_status, bus_id)
+
+        # Wait for results (max 2 seconds timeout to prevent hanging)
+        speed = future_speed.result(timeout=2)
+        red = future_red.result(timeout=2)
+        line = future_line.result(timeout=2)
+        status = future_status.result(timeout=2)
 
         result = {
             "speed_limit": speed,
@@ -465,6 +498,11 @@ def handle_frame(data):
         if isinstance(status, dict):
             result["overSpeed"] = status.get("overSpeed")
             result["overByKmh"] = status.get("overByKmh")
+
+            # TRIGGER BUZZER IF OVERSPEEDING (TELEMETRY BASED)
+            if result.get("overSpeed"):
+                print(f"🚨 OVERSPEED DETECTED by telemetry ({result.get('overByKmh')} km/h over)!")
+                trigger_mqtt_buzzer()
 
             # Get GPS speed from status
             gps_speed = extract_gps_speed(status)
@@ -557,30 +595,50 @@ def handle_frame(data):
 # -----------------------------
 @app.post("/predict-video")
 def predict_video():
-
+    print("📥 Received video analysis request")
     if "video" not in request.files:
+        print("❌ Missing video in request")
         return jsonify({"error": "Missing video"}), 400
 
     f = request.files["video"]
-
     video_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4().hex}.mp4")
 
-    f.save(video_path)
+    print(f"💾 Saving video to {video_path}...")
+    try:
+        f.save(video_path)
+        file_size = os.path.getsize(video_path)
+        print(f"✅ Video saved. Size: {file_size} bytes")
+        
+        if file_size == 0:
+            print("❌ Received empty video file")
+            os.remove(video_path)
+            return jsonify({"error": "Empty video file"}), 400
+    except Exception as e:
+        print(f"❌ Error saving video: {e}")
+        return jsonify({"error": f"Failed to save video: {str(e)}"}), 500
 
     cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print("❌ Could not open video file with OpenCV")
+        os.remove(video_path)
+        return jsonify({"error": "Could not open video file"}), 400
+
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    print(f"🎞️ Processing video: {frame_count} frames total")
 
     frame_index = 0
     frames_results = []
 
-    try:
-        while True:
-            ret, frame = cap.read()
+    # Use a single executor for the whole video to avoid overhead
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-            if not ret:
-                break
-
-            if frame_index % 20 == 0:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                if frame_index % 20 == 0:
+                    print(f"🧪 Analyzing frame {frame_index}/{frame_count}...")
                     future_speed = executor.submit(run_detect, speed_model, frame, True)
                     future_red = executor.submit(run_detect, red_model, frame, False)
                     future_line = executor.submit(run_classify, line_model, frame)
@@ -589,20 +647,24 @@ def predict_video():
                     red = future_red.result()
                     line = future_line.result()
 
-                frames_results.append(
-                    {
-                        "frame": frame_index,
-                        "speed_limit": speed["count"],
-                        "redlight": red["count"],
-                        "double_line": line["top1"]["class_name"],
-                    }
-                )
+                    frames_results.append(
+                        {
+                            "frame": frame_index,
+                            "speed_limit": speed["count"],
+                            "redlight": red["count"],
+                            "double_line": line["top1"]["class_name"],
+                        }
+                    )
 
-            frame_index += 1
-    finally:
-        cap.release()
-        os.remove(video_path)
+                frame_index += 1
+        except Exception as e:
+            print(f"❌ Error during processing: {e}")
+        finally:
+            cap.release()
+            if os.path.exists(video_path):
+                os.remove(video_path)
 
+    print(f"🏁 Finished processing. Checked {len(frames_results)} frames.")
     return jsonify(
         {
             "frames_checked": len(frames_results),
@@ -702,6 +764,8 @@ def bus_route_status():
         last_ts = _last_route_violation_post_ts.get(bus_id, 0)
 
         if now_ts - last_ts >= ROUTE_VIOLATION_COOLDOWN_S:
+            print(f"🚨 ROUTE VIOLATION DETECTED for bus {bus_id}!")
+            trigger_mqtt_buzzer()
             post_violation(
                 bus_id=bus_id,
                 violation_type="route",
@@ -742,4 +806,4 @@ if __name__ == "__main__":
     print(f"📍 Speed source: {'GPS (real-time)' if USE_GPS_SPEED else 'HARDCODED (testing)'}")
     if not USE_GPS_SPEED:
         print(f"🧪 Test speed: {HARDCODED_SPEED} km/h")
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True, allow_unsafe_werkzeug=True)
