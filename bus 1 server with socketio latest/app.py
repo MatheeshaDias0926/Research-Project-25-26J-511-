@@ -69,13 +69,13 @@ ROUTE_VIOLATION_API_URL = f"{VIOLATION_BACKEND_BASE}/api/bus/violations/route"
 
 DUMMY_BUS_ID = "69f2d328bf4a01aeeb3ec29e"  # NP-2345
 PHONE_APP_BUS_ID = "691978294f5541d466eaa7e0" # The ID your phone app is sending
-HARDCODED_SPEED = 40  # km/h (Used for testing violations)
+HARDCODED_SPEED = 70  # km/h (Used for testing violations)
 ACTIVE_BUS_ID = os.environ.get("BUS_ID", DUMMY_BUS_ID)
 ACTIVE_BUS_LICENSE_PLATE = os.environ.get("BUS_LICENSE_PLATE", "NP-2345")
 
 # Speed source configuration
 # Set to True to use GPS speed, False to use hardcoded speed
-USE_GPS_SPEED = True  # ENABLED for your test drive
+USE_GPS_SPEED = False  
 
 
 #Check correct bus route
@@ -267,10 +267,9 @@ def post_speed_limit(bus_id, limit_kmh, confidence=None):
 
     payload = {
         "busId": bus_id,
-        "violationType": violation_type,
-        "speedKmh": float(speed),  # Ensure this is a float for the API
-        "location": gps_location,
-        "licensePlate": license_plate
+        "limitKmh": limit_kmh,
+        "ts": int(time.time() * 1000),
+        "confidence": confidence,
     }
 
     payload = {k: v for k, v in payload.items() if v is not None}
