@@ -1,0 +1,16 @@
+{
+  "routes": [
+    {
+      "routeNo": "138",
+      "name": "Dummy 138 (Fort -> Maharagama)",
+      "buffer_m": 80.0,
+      "file": "route_138.geojson"
+    },
+    {
+      "routeNo": "100",
+      "name": "Dummy 100 (Fort -> Dehiwala)",
+      "buffer_m": 80.0,
+      "file": "route_100.geojson"
+    }
+  ]
+}
