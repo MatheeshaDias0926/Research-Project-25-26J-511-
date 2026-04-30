@@ -14,6 +14,9 @@ import {
   getViolationTrends,
   getFleetOccupancy,
   getAllViolations,
+  getPublicBuses,
+  logTrafficViolation,
+  logRouteViolation,
 } from "../controllers/bus.controller.js";
 import { getPhysicsModel } from "../controllers/physics.controller.js";
 import {
@@ -28,6 +31,20 @@ import Bus from "../models/Bus.model.js";
 const router = express.Router();
 
 /**
+ * @route   GET /api/bus/public
+ * @desc    Get a read-only bus list for simulation pages
+ * @access  Public
+ */
+router.get("/public", getPublicBuses);
+
+/**
+ * @route   GET /api/bus/available
+ * @desc    Get all available buses (not assigned)
+ * @access  Private (Authority only)
+ */
+router.get("/available", protect, isAuthority, getAvailableBuses);
+
+/**
  * @route   GET /api/bus
  * @desc    Get all buses
  * @access  Private (All authenticated users)
@@ -40,13 +57,6 @@ router.get("/", protect, getAllBuses);
  * @access  Private (Authority only)
  */
 router.post("/", protect, isAuthority, createBus);
-
-/**
- * @route   GET /api/bus/available
- * @desc    Get all available buses (not assigned)
- * @access  Private (Authority only)
- */
-router.get("/available", protect, isAuthority, getAvailableBuses);
 
 /**
  * @route   GET /api/bus/analytics/violations
@@ -75,6 +85,20 @@ router.get("/analytics/trends", protect, isAuthority, getViolationTrends);
  * @access  Private (Authority only)
  */
 router.get("/analytics/occupancy", protect, isAuthority, getFleetOccupancy);
+
+/**
+ * @route   POST /api/bus/violations/traffic
+ * @desc    Log traffic-related violations from the bus server
+ * @access  Service-to-service
+ */
+router.post("/violations/traffic", logTrafficViolation);
+
+/**
+ * @route   POST /api/bus/violations/route
+ * @desc    Log route violations from the bus server
+ * @access  Service-to-service
+ */
+router.post("/violations/route", logRouteViolation);
 
 /**
  * @route   GET /api/bus/predict/:routeId

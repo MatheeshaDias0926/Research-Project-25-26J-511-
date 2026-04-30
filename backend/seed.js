@@ -26,19 +26,24 @@ const importData = async () => {
     console.log("Creating users...");
     const users = [
       {
-        username: "passenger1",
-        password: "password123",
+        username: "passenger",
+        password: "111111",
         role: "passenger",
       },
       {
-        username: "conductor1",
-        password: "password123",
+        username: "driver",
+        password: "111111",
+        role: "driver",
+      },
+      {
+        username: "conductor",
+        password: "111111",
         role: "conductor",
       },
       {
-        username: "authority1",
-        password: "password123",
-        role: "authority",
+        username: "admin",
+        password: "111111",
+        role: "admin",
       },
     ];
 

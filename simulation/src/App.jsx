@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import DriverSim from './pages/DriverSim';
-import TrafficSim from './pages/TrafficSim';
+import TrafficSim from './pages/trafficSim';
 import OvercrowdingSim from './pages/OvercrowdingSim';
 import CrashSim from './pages/CrashSim';
 

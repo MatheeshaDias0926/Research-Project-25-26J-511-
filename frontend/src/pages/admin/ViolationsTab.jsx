@@ -28,10 +28,12 @@ const getSeverityBadge = (type) => {
     yawning: "medium",
     no_face: "medium",
     driving_limit: "medium",
+    speed_limit: "high",
     footboard: "high",
     overcrowding: "high",
     "traffic_light": "critical",
     "double_line": "critical",
+    "route_violation": "high",
   };
   const sev = severities[type] || "medium";
   return (
@@ -61,12 +63,14 @@ const ViolationsTab = () => {
     { value: "drowsiness", label: "Drowsiness" },
     { value: "yawning", label: "Yawning" },
     { value: "mobile_phone", label: "Mobile Phone" },
-    { value: "driving_limit", label: "Driving Limit" },
+    { value: "driving_limit", label: "Driving Limit (Hours)" },
+    { value: "speed_limit", label: "Speed Limit" },
     { value: "no_face", label: "No Face Detected" },
     { value: "footboard", label: "Footboard Riding" },
     { value: "overcrowding", label: "Overcrowding" },
     { value: "traffic_light", label: "Traffic Light" },
     { value: "double_line", label: "Double Line" },
+    { value: "route_violation", label: "Route Violation" },
   ];
 
   const fetchViolations = async () => {

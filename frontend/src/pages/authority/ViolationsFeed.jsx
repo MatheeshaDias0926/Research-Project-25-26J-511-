@@ -1,12 +1,38 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import api from "../../api/axios";
 import { Card, CardContent } from "../../components/ui/Card";
 import Badge from "../../components/ui/Badge";
 import { AlertTriangle, Clock, MapPin } from "lucide-react";
 
+const ALL_BUSES_VALUE = "all";
+const ALL_VIOLATIONS_VALUE = "all";
+
+const normalizeViolationCategory = (violation) => {
+  if (violation?.source === "route-service") return "route";
+
+  const rawType = String(violation?.violationType || "").toLowerCase();
+  if (["traffic_light", "traffic-light", "red-light", "redlight", "traffic light"].includes(rawType)) {
+    return "traffic-light";
+  }
+  if (["double_line", "double-line", "double line"].includes(rawType)) {
+    return "double-line";
+  }
+  if (["speed_limit", "speed-limit", "speed", "speeding"].includes(rawType)) {
+    return "speed";  // Exceeds posted speed limit
+  }
+  if (["driving_limit", "driving-limit"].includes(rawType)) {
+    return "driving-limit";  // Exceeds max consecutive driving hours
+  }
+  if (["route", "off_route", "warning", "on_route", "route_violation"].includes(rawType)) {
+    return "route";
+  }
+  return rawType || "other";
+};
+
 // Sub-component to handle individual violation display and geocoding
 const ViolationCard = ({ violation, getViolationBadge }) => {
   const [address, setAddress] = useState("Loading location...");
+  const category = violation.category || normalizeViolationCategory(violation);
 
   useEffect(() => {
     const fetchAddress = async () => {
@@ -68,14 +94,24 @@ const ViolationCard = ({ violation, getViolationBadge }) => {
               <h3 style={{ fontWeight: 700, fontSize: 18, color: "var(--text-primary)" }}>
                 {violation.busId?.licensePlate || "Unknown Bus"}
               </h3>
-              {getViolationBadge(violation.violationType)}
+              {getViolationBadge(category)}
             </div>
             <p style={{ color: "var(--text-secondary)", fontWeight: 500 }}>
-              Violation type: {violation.violationType}
+              Violation type: {violation.categoryLabel || category}
             </p>
-            {violation.speed && (
+            {violation.speed != null && (
               <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 4 }}>
                 Speed: {violation.speed} km/h
+              </p>
+            )}
+            {violation.source === "route-service" && violation.route?.status && (
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 4 }}>
+                Route status: {violation.route.status}
+              </p>
+            )}
+            {violation.route?.offRouteSeconds != null && (
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 4 }}>
+                Off-route time: {Math.round(violation.route.offRouteSeconds)} s
               </p>
             )}
             <p
@@ -129,6 +165,7 @@ const ViolationCard = ({ violation, getViolationBadge }) => {
 const ViolationsFeed = () => {
   const [buses, setBuses] = useState([]);
   const [selectedBusId, setSelectedBusId] = useState("");
+  const [selectedViolationGroup, setSelectedViolationGroup] = useState(ALL_VIOLATIONS_VALUE);
   const [violations, setViolations] = useState([]);
   const [loadingBuses, setLoadingBuses] = useState(true);
   const [loadingViolations, setLoadingViolations] = useState(false);
@@ -140,7 +177,7 @@ const ViolationsFeed = () => {
         const response = await api.get("/bus");
         setBuses(response.data);
         if (response.data.length > 0) {
-          setSelectedBusId(response.data[0]._id);
+          setSelectedBusId(ALL_BUSES_VALUE);
         }
       } catch (error) {
         console.error("Failed to fetch buses", error);
@@ -158,9 +195,14 @@ const ViolationsFeed = () => {
     const fetchViolations = async () => {
       setLoadingViolations(true);
       try {
-        // Backend returns: { bus: {...}, violations: [...], pagination: {...} }
-        const response = await api.get(`/bus/${selectedBusId}/violations`);
-        setViolations(response.data.violations || []);
+        if (selectedBusId === ALL_BUSES_VALUE) {
+          const response = await api.get("/bus/analytics/all-violations?limit=200");
+          setViolations(response.data || []);
+        } else {
+          // Backend returns: { bus: {...}, violations: [...], pagination: {...} }
+          const response = await api.get(`/bus/${selectedBusId}/violations`);
+          setViolations(response.data.violations || []);
+        }
       } catch (error) {
         console.error("Failed to fetch violations", error);
         setViolations([]);
@@ -171,14 +213,42 @@ const ViolationsFeed = () => {
     fetchViolations();
   }, [selectedBusId]);
 
+  const mergedViolations = useMemo(() => {
+    const combined = violations.map((violation) => {
+      const category = violation.category || normalizeViolationCategory(violation);
+      return {
+        ...violation,
+        category,
+        categoryLabel: violation.categoryLabel || category.replace(/-/g, " "),
+      };
+    });
+    return combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [violations]);
+
+  const filteredViolations = useMemo(() => {
+    if (selectedViolationGroup === ALL_VIOLATIONS_VALUE) {
+      return mergedViolations;
+    }
+
+    return mergedViolations.filter((violation) => {
+      return (violation.category || normalizeViolationCategory(violation)) === selectedViolationGroup;
+    });
+  }, [mergedViolations, selectedViolationGroup]);
+
   const getViolationBadge = (type) => {
     switch (type) {
       case "footboard":
         return <Badge variant="danger">Footboard</Badge>;
-      case "speeding":
-        return <Badge variant="danger">Speeding</Badge>;
+      case "speed":
+        return <Badge variant="danger">Speed</Badge>;
       case "overcrowding":
         return <Badge variant="warning">Overcrowding</Badge>;
+      case "traffic-light":
+        return <Badge variant="danger">Traffic Light</Badge>;
+      case "double-line":
+        return <Badge variant="danger">Double Line</Badge>;
+      case "route":
+        return <Badge variant="warning">Route</Badge>;
       default:
         return <Badge variant="secondary">{type}</Badge>;
     }
@@ -218,7 +288,7 @@ const ViolationsFeed = () => {
             htmlFor="bus-select"
             style={{ fontWeight: 500, color: "var(--text-secondary)" }}
           >
-            Select Bus:
+            Filter Bus:
           </label>
           <select
             id="bus-select"
@@ -233,6 +303,7 @@ const ViolationsFeed = () => {
               minWidth: 200,
             }}
           >
+            <option value={ALL_BUSES_VALUE}>All buses</option>
             {buses.length === 0 && <option value="">No buses available</option>}
             {buses.map((bus) => (
               <option key={bus._id} value={bus._id}>
@@ -241,23 +312,60 @@ const ViolationsFeed = () => {
             ))}
           </select>
         </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <label
+            htmlFor="violation-select"
+            style={{ fontWeight: 500, color: "var(--text-secondary)" }}
+          >
+            Filter Type:
+          </label>
+          <select
+            id="violation-select"
+            value={selectedViolationGroup}
+            onChange={(e) => setSelectedViolationGroup(e.target.value)}
+            style={{
+              height: 40,
+              padding: "0 12px",
+              borderRadius: 8,
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              minWidth: 180,
+            }}
+          >
+            <option value={ALL_VIOLATIONS_VALUE}>All violations</option>
+            <option value="traffic-light">Traffic light</option>
+            <option value="double-line">Double line</option>
+            <option value="speed">Speed limit</option>
+            <option value="route">Route</option>
+          </select>
+        </div>
       </div>
+
+      <Card>
+        <CardContent style={{ padding: 16, display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Historical violations</div>
+            <div style={{ fontSize: 24, fontWeight: 700 }}>{violations.length}</div>
+          </div>
+        </CardContent>
+      </Card>
 
       {loadingViolations ? (
         <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>
           Loading violation history...
         </div>
-      ) : violations.length === 0 ? (
+      ) : filteredViolations.length === 0 ? (
         <Card>
           <CardContent style={{ padding: 48, textAlign: "center" }}>
             <p style={{ color: "var(--text-muted)", fontSize: 16 }}>
-              No violations recorded for this bus.
+              No violations recorded for the selected filter.
             </p>
           </CardContent>
         </Card>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {violations.map((violation) => (
+          {filteredViolations.map((violation) => (
             <ViolationCard
               key={violation._id}
               violation={violation}

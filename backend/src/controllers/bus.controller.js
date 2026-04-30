@@ -52,6 +52,23 @@ export const getAllBuses = async (req, res, next) => {
 };
 
 /**
+ * @desc    Get buses for simulation selectors
+ * @route   GET /api/bus/public
+ * @access  Public read-only
+ */
+export const getPublicBuses = async (req, res, next) => {
+  try {
+    const buses = await Bus.find()
+      .select("licensePlate routeId capacity")
+      .sort({ createdAt: 1 });
+
+    res.json(buses);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Get bus by license plate
  * @route   GET /api/bus/plate/:licensePlate
  * @access  Private (All authenticated users)
@@ -130,6 +147,87 @@ export const getBusViolations = async (req, res, next) => {
         offset: parseInt(offset),
       },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const normalizeGps = (gps) => {
+  if (!gps || typeof gps !== "object") return null;
+
+  const lat = gps.lat != null ? Number(gps.lat) : null;
+  const lon = gps.lon != null ? Number(gps.lon) : null;
+
+  if (lat == null && lon == null) return null;
+
+  return {
+    ...(lat != null ? { lat } : {}),
+    ...(lon != null ? { lon } : {}),
+  };
+};
+
+const resolveViolationBus = async ({ busId, licensePlate }) => {
+  if (busId) {
+    try {
+      const bus = await Bus.findById(busId);
+      if (bus) {
+        return bus;
+      }
+    } catch (error) {
+      // Fall through to license plate lookup when the provided busId is not a valid ObjectId.
+    }
+  }
+
+  if (licensePlate) {
+    return Bus.findOne({ licensePlate: String(licensePlate).trim() });
+  }
+
+  return null;
+};
+
+const createViolationRecord = async (payload, fallbackType) => {
+  const bus = await resolveViolationBus(payload);
+  if (!bus) {
+    const error = new Error("Bus not found for violation payload");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const violation = await ViolationLog.create({
+    busId: bus._id,
+    driverRef: bus.assignedDriver || null,
+    violationType: payload.violationType || fallbackType,
+    speed: payload.speed != null ? Number(payload.speed) : undefined,
+    gps: normalizeGps(payload.gps) || undefined,
+    occupancyAtViolation: payload.occupancy != null ? Number(payload.occupancy) : undefined,
+  });
+
+  return { bus, violation };
+};
+
+export const logTrafficViolation = async (req, res, next) => {
+  try {
+    const { violation } = await createViolationRecord(req.body, "traffic_light");
+
+    const populated = await ViolationLog.findById(violation._id)
+      .populate("busId", "licensePlate routeId")
+      .populate("driverRef", "name licenseNumber");
+
+    res.status(201).json({ ok: true, violation: populated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const logRouteViolation = async (req, res, next) => {
+  try {
+    const { violation } = await createViolationRecord(req.body, "route_violation");
+
+    const populated = await ViolationLog.findById(violation._id)
+      .populate("busId", "licensePlate routeId")
+      .populate("driverRef", "name licenseNumber");
+
+    res.status(201).json({ ok: true, violation: populated });
   } catch (error) {
     next(error);
   }
