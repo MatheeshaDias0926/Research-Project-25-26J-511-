@@ -75,7 +75,7 @@ ACTIVE_BUS_LICENSE_PLATE = os.environ.get("BUS_LICENSE_PLATE", "NP-2345")
 
 # Speed source configuration
 # Set to True to use GPS speed, False to use hardcoded speed
-USE_GPS_SPEED = False  # Set to False to always use HARDCODED_SPEED (50 km/h)
+USE_GPS_SPEED = True  # Now using real GPS speed from your phone!
 
 
 #Check correct bus route
@@ -282,9 +282,10 @@ def post_speed_limit(bus_id, limit_kmh, confidence=None):
 
 
 def get_speed_status(bus_id):
-
     try:
-        r = requests.get(f"{STATUS_API_URL}?busId={bus_id}", timeout=3)
+        # BRIDGE: Redirect to phone ID for real-time status
+        query_id = PHONE_APP_BUS_ID if bus_id == DUMMY_BUS_ID else bus_id
+        r = requests.get(f"{STATUS_API_URL}?busId={query_id}", timeout=3)
         return r.json()
     except Exception as e:
         return {"error": str(e)}
@@ -491,8 +492,16 @@ def handle_frame(data):
         # Log speed source
         print(f"📍 Speed source: {speed_source} - Using: {current_speed} km/h (GPS raw: {gps_speed if gps_speed is not None else 'N/A'})")
 
+        # Get real GPS coordinates for violation reporting
+        gps_coords = {"lat": 0, "lon": 0}
+        if isinstance(status, dict):
+            # Try to find lat/lng in the status response
+            tel = status.get("telemetry") or status.get("latest") or status
+            if tel.get("lat") and (tel.get("lng") or tel.get("lon")):
+                gps_coords = {"lat": tel.get("lat"), "lon": tel.get("lng") or tel.get("lon")}
+
         # -----------------------------
-        # VIOLATION CHECKS (ALL USING SAME current_speed)
+        # VIOLATION CHECKS (ALL USING SAME current_speed and real location)
         # -----------------------------
         detected_limit = result.get("speed_limit_detected_kmh")
 
@@ -504,7 +513,7 @@ def handle_frame(data):
                 bus_id,
                 "red-light",
                 current_speed,
-                {"lat": 0, "lon": 0},  # You can add actual GPS coordinates here
+                gps_coords,
                 license_plate=ACTIVE_BUS_LICENSE_PLATE,
             )
 
@@ -516,7 +525,7 @@ def handle_frame(data):
                 bus_id,
                 "speed",
                 current_speed,
-                {"lat": 0, "lon": 0},
+                gps_coords,
                 license_plate=ACTIVE_BUS_LICENSE_PLATE,
             )
         elif detected_limit:
@@ -530,7 +539,7 @@ def handle_frame(data):
                      bus_id,
                 "double-line",
                 current_speed,
-                {"lat": 0, "lon": 0},
+                gps_coords,
                 license_plate=ACTIVE_BUS_LICENSE_PLATE,
             )
 
