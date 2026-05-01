@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import api from "../../api/axios";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -33,17 +33,74 @@ const createBusIcon = (riskScore) => {
   });
 };
 
+// Smooth-moving bus marker — interpolates between positions over 1 second
+const SmoothBusMarker = ({ position, icon, children }) => {
+  const markerRef = useRef(null);
+  const animFrameRef = useRef(null);
+  const prevPosRef = useRef(position);
+  const startTimeRef = useRef(null);
+  const ANIM_DURATION = 1000; // ms — matches the poll interval
+
+  useEffect(() => {
+    const marker = markerRef.current;
+    if (!marker || !position) return;
+
+    const from = prevPosRef.current || position;
+    const to = position;
+
+    // Skip animation if the jump is too large (>0.01° ≈ 1km) — likely a teleport/init
+    const dist = Math.abs(from[0] - to[0]) + Math.abs(from[1] - to[1]);
+    if (dist > 0.01) {
+      marker.setLatLng(to);
+      prevPosRef.current = to;
+      return;
+    }
+
+    startTimeRef.current = performance.now();
+
+    const animate = (now) => {
+      const elapsed = now - startTimeRef.current;
+      const t = Math.min(elapsed / ANIM_DURATION, 1);
+      // Ease-out cubic for smooth deceleration
+      const eased = 1 - Math.pow(1 - t, 3);
+
+      const lat = from[0] + (to[0] - from[0]) * eased;
+      const lng = from[1] + (to[1] - from[1]) * eased;
+      marker.setLatLng([lat, lng]);
+
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        prevPosRef.current = to;
+      }
+    };
+
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [position]);
+
+  return (
+    <Marker ref={markerRef} position={position} icon={icon}>
+      {children}
+    </Marker>
+  );
+};
+
 const createPointIcon = (color, label) => L.divIcon({
   className: "custom-point-icon",
   html: `<div style="background:${color};width:28px;height:28px;border-radius:50%;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);font-size:12px;font-weight:800;color:white;">${label}</div>`,
   iconSize: [28, 28], iconAnchor: [14, 14],
 });
 
-// Auto-follow bus on map
+// Auto-follow bus on map — smooth pan with longer duration
 const MapController = ({ busPos, shouldFollow }) => {
   const map = useMap();
   useEffect(() => {
-    if (shouldFollow && busPos) map.panTo(busPos, { animate: true, duration: 0.5 });
+    if (shouldFollow && busPos) map.panTo(busPos, { animate: true, duration: 1.0 });
   }, [busPos, shouldFollow]);
   return null;
 };
@@ -307,16 +364,16 @@ const TestRunInterface = () => {
               {/* Bus trail */}
               {busTrail.length > 1 && <Polyline positions={busTrail} color="#8b5cf6" weight={3} opacity={0.6} />}
 
-              {/* Live Bus Marker */}
+              {/* Live Bus Marker — smooth interpolation */}
               {busPos && (
-                <Marker position={busPos} icon={createBusIcon(riskScore)}>
+                <SmoothBusMarker position={busPos} icon={createBusIcon(riskScore)}>
                   <Popup>
                     <strong>{selectedBus}</strong><br/>
                     Speed: {busData?.status?.speed?.toFixed(1) || 0} km/h<br/>
                     Risk: {riskScore.toFixed(3)}<br/>
                     Source: {gpsInfo.label}
                   </Popup>
-                </Marker>
+                </SmoothBusMarker>
               )}
             </MapContainer>
 
