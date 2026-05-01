@@ -1,6 +1,7 @@
 import Bus from "../models/Bus.model.js";
 import BusDataLog from "../models/BusDataLog.model.js";
 import { setManualOccupancy, getManualOccupancy, setSpeedMultiplier, getSpeedMultiplier } from "./iot.controller.js";
+import { getLastSafetyState } from "../services/safety-throttle.js";
 
 /**
  * @desc    Get latest bus status for the Test Run Interface
@@ -30,6 +31,47 @@ export const getTestRunStatus = async (req, res, next) => {
     const manualOccupancy = getManualOccupancy(licensePlate);
     const speedMultiplier = getSpeedMultiplier(licensePlate);
 
+    // Get the full safety pipeline state (physics + ML results)
+    const safetyState = getLastSafetyState(licensePlate);
+    const physicsResult = safetyState?.physicsResult || null;
+    const safetyResult = safetyState?.safetyResult || null;
+
+    // Compute passenger distribution for research display
+    const seatCapacity = bus.capacity || 55;
+    const currentOcc = manualOccupancy !== null ? manualOccupancy : (status?.currentOccupancy || 0);
+    const actualSeated = Math.min(currentOcc, seatCapacity);
+    const actualStanding = Math.max(0, currentOcc - seatCapacity);
+
+    const pipelineDetails = physicsResult ? {
+      physics: {
+        cogHeight: physicsResult["CoG height"] || "N/A",
+        rolloverThreshold: physicsResult["Rollover threshold"] || "N/A",
+        lateralAccel: physicsResult["Lateral accel"] || "N/A",
+        curveRadius: physicsResult["Sharpest curve radius ahead"] || "N/A",
+        distToCurve: physicsResult["Distance to sharpest curve"] || "N/A",
+        roadSlope: physicsResult["Road slope"] || "N/A",
+        maxSafeSpeed: physicsResult["Max safe speed for curve"] || "N/A",
+        stoppingDistance: physicsResult["Total stopping distance"] || "N/A",
+        reactionDistance: physicsResult["Reaction distance"] || "N/A",
+        brakingDistance: physicsResult["Braking distance"] || "N/A",
+        deceleration: physicsResult["Deceleration"] || "N/A",
+        decision: physicsResult["Decision"] || "N/A",
+        curveWarning: physicsResult["Curve Warning"] || null,
+        weatherCondition: physicsResult["Weather Condition"] || "N/A",
+      },
+      ml: {
+        riskScore: safetyResult?.risk_score || 0,
+        stoppingDistance: safetyResult?.stopping_distance || 0,
+        modelSource: safetyResult?.source || "N/A",
+      },
+      mlInputs: {
+        seatedPassengers: actualSeated,
+        standingPassengers: actualStanding,
+        speedKmh: status?.speed || 0,
+        pipelineSpeed: speedMultiplier > 1 ? (status?.speed || 0) * speedMultiplier : (status?.speed || 0),
+      },
+    } : null;
+
     res.json({
       licensePlate: bus.licensePlate,
       capacity: bus.capacity,
@@ -42,19 +84,16 @@ export const getTestRunStatus = async (req, res, next) => {
         ? {
             logId: status._id,
             timestamp: status.createdAt,
-            // GPS
             gps: status.gps,
             gpsSource: status.gpsSource,
             speed: status.speed,
-            // Safety
             riskScore: status.riskScore || 0,
             distToCurve: status.distToCurve || 0,
-            // Occupancy
             currentOccupancy: manualOccupancy !== null ? manualOccupancy : status.currentOccupancy,
-            // Violations
             footboardStatus: status.footboardStatus,
           }
         : null,
+      pipelineDetails,
     });
   } catch (err) {
     next(err);

@@ -31,12 +31,13 @@ export function shouldRunSafety(licensePlate) {
  */
 export function updateSafetyState(
   licensePlate,
-  { riskScore, distToCurve, safetyResult },
+  { riskScore, distToCurve, safetyResult, physicsResult },
 ) {
   safetyState.set(licensePlate, {
     riskScore,
     distToCurve,
     safetyResult,
+    physicsResult,
     lastRunTime: Date.now(),
   });
 }

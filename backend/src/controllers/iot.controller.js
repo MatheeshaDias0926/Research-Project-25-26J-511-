@@ -234,7 +234,7 @@ const runSafetyPipelineAsync = async (logId, busId, params) => {
     });
 
     // Also update the bus's currentStatus pointer (still points to same logId, but record is now enriched)
-    updateSafetyState(licensePlate, { riskScore, distToCurve, safetyResult });
+    updateSafetyState(licensePlate, { riskScore, distToCurve, safetyResult, physicsResult });
 
     console.log(`[IoT Async] Pipeline complete for ${licensePlate}: risk=${riskScore.toFixed(3)}`);
   } catch (err) {

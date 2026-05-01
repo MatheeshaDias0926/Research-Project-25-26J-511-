@@ -548,6 +548,124 @@ const TestRunInterface = () => {
           </Card>
         </div>
       </div>
+
+      {/* ── PIPELINE TRANSPARENCY (Full width, below main grid) ── */}
+      {isTestActive && busData?.pipelineDetails && (
+        <Card style={{ border: "1px solid #c7d2fe", background: "#fafbff" }}>
+          <CardHeader style={{ padding: "12px 16px 8px", borderBottom: "1px solid #e0e7ff" }}>
+            <CardTitle style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 8, color: "#4338ca" }}>
+              🔬 Pipeline Transparency — Real-Time Calculations
+              <span style={{ fontSize: 10, background: "#e0e7ff", color: "#4338ca", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>LIVE</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent style={{ padding: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+
+              {/* Column 1: ML Model Inputs */}
+              <div style={{ background: "#fff", borderRadius: 10, padding: 14, border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  📥 ML Model Inputs
+                </div>
+                {[
+                  { label: "Seated Passengers", value: busData.pipelineDetails.mlInputs.seatedPassengers, unit: "" },
+                  { label: "Standing Passengers", value: busData.pipelineDetails.mlInputs.standingPassengers, unit: "" },
+                  { label: "Real Speed", value: busData.pipelineDetails.mlInputs.speedKmh?.toFixed?.(1) || "0.0", unit: "km/h" },
+                  { label: "Pipeline Speed (ML)", value: busData.pipelineDetails.mlInputs.pipelineSpeed?.toFixed?.(1) || "0.0", unit: "km/h", highlight: busData?.speedMultiplierActive },
+                  { label: "Curve Radius", value: busData.pipelineDetails.physics.curveRadius, unit: "" },
+                  { label: "Road Slope", value: busData.pipelineDetails.physics.roadSlope, unit: "" },
+                  { label: "Weather", value: busData.pipelineDetails.physics.weatherCondition, unit: "" },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: i < 6 ? "1px solid #f1f5f9" : "none" }}>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>{item.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: item.highlight ? "#f97316" : "#0f172a", fontFamily: "monospace" }}>
+                      {item.value} {item.unit}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Column 2: Physics Engine Results */}
+              <div style={{ background: "#fff", borderRadius: 10, padding: 14, border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  ⚙️ Physics Engine
+                </div>
+                {[
+                  { label: "CoG Height", value: busData.pipelineDetails.physics.cogHeight },
+                  { label: "Rollover Threshold", value: busData.pipelineDetails.physics.rolloverThreshold },
+                  { label: "Lateral Acceleration", value: busData.pipelineDetails.physics.lateralAccel },
+                  { label: "Max Safe Speed", value: busData.pipelineDetails.physics.maxSafeSpeed },
+                  { label: "Stopping Distance", value: busData.pipelineDetails.physics.stoppingDistance },
+                  { label: "Reaction Distance", value: busData.pipelineDetails.physics.reactionDistance },
+                  { label: "Braking Distance", value: busData.pipelineDetails.physics.brakingDistance },
+                  { label: "Deceleration", value: busData.pipelineDetails.physics.deceleration },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: i < 7 ? "1px solid #f1f5f9" : "none" }}>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>{item.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", fontFamily: "monospace" }}>{item.value}</span>
+                  </div>
+                ))}
+
+                {/* Physics Decision */}
+                <div style={{ marginTop: 10, padding: "8px 10px", borderRadius: 6,
+                  background: busData.pipelineDetails.physics.decision?.toLowerCase().includes("safe") ? "#f0fdf4" : "#fef2f2",
+                  border: `1px solid ${busData.pipelineDetails.physics.decision?.toLowerCase().includes("safe") ? "#bbf7d0" : "#fecaca"}`,
+                  textAlign: "center" }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase" }}>Physics Decision</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: busData.pipelineDetails.physics.decision?.toLowerCase().includes("safe") ? "#16a34a" : "#dc2626", marginTop: 2 }}>
+                    {busData.pipelineDetails.physics.decision}
+                  </div>
+                </div>
+
+                {busData.pipelineDetails.physics.curveWarning && (
+                  <div style={{ marginTop: 6, padding: "6px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca", fontSize: 11, color: "#dc2626", fontWeight: 600, textAlign: "center" }}>
+                    ⚠️ {busData.pipelineDetails.physics.curveWarning}
+                  </div>
+                )}
+              </div>
+
+              {/* Column 3: ML Model Output */}
+              <div style={{ background: "#fff", borderRadius: 10, padding: 14, border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  🧠 ML Model Output
+                </div>
+
+                {/* Risk Score large display */}
+                <div style={{ textAlign: "center", padding: 16, background: `${getRiskColor(busData.pipelineDetails.ml.riskScore)}10`, borderRadius: 10, border: `2px solid ${getRiskColor(busData.pipelineDetails.ml.riskScore)}30`, marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 600, textTransform: "uppercase" }}>Rollover Risk Score</div>
+                  <div style={{ fontSize: 36, fontWeight: 800, color: getRiskColor(busData.pipelineDetails.ml.riskScore), lineHeight: 1.2 }}>
+                    {busData.pipelineDetails.ml.riskScore.toFixed(4)}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: getRiskColor(busData.pipelineDetails.ml.riskScore), marginTop: 4 }}>
+                    {getRiskLabel(busData.pipelineDetails.ml.riskScore)}
+                  </div>
+                </div>
+
+                {[
+                  { label: "ML Stopping Dist.", value: busData.pipelineDetails.ml.stoppingDistance?.toFixed?.(2) || "0", unit: "m" },
+                  { label: "Model", value: busData.pipelineDetails.ml.modelSource, unit: "" },
+                  { label: "Dist. to Curve", value: busData.pipelineDetails.physics.distToCurve, unit: "" },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: i < 2 ? "1px solid #f1f5f9" : "none" }}>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>{item.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", fontFamily: "monospace" }}>{item.value} {item.unit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isTestActive && !busData?.pipelineDetails && busData?.status && (
+        <Card style={{ border: "1px dashed #cbd5e1", background: "#f8fafc" }}>
+          <CardContent style={{ padding: 20, textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>
+              🔬 Pipeline Transparency will appear once the ML safety pipeline starts processing...
+              <br/><span style={{ fontSize: 11 }}>Requires GPS movement + speed &gt; 0 km/h</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
