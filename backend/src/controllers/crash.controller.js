@@ -46,7 +46,7 @@ export const getCrashes = async (req, res, next) => {
  */
 export const reportCrash = async (req, res, next) => {
     try {
-        const { busId, bus_id, location, severity } = req.body;
+        const { busId, bus_id, location, severity, max_acceleration, reconstruction_error } = req.body;
         const resolvedBusId = busId || bus_id;
 
         // 1. Validate bus exists
@@ -76,6 +76,8 @@ export const reportCrash = async (req, res, next) => {
             severity: severity || "high",
             status: "active",
             alertSent: false,
+            max_acceleration: max_acceleration || 0,
+            reconstruction_error: reconstruction_error || 0,
         });
 
         const busLabel = bus ? bus.licensePlate : resolvedBusId;

@@ -13,6 +13,7 @@ const hospitalSchema = new mongoose.Schema({
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },
   },
+  google_map_url: { type: String },
   emergency_hotline: { type: String, required: true },
   ambulance_count: { type: Number, default: 0 },
   bed_capacity: { type: Number },

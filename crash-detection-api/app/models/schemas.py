@@ -19,6 +19,7 @@ class SensorReading(BaseModel):
 class SensorBatch(BaseModel):
     bus_id: str
     readings: List[SensorReading]
+    location: Optional[dict] = None
 
 
 class CrashDetectionResponse(BaseModel):

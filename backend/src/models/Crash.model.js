@@ -32,6 +32,12 @@ const crashSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    max_acceleration: {
+      type: Number,
+    },
+    reconstruction_error: {
+      type: Number,
+    },
   },
   { timestamps: true }
 );

@@ -61,13 +61,13 @@ class CrashDetector:
 
             feature_vectors = np.array(feature_vectors)
 
-            # Normalize features (you may want to save scaler from training)
-            # For now, using simple normalization
-            feature_mean = feature_vectors.mean(axis=0)
-            feature_std = feature_vectors.std(axis=0) + 1e-8
-            normalized_features = (feature_vectors - feature_mean) / feature_std
+            # Fixed normalization using expected sensor ranges
+            # Features: [max_acc_x, max_acc_y, max_acc_z, max_gyro_x, max_gyro_y, max_gyro_z, max_acc_mag, max_gyro_mag]
+            # Normal driving: acc ~0-3 m/s², gyro ~0-10 deg/s, acc_mag ~9.8, gyro_mag ~0-15
+            # Crash: acc ~10-50 m/s², gyro ~100-500 deg/s
+            feature_ranges = np.array([20.0, 20.0, 20.0, 250.0, 250.0, 250.0, 30.0, 500.0])
+            normalized_features = feature_vectors / feature_ranges
 
-            # Get reconstruction errors from autoencoder
             reconstructed = self.model.predict(normalized_features, verbose=0)
             reconstruction_errors = np.mean(np.square(normalized_features - reconstructed), axis=1)
 
@@ -78,18 +78,30 @@ class CrashDetector:
             # Calculate max acceleration in the flagged window
             flagged_window = windows[max_error_idx]
             max_acceleration = self.feature_extractor.calculate_max_acceleration(flagged_window)
+            
+            # Calculate extra physics-based features
+            max_jerk = self.feature_extractor.calculate_max_jerk(flagged_window)
+            max_pitch, max_roll = self.feature_extractor.calculate_max_tilt(flagged_window)
 
-            logger.info(f"Bus {bus_id} - Max error: {max_error:.6f}, Max acceleration: {max_acceleration:.4f} m/s²")
+            logger.info(f"Bus {bus_id} Metrics - Error: {max_error:.4f}, Accel: {max_acceleration:.2f}, Jerk: {max_jerk:.2f}, Pitch: {max_pitch:.1f}, Roll: {max_roll:.1f}")
 
-            crash_detected = (
-                max_error > 0.002 and
-                max_acceleration > 1.4
-            )
+            error_threshold = self.settings.reconstruction_error_threshold
+            accel_threshold = 5.0    # Lowered from 10.0 for higher sensitivity
+            jerk_threshold = 80.0    # Lowered from 150.0 for higher sensitivity
+            tilt_threshold = 35.0    # Lowered from 45.0
+
+            # Multi-factor crash detection logic
+            ml_detected = max_error > error_threshold and max_acceleration > accel_threshold
+            jerk_detected = max_jerk > jerk_threshold and max_acceleration > (accel_threshold * 0.8)
+            rollover_detected = max_pitch > tilt_threshold or max_roll > tilt_threshold
+
+            crash_detected = ml_detected or jerk_detected or rollover_detected
 
             if crash_detected:
-                logger.warning(f"🚨 CRASH DETECTED for Bus {bus_id} - Max error: {max_error:.6f}, Max acceleration: {max_acceleration:.4f} m/s²")
+                reason = "ML Match" if ml_detected else ("High Jerk" if jerk_detected else "Rollover")
+                logger.warning(f"🚨 CRASH DETECTED for Bus {bus_id} | Reason: {reason} | Accel: {max_acceleration:.2f} m/s², Jerk: {max_jerk:.2f}, Max Tilt: {max(max_pitch, max_roll):.1f}°")
             else:
-                logger.info(f"Bus {bus_id} - No crash detected (error={max_error:.6f} > 0.002: {max_error > 0.002}, accel={max_acceleration:.4f} > 1.4: {max_acceleration > 1.4})")
+                logger.info(f"Bus {bus_id} - Normal Driving")
             confidence = min(
                 (max_error / self.settings.reconstruction_error_threshold) * 0.5 +
                 (max_acceleration / self.settings.acceleration_threshold) * 0.5,
@@ -104,11 +116,10 @@ class CrashDetector:
                 max_acceleration=float(max_acceleration),
                 confidence=float(confidence) if crash_detected else None,
                 message=(
-                    f"CRASH DETECTED! Reconstruction error: {max_error:.4f}, "
-                    f"Max acceleration: {max_acceleration:.2f} m/s²"
+                    f"CRASH! Type: {'Rollover' if rollover_detected else 'Impact'}, "
+                    f"Force: {max_acceleration:.1f}g, Tilt: {max(max_pitch, max_roll):.1f}°"
                     if crash_detected else
-                    f"Normal driving. Reconstruction error: {max_error:.4f}, "
-                    f"Max acceleration: {max_acceleration:.2f} m/s²"
+                    f"Normal. Force: {max_acceleration:.1f} m/s², Tilt: {max(max_pitch, max_roll):.1f}°"
                 )
             )
 

@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import CrashAlertBanner from "./CrashAlertBanner";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { Sun, Moon } from "lucide-react";
@@ -71,6 +72,7 @@ const Layout = () => {
               animation: "fadeIn 0.3s ease-out",
             }}
           >
+            <CrashAlertBanner />
             <Outlet />
           </div>
         </main>

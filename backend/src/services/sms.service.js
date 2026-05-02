@@ -20,19 +20,43 @@ if (accountSid && authToken && twilioPhone) {
     );
 }
 
+/**
+ * Normalizes phone numbers to E.164 format (+94...)
+ */
+const formatPhoneNumber = (phone) => {
+    if (!phone) return null;
+    let cleaned = phone.toString().replace(/\D/g, "");
+    
+    // Ignore short codes (e.g., 1221, 1990)
+    if (cleaned.length < 8 && !cleaned.startsWith("0")) {
+        return null;
+    }
+
+    if (cleaned.startsWith("0") && cleaned.length > 8) {
+        cleaned = "94" + cleaned.substring(1);
+    }
+    
+    if (cleaned && !cleaned.startsWith("+")) {
+        cleaned = "+" + cleaned;
+    }
+    return cleaned;
+};
+
 const sendSMS = async (to, message) => {
+    const formattedTo = formatPhoneNumber(to);
+
     // Use Twilio if configured
-    if (client) {
+    if (client && formattedTo) {
         try {
             const result = await client.messages.create({
                 body: message,
                 from: twilioPhone,
-                to: to,
+                to: formattedTo,
             });
-            console.log(`[SMS Service] Sent to ${to} | SID: ${result.sid}`);
+            console.log(`[SMS Service] Sent to ${formattedTo} | SID: ${result.sid}`);
             return true;
         } catch (error) {
-            console.error(`[SMS Service] Failed to send to ${to}:`, error.message);
+            console.error(`[SMS Service] Failed to send to ${formattedTo || 'Unknown'}:`, error.message);
             return false;
         }
     }
@@ -40,7 +64,7 @@ const sendSMS = async (to, message) => {
     // Fallback: log to console
     console.log("==================================================");
     console.log("[MOCK SMS] Twilio not configured - logging only");
-    console.log(`To:      ${to}`);
+    console.log(`To:      ${formattedTo}`);
     console.log(`Message: ${message}`);
     console.log(`Time:    ${new Date().toISOString()}`);
     console.log("==================================================");

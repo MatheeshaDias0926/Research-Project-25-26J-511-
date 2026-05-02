@@ -130,3 +130,9 @@ export const deleteHospital = async (id) => {
   const response = await api.delete(`/hospitals/${id}`);
   return response.data;
 };
+
+// Crash Management
+export const getCrashes = async () => {
+  const response = await api.get('/crashes');
+  return response.data;
+};

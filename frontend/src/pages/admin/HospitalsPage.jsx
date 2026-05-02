@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getHospitals, createHospital, updateHospital, deleteHospital } from '../../services/adminService';
+import { getHospitals, createHospital, updateHospital, deleteHospital, getCrashes } from '../../services/adminService';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Hospital, Plus, Pencil, Trash2, Phone, MapPin, X, CheckCircle, XCircle, Search, Ambulance, BedDouble, HeartPulse } from 'lucide-react';
 
@@ -29,12 +29,24 @@ const HospitalsPage = () => {
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
   const [formData, setFormData] = useState({
-    name: '', hospital_code: '', type: 'government', district: '', province: '', address: '',
-    phone: '', email: '', latitude: '', longitude: '', emergency_hotline: '', ambulance_count: 0,
+    phone: '', email: '', latitude: '', longitude: '', google_map_url: '', emergency_hotline: '', ambulance_count: 0,
     bed_capacity: '', has_trauma_unit: false, has_icu: false, contact_person: '', status: 'active'
   });
+  const [crashes, setCrashes] = useState([]);
 
-  useEffect(() => { fetchHospitals(); }, []);
+  useEffect(() => {
+    fetchHospitals();
+    fetchRecentCrashes();
+  }, []);
+
+  const fetchRecentCrashes = async () => {
+    try {
+      const data = await getCrashes();
+      setCrashes(data.crashes?.slice(0, 5) || []);
+    } catch (err) {
+      console.error('Error fetching crashes:', err);
+    }
+  };
 
   const fetchHospitals = async () => {
     try {
@@ -88,7 +100,8 @@ const HospitalsPage = () => {
       name: hospital.name, hospital_code: hospital.hospital_code, type: hospital.type,
       district: hospital.district, province: hospital.province, address: hospital.address,
       phone: hospital.phone, email: hospital.email || '', latitude: hospital.location?.latitude || '',
-      longitude: hospital.location?.longitude || '', emergency_hotline: hospital.emergency_hotline,
+      longitude: hospital.location?.longitude || '', google_map_url: hospital.google_map_url || '',
+      emergency_hotline: hospital.emergency_hotline,
       ambulance_count: hospital.ambulance_count || 0, bed_capacity: hospital.bed_capacity || '',
       has_trauma_unit: hospital.has_trauma_unit, has_icu: hospital.has_icu,
       contact_person: hospital.contact_person || '', status: hospital.status
@@ -333,6 +346,7 @@ const HospitalsPage = () => {
                 <div><label style={labelStyle}>Latitude *</label><input type="number" step="any" style={inputStyle} value={formData.latitude} onChange={e => setFormData({ ...formData, latitude: e.target.value })} required {...focusHandler} /></div>
                 <div><label style={labelStyle}>Longitude *</label><input type="number" step="any" style={inputStyle} value={formData.longitude} onChange={e => setFormData({ ...formData, longitude: e.target.value })} required {...focusHandler} /></div>
               </div>
+              <div><label style={labelStyle}>Google Maps URL</label><input type="url" style={inputStyle} value={formData.google_map_url} onChange={e => setFormData({ ...formData, google_map_url: e.target.value })} placeholder="Paste Google Maps link here" {...focusHandler} /></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                 <div><label style={labelStyle}>Emergency Hotline *</label><input type="tel" style={inputStyle} value={formData.emergency_hotline} onChange={e => setFormData({ ...formData, emergency_hotline: e.target.value })} required {...focusHandler} /></div>
                 <div><label style={labelStyle}>Ambulance Count</label><input type="number" style={inputStyle} value={formData.ambulance_count} onChange={e => setFormData({ ...formData, ambulance_count: e.target.value })} {...focusHandler} /></div>
@@ -387,6 +401,57 @@ const HospitalsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Recent Crashes Integration */}
+      <div style={{ marginTop: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          <div style={{ padding: 8, background: "#fef2f2", borderRadius: 10 }}>
+            <HeartPulse style={{ height: 20, width: 20, color: "#dc2626" }} />
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Emergency Cases</h2>
+        </div>
+        <div className="table-card">
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bus ID</th>
+                  <th>Location</th>
+                  <th>Severity</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {crashes.map(crash => (
+                  <tr key={crash._id}>
+                    <td style={{ fontWeight: 700 }}>{crash.bus_id}</td>
+                    <td>{crash.location?.address || `${crash.location?.lat}, ${crash.location?.lon}`}</td>
+                    <td>
+                      <span style={{
+                        padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: "#fee2e2", color: "#dc2626"
+                      }}>CRITICAL</span>
+                    </td>
+                    <td>
+                      <span style={{
+                        padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: "#f0fdf4", color: "#16a34a"
+                      }}>{crash.status.toUpperCase()}</span>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => window.location.href = `/admin/crashes/${crash._id}`}
+                        style={{ padding: "6px 12px", borderRadius: 6, background: "#dc2626", color: "#fff", border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Deploy Ambulance</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

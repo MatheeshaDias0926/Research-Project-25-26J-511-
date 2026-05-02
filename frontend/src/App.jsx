@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { EmergencyProvider } from "./context/EmergencyContext";
 import Layout from "./components/layout/Layout";
 import PrivateRoutes from "./components/layout/PrivateRoutes";
 import RoleRedirect from "./components/layout/RoleRedirect";
@@ -32,6 +33,7 @@ import DriverPanel from "./pages/driver/DriverPanel";
 import CrashesPage from "./pages/admin/CrashesPage";
 import PoliceStationsPage from "./pages/admin/PoliceStationsPage";
 import HospitalsPage from "./pages/admin/HospitalsPage";
+import CrashDetailsPage from "./pages/admin/CrashDetailsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 
 // Placeholders for now
@@ -46,6 +48,7 @@ function App() {
     <ThemeProvider>
     <Router>
       <AuthProvider>
+        <EmergencyProvider>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
@@ -91,6 +94,7 @@ function App() {
               <Route path="/admin/crashes" element={<CrashesPage />} />
               <Route path="/admin/police-stations" element={<PoliceStationsPage />} />
               <Route path="/admin/hospitals" element={<HospitalsPage />} />
+              <Route path="/admin/crashes/:id" element={<CrashDetailsPage />} />
               <Route path="/admin/settings" element={<SettingsPage />} />
             </Route>
 
@@ -103,6 +107,7 @@ function App() {
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </EmergencyProvider>
       </AuthProvider>
     </Router>
     </ThemeProvider>

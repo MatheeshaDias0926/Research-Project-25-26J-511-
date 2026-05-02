@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getPoliceStations, createPoliceStation, updatePoliceStation, deletePoliceStation } from '../../services/adminService';
+import { getPoliceStations, createPoliceStation, updatePoliceStation, deletePoliceStation, getCrashes } from '../../services/adminService';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Building2, Plus, Pencil, Trash2, Phone, MapPin, Shield, X, CheckCircle, XCircle, Search } from 'lucide-react';
 
@@ -19,11 +19,26 @@ const PoliceStationsPage = () => {
   const [search, setSearch] = useState('');
   const [formData, setFormData] = useState({
     name: '', station_code: '', district: '', province: '', address: '',
-    phone: '', email: '', latitude: '', longitude: '', officer_in_charge: '',
+    phone: '', email: '', latitude: '', longitude: '', google_map_url: '', officer_in_charge: '',
     contact_person: '', emergency_hotline: '', status: 'active'
   });
+  const [crashes, setCrashes] = useState([]);
 
-  useEffect(() => { fetchStations(); }, []);
+  useEffect(() => {
+    fetchStations();
+    fetchRecentCrashes();
+  }, []);
+
+  const fetchRecentCrashes = async () => {
+    try {
+      const data = await getCrashes();
+      if (data && data.crashes) {
+        setCrashes(data.crashes.slice(0, 5));
+      }
+    } catch (err) {
+      console.error('Error fetching crashes:', err);
+    }
+  };
 
   const fetchStations = async () => {
     try {
@@ -75,7 +90,9 @@ const PoliceStationsPage = () => {
       name: station.name, station_code: station.station_code, district: station.district,
       province: station.province, address: station.address, phone: station.phone,
       email: station.email || '', latitude: station.location?.latitude || '',
-      longitude: station.location?.longitude || '', officer_in_charge: station.officer_in_charge || '',
+      longitude: station.location?.longitude || '',
+      google_map_url: station.google_map_url || '',
+      officer_in_charge: station.officer_in_charge || '',
       contact_person: station.contact_person || '', emergency_hotline: station.emergency_hotline || '',
       status: station.status
     });
@@ -305,6 +322,7 @@ const PoliceStationsPage = () => {
                 <div><label style={labelStyle}>Officer in Charge</label><input type="text" style={inputStyle} value={formData.officer_in_charge} onChange={e => setFormData({ ...formData, officer_in_charge: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
                 <div><label style={labelStyle}>Contact Person</label><input type="text" style={inputStyle} value={formData.contact_person} onChange={e => setFormData({ ...formData, contact_person: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
               </div>
+              <div><label style={labelStyle}>Google Maps URL</label><input type="url" style={inputStyle} value={formData.google_map_url} onChange={e => setFormData({ ...formData, google_map_url: e.target.value })} placeholder="Paste Google Maps link here" onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div><label style={labelStyle}>Emergency Hotline</label><input type="tel" style={inputStyle} value={formData.emergency_hotline} onChange={e => setFormData({ ...formData, emergency_hotline: e.target.value })} onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }} onBlur={e => { e.target.style.borderColor = "var(--border-light)"; e.target.style.boxShadow = "none"; }} /></div>
                 <div>
@@ -341,6 +359,57 @@ const PoliceStationsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Recent Crashes Integration */}
+      <div style={{ marginTop: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          <div style={{ padding: 8, background: "#fee2e2", borderRadius: 10 }}>
+            <Shield style={{ height: 20, width: 20, color: "#dc2626" }} />
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Recent Incidents</h2>
+        </div>
+        <div className="table-card">
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bus ID</th>
+                  <th>Location</th>
+                  <th>Severity</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {crashes.map(crash => (
+                  <tr key={crash._id}>
+                    <td style={{ fontWeight: 700 }}>{crash.bus_id}</td>
+                    <td>{crash.location?.address || `${crash.location?.lat}, ${crash.location?.lon}`}</td>
+                    <td>
+                      <span style={{
+                        padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: "#fee2e2", color: "#dc2626"
+                      }}>HIGH</span>
+                    </td>
+                    <td>
+                      <span style={{
+                        padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: "#fff7ed", color: "#c2410c"
+                      }}>{crash.status.toUpperCase()}</span>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => window.location.href = `/admin/crashes/${crash._id}`}
+                        style={{ padding: "6px 12px", borderRadius: 6, background: "#2563eb", color: "#fff", border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >View Details & Navigate</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

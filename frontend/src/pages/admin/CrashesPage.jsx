@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getCrashes, updateCrashStatus } from '../../services/crashService';
 import { Card, CardContent } from '../../components/ui/Card';
-import { AlertTriangle, Clock, CheckCircle, MapPin, Activity, ChevronDown, Flame, Loader, Check, Ban, Search, Filter, XCircle } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle, MapPin, Activity, ChevronDown, Flame, Loader, Check, Ban, Search, Filter, XCircle, Map as MapIcon, Navigation, Locate } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
 
 const severityConfig = {
   critical: { bg: "#fee2e2", text: "#dc2626" },
@@ -107,15 +109,129 @@ const filterConfig = {
   false_positive: { label: "False Positive", icon: Ban, color: "#64748b" },
 };
 
+// Fix Leaflet Icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
+const RecenterMap = ({ center }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center) map.flyTo(center, 13);
+  }, [center, map]);
+  return null;
+};
+
 const CrashesPage = () => {
   const [crashes, setCrashes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [userLocation, setUserLocation] = useState(null);
+  const [showMap, setShowMap] = useState(true);
+  const [addressMap, setAddressMap] = useState({});
+  const [policeStations, setPoliceStations] = useState([]);
+  const [hospitals, setHospitals] = useState([]);
 
   useEffect(() => {
     fetchCrashes();
+    fetchResponders();
+    getUserLocation();
   }, [filter]);
+
+  const fetchResponders = async () => {
+    try {
+      const config = {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      };
+      const [policeRes, hospitalRes] = await Promise.all([
+        axios.get("/api/police-stations", config),
+        axios.get("/api/hospitals", config)
+      ]);
+      setPoliceStations(policeRes.data.policeStations || []);
+      setHospitals(hospitalRes.data.hospitals || []);
+    } catch (err) {
+      console.error("Error fetching responders:", err);
+    }
+  };
+
+  // Reverse Geocoding Helper
+  const fetchAddress = async (lat, lon) => {
+    try {
+      // Nominatim requires a user-agent
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
+        headers: { 'User-Agent': 'SmartBus-Research-Project' }
+      });
+      const data = await response.json();
+      return data.display_name;
+    } catch (error) {
+      console.error("Reverse geocoding error:", error);
+      return null;
+    }
+  };
+
+  const formatAddress = (addr) => {
+    if (!addr) return "";
+    const parts = addr.split(',');
+    // Return first 3 parts for a cleaner look (e.g. Street, District, City)
+    return parts.slice(0, 3).join(',').trim();
+  };
+
+  useEffect(() => {
+    if (userLocation && !addressMap['user']) {
+      fetchAddress(userLocation.lat, userLocation.lng).then(addr => {
+        if (addr) setAddressMap(prev => ({ ...prev, 'user': addr }));
+      });
+    }
+  }, [userLocation]);
+
+  useEffect(() => {
+    const fetchMissingAddresses = async () => {
+      const newAddresses = { ...addressMap };
+      let changed = false;
+
+      for (const crash of crashes) {
+        const lat = (crash.location?.lat ?? crash.location?.latitude);
+        const lon = (crash.location?.lon ?? crash.location?.longitude);
+        const isZero = (!lat || lat === 0) && (!lon || lon === 0);
+
+        if (!isZero && !crash.location?.address && !addressMap[crash._id]) {
+          const addr = await fetchAddress(lat, lon);
+          if (addr) {
+            newAddresses[crash._id] = addr;
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) setAddressMap(newAddresses);
+    };
+
+    if (crashes.length > 0) {
+      fetchMissingAddresses();
+    }
+  }, [crashes]);
+
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    }
+  };
 
   const fetchCrashes = async () => {
     try {
@@ -175,7 +291,113 @@ const CrashesPage = () => {
             <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0, marginTop: 2 }}>Monitor and manage crash incidents</p>
           </div>
         </div>
+        <button 
+          onClick={() => setShowMap(!showMap)}
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 18px", borderRadius: 12,
+            background: showMap ? "var(--bg-surface)" : "var(--color-primary-600)",
+            color: showMap ? "var(--text-primary)" : "#fff",
+            border: "1px solid var(--border-light)",
+            fontSize: 14, fontWeight: 600, cursor: "pointer",
+            transition: "all 0.2s",
+            boxShadow: showMap ? "none" : "0 4px 12px rgba(37,99,235,0.2)"
+          }}
+        >
+          {showMap ? <XCircle size={18} /> : <MapIcon size={18} />}
+          {showMap ? "Hide Map" : "Show Map View"}
+        </button>
       </div>
+
+      {showMap && (
+        <Card style={{ overflow: "hidden", border: "1px solid var(--border-light)", height: 400, position: "relative" }} className="animate-fade-in">
+          <MapContainer 
+            center={userLocation ? [userLocation.lat, userLocation.lng] : [7.8731, 80.7718]} 
+            zoom={userLocation ? 13 : 8} 
+            style={{ height: "100%", width: "100%", zIndex: 1 }}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            {userLocation && <RecenterMap center={[userLocation.lat, userLocation.lng]} />}
+            
+            {/* User Marker */}
+            {userLocation && (
+              <Marker 
+                position={[userLocation.lat, userLocation.lng]}
+                icon={L.divIcon({
+                  className: 'custom-div-icon',
+                  html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(59,130,246,0.6); position: relative;">
+                          <div style="position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; border-radius: 50%; border: 2px solid #3b82f6; animation: pulse 2s infinite;"></div>
+                        </div>`,
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8]
+                })}
+              >
+                <Popup>
+                  <div style={{ fontWeight: 600 }}>Your Location (Laptop)</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Used for calculating proximity</div>
+                </Popup>
+              </Marker>
+            )}
+
+            {/* Crash Markers */}
+            {crashes.map(crash => {
+              const lat = (crash.location?.lat ?? crash.location?.latitude);
+              const lon = (crash.location?.lon ?? crash.location?.longitude);
+              
+              // FALLBACK: If 0,0, use user location if available
+              const displayLat = lat;
+              const displayLon = lon;
+
+              if (!displayLat || !displayLon) return null;
+
+              const sev = severityConfig[crash.severity] || severityConfig.medium;
+              
+              return (
+                <Marker 
+                  key={crash._id} 
+                  position={[displayLat, displayLon]}
+                  icon={L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color: ${sev.text}; width: 28px; height: 28px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                          </div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                  })}
+                >
+                  <Popup>
+                    <div style={{ minWidth: 180, fontFamily: "var(--font-sans)" }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: sev.text, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                        <AlertTriangle size={16} /> {crash.severity?.toUpperCase()} CRASH
+                      </div>
+                      <div style={{ fontSize: 13, marginBottom: 8 }}>
+                        <strong>Bus:</strong> {crash.bus_id || crash.busId}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {new Date(crash.timestamp).toLocaleString()}</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {(!lat && !lon) ? "Location unknown" : "Actual GPS location"}</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Activity size={12} /> {crash.max_acceleration?.toFixed(2) || 0} m/s²</span>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MapContainer>
+          
+          <div style={{ 
+            position: "absolute", bottom: 12, left: 12, zIndex: 1000, 
+            background: "rgba(255,255,255,0.9)", padding: "6px 12px", 
+            borderRadius: 8, fontSize: 12, fontWeight: 500, color: "var(--text-secondary)",
+            border: "1px solid var(--border-light)", backdropFilter: "blur(4px)"
+          }}>
+            {userLocation ? "📍 Device Location Active" : "📡 Detecting Location..."}
+          </div>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
@@ -293,9 +515,26 @@ const CrashesPage = () => {
                         </div>
                       </td>
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)" }}>
-                          <MapPin style={{ height: 14, width: 14, flexShrink: 0 }} />
-                          {crash.location?.address || `${(crash.location?.lat ?? crash.location?.latitude)?.toFixed(4) || '0'}, ${(crash.location?.lon ?? crash.location?.longitude)?.toFixed(4) || '0'}`}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)", maxWidth: 250 }}>
+                          <MapPin style={{ height: 14, width: 14, flexShrink: 0, color: "#3b82f6" }} />
+                          <span style={{ 
+                            fontSize: 13, 
+                            whiteSpace: "nowrap", 
+                            overflow: "hidden", 
+                            textOverflow: "ellipsis",
+                            fontWeight: 500
+                          }}>
+                            {(() => {
+                              const lat = (crash.location?.lat ?? crash.location?.latitude);
+                              const lon = (crash.location?.lon ?? crash.location?.longitude);
+                              
+                              if (!lat && !lon) {
+                                return "📍 Location unknown";
+                              }
+                              
+                              return crash.location?.address || formatAddress(addressMap[crash._id]) || (lat ? `${lat.toFixed(4)}, ${lon.toFixed(4)}` : '—');
+                            })()}
+                          </span>
                         </div>
                       </td>
                       <td>

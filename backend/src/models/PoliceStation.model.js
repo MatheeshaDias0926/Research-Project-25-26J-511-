@@ -12,6 +12,7 @@ const policeStationSchema = new mongoose.Schema({
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },
   },
+  google_map_url: { type: String },
   officer_in_charge: { type: String },
   contact_person: { type: String },
   emergency_hotline: { type: String },
