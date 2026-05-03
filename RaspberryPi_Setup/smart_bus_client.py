@@ -100,7 +100,7 @@ class SmartBusPiClient:
                  no_face_alert_timeout=30,
                  rest_timeout=60, max_continuous_driving=360,
                  max_daily_driving=480, required_rest=360,
-                 cooldown=0, http_gps_port=8080):
+                 cooldown=0, http_gps_port=8080, http_gps_url=None):
         self.backend_url = backend_url.rstrip("/")
         self.device_id = device_id
         # --- FIX: Handle both Int (local) and Str (URL) ---
@@ -143,8 +143,9 @@ class SmartBusPiClient:
         # Load previously verified driver from disk (offline resilience)
         self._load_verified_driver_cache()
 
-        # GPS from mobile phone (TCP socket + HTTP for Traccar Client)
-        self.gps_receiver = MobileGPSReceiver(http_port=http_gps_port)
+        # GPS from mobile phone (TCP socket + HTTP for Traccar Client) or remote poll URL
+        # Prefer a configured `http_gps_url` (full URL) if provided; fall back to local HTTP port.
+        self.gps_receiver = MobileGPSReceiver(http_port=http_gps_port, http_url=http_gps_url)
         self.gps_receiver._backend_url = self.backend_url
         self.gps_receiver._backend_headers = self.headers
         self.latest_gps = None  # {lat, lon, speed, accuracy, timestamp}
@@ -562,7 +563,10 @@ class SmartBusPiClient:
         log.info(f"  Headers : x-device-id={self.headers['x-device-id']}")
         log.info(f"  Camera  : {self.camera_index}")
         log.info(f"  Display : 480x320 (3.5\" RPi touch display)")
-        log.info(f"  GPS     : TCP port 5555 + HTTP port {self.gps_receiver._http_port} (Traccar Client)")
+        if getattr(self.gps_receiver, "_http_url", None):
+            log.info(f"  GPS     : External URL {self.gps_receiver._http_url} (polling) + local TCP 5555")
+        else:
+            log.info(f"  GPS     : TCP port 5555 + HTTP port {self.gps_receiver._http_port} (Traccar Client)")
         log.info(f"  Face DB : pickle={os.path.exists(FACE_PICKLE_PATH)}, "
                  f"json={os.path.exists(FACE_CACHE_PATH)}, "
                  f"loaded={len(self.face_verifier.encodings)} encodings")
@@ -887,8 +891,12 @@ def interactive_setup(saved):
                      default=saved.get("camera", "0"))
     road_camera = _prompt("Road Camera index or URL (leave empty to disable YOLO)",
                           default=saved.get("road_camera", ""))
-    http_gps_port = _prompt("GPS HTTP port (for Traccar Client)",
-                            default=saved.get("http_gps_port", 8080), cast=int)
+    http_gps_url = _prompt("GPS URL (full URL with port, e.g. http://10.238.179.66:8081/)",
+                           default=saved.get("http_gps_url", ""))
+    try:
+        http_gps_port = int(saved.get("http_gps_port", 8080))
+    except (TypeError, ValueError):
+        http_gps_port = 8080
 
     print("")
     print("── Detection Thresholds (press Enter for defaults) ──")
@@ -935,6 +943,7 @@ def interactive_setup(saved):
         "device_id": device_id,
         "camera": camera,
         "road_camera": road_camera,
+        "http_gps_url": http_gps_url,
         "http_gps_port": http_gps_port,
         "ear_threshold": ear_threshold,
         "mar_threshold": mar_threshold,
@@ -980,6 +989,7 @@ def main():
     parser.add_argument("--max-daily-driving", type=int, default=None, help="Max daily driving minutes (default 8h)")
     parser.add_argument("--required-rest", type=int, default=None, help="Required rest minutes after max continuous driving (default 6h)")
     parser.add_argument("--cooldown", type=int, default=None, help="Extra cooldown minutes after rest before next drive (default 0)")
+    parser.add_argument("--http-gps-url", type=str, default=None, help="External GPS URL returning JSON location (e.g. http://10.238.179.66:8081/)")
     parser.add_argument("--http-gps-port", type=int, default=None, help="HTTP port for Traccar Client GPS (default 8080)")
     parser.add_argument("--interactive", "-i", action="store_true", help="Force interactive setup prompt")
     args = parser.parse_args()
@@ -1001,6 +1011,7 @@ def main():
             "device_id":             args.device_id or saved.get("device_id"),
             "camera":                args.camera or saved.get("camera", "0"),
             "road_camera":           args.road_camera or saved.get("road_camera", ""),
+            "http_gps_url":          args.http_gps_url if args.http_gps_url is not None else saved.get("http_gps_url", ""),
             "http_gps_port":         args.http_gps_port or saved.get("http_gps_port", 8080),
             "ear_threshold":         args.ear_threshold if args.ear_threshold is not None else saved.get("ear_threshold", 0.25),
             "mar_threshold":         args.mar_threshold if args.mar_threshold is not None else saved.get("mar_threshold", 0.50),
@@ -1039,6 +1050,7 @@ def main():
         required_rest=cfg["required_rest"],
         cooldown=cfg["cooldown"],
         http_gps_port=cfg["http_gps_port"],
+        http_gps_url=cfg.get("http_gps_url") or None,
     )
     client.run()
 

@@ -21,10 +21,11 @@ class MobileGPSReceiver:
 	backend info is provided by the parent client.
 	"""
 
-	def __init__(self, host="0.0.0.0", tcp_port=5555, http_port=8080):
+	def __init__(self, host="0.0.0.0", tcp_port=5555, http_port=8080, http_url=None):
 		self._host = host
 		self._tcp_port = tcp_port
 		self._http_port = http_port
+		self._http_url = http_url
 		self._lock = threading.Lock()
 		self._latest: dict | None = None
 		self._running = False
@@ -32,6 +33,7 @@ class MobileGPSReceiver:
 		self._http_server = None
 		self._backend_url: str | None = None
 		self._backend_headers: dict | None = None
+		self._poll_thread = None
 
 	def _forward_gps_to_backend(self, lat, lon, speed_kmh):
 		if not self._backend_url or not self._backend_headers:
@@ -65,6 +67,12 @@ class MobileGPSReceiver:
 		t2 = threading.Thread(target=self._http_listen_loop, daemon=True)
 		t2.start()
 		log.info(f"[GPS] HTTP server started on {self._host}:{self._http_port}  (Traccar Client)")
+
+		# If an external HTTP GPS URL is configured, start a polling thread
+		if getattr(self, '_http_url', None):
+			self._poll_thread = threading.Thread(target=self._poll_http_url_loop, daemon=True)
+			self._poll_thread.start()
+			log.info(f"[GPS] Polling external GPS URL: {self._http_url}")
 
 	def stop(self):
 		self._running = False
@@ -210,4 +218,52 @@ class MobileGPSReceiver:
 			if self._latest and "timestamp" in self._latest:
 				return time.time() - self._latest["timestamp"]
 		return float("inf")
+
+	def _poll_http_url_loop(self, poll_interval: float = 3.0):
+		"""Poll a remote HTTP URL that returns JSON with location information.
+
+		Expected JSON shape (example):
+		  {"status":"success","mode":"real","location":{"lat":6.9271,"lng":79.8612}}
+		Falls back gracefully on parse errors.
+		"""
+		try:
+			import requests
+		except Exception:
+			log.error("[GPS-POLL] 'requests' not available; cannot poll external GPS URL")
+			return
+
+		while self._running:
+			try:
+				resp = requests.get(self._http_url, timeout=3)
+				if resp.status_code != 200:
+					log.debug(f"[GPS-POLL] HTTP {resp.status_code} from {self._http_url}")
+					time.sleep(poll_interval)
+					continue
+				data = resp.json()
+				if not isinstance(data, dict):
+					time.sleep(poll_interval)
+					continue
+				status = data.get("status")
+				if status and str(status).lower() != "success":
+					time.sleep(poll_interval)
+					continue
+				loc = data.get("location") or data.get("loc") or {}
+				if not loc:
+					time.sleep(poll_interval)
+					continue
+				lat = loc.get("lat") or loc.get("latitude")
+				lng = loc.get("lng") or loc.get("lon") or loc.get("longitude")
+				if lat is None or lng is None:
+					time.sleep(poll_interval)
+					continue
+				speed = data.get("speed", 0) or loc.get("speed", 0)
+				try:
+					self._update_gps(float(lat), float(lng), float(speed), accuracy=0)
+					log.info(f"[GPS-POLL] Polled {self._http_url} → lat={lat}, lon={lng}, speed={speed}")
+					self._forward_gps_to_backend(lat, lng, speed)
+				except Exception as e:
+					log.debug(f"[GPS-POLL] Failed to update GPS from polled data: {e}")
+			except Exception as e:
+				log.debug(f"[GPS-POLL] Error polling {self._http_url}: {e}")
+			time.sleep(poll_interval)
 
