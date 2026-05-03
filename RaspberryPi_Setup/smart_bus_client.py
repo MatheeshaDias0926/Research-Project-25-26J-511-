@@ -938,7 +938,7 @@ class DrivingTimeTracker:
 class SmartBusPiClient:
     """Main client running on the Raspberry Pi 5."""
 
-    def __init__(self, backend_url, device_id, camera_index=0,
+    def __init__(self, backend_url, device_id, camera_index=0, road_camera_index=None,
                  ear_threshold=0.25, mar_threshold=0.50,
                  drowsy_frames=15, yawn_frames=10,
                  verify_interval=300, heartbeat_interval=60,
@@ -994,6 +994,15 @@ class SmartBusPiClient:
         self.gps_receiver._backend_url = self.backend_url
         self.gps_receiver._backend_headers = self.headers
         self.latest_gps = None  # {lat, lon, speed, accuracy, timestamp}
+
+        # Start Road analyzer if configured
+        self.road_analyzer = None
+        if road_camera_index is not None and road_camera_index != "":
+            try:
+                from src.road_analyzer import RoadAnalyzerWorker
+                self.road_analyzer = RoadAnalyzerWorker(self, camera_index=road_camera_index, models_dir=os.path.join(SCRIPT_DIR, "models"))
+            except ImportError as e:
+                log.error(f"Failed to import road analyzer: {e}")
 
         # Sub-systems
         self.alarm = LocalAlarm(gpio_pin=gpio_pin)
@@ -1164,6 +1173,30 @@ class SmartBusPiClient:
             # Network down — queue for later
             self.alert_queue.push(payload)
             log.warning(f"[ALERT] Queued offline ({alert_type}): {e} | Queue size: {self.alert_queue.size}")
+
+    def post_traffic_violation(self, violation_type, speed, gps):
+        """Sends a traffic violation payload to the backend."""
+        payload = {
+            "violationType": violation_type,
+            "speed": speed,
+            "gps": gps or {"lat": 0, "lon": 0},
+            "timestamp": int(time.time() * 1000),
+            "busId": self.device_id,  # Assume device_id is related to busId or fallback mapping
+            "licensePlate": "NP-1234" 
+        }
+        try:
+            log.info(f"[VIOLATION] Sending {violation_type} traffic violation to backend...")
+            resp = requests.post(
+                f"{self.backend_url}/api/violations/traffic",
+                headers=self.headers, json=payload, timeout=5,
+            )
+            if resp.status_code == 200 or resp.status_code == 201:
+                log.info(f"[VIOLATION] {violation_type} sent successfully")
+            else:
+                log.warning(f"[VIOLATION] Server returned HTTP {resp.status_code}: {resp.text[:200]}")
+                # We could queue traffic violations locally if required
+        except Exception as e:
+            log.warning(f"[VIOLATION] Failed to send {violation_type}: {e}")
 
     def flush_alert_queue(self):
         """Try to send all queued alerts."""
@@ -1399,6 +1432,10 @@ class SmartBusPiClient:
 
         # Start mobile GPS socket server
         self.gps_receiver.start()
+        
+        # Start Road analyzer
+        if self.road_analyzer:
+            self.road_analyzer.start()
 
         # Initial sync
         self.send_heartbeat()
@@ -1603,6 +1640,8 @@ class SmartBusPiClient:
 
         self.alarm.stop()
         self.gps_receiver.stop()
+        if self.road_analyzer:
+            self.road_analyzer.stop()
         cap.release()
         cv2.destroyAllWindows()
         log.info("Client stopped.")
@@ -1668,8 +1707,10 @@ def interactive_setup(saved):
 
     print("")
     print("── Camera & GPS ──")
-    camera = _prompt("Camera index or URL",
+    camera = _prompt("Driver Camera index or URL",
                      default=saved.get("camera", "0"))
+    road_camera = _prompt("Road Camera index or URL (leave empty to disable YOLO)",
+                          default=saved.get("road_camera", ""))
     http_gps_port = _prompt("GPS HTTP port (for Traccar Client)",
                             default=saved.get("http_gps_port", 8080), cast=int)
 
@@ -1717,6 +1758,7 @@ def interactive_setup(saved):
         "backend": backend,
         "device_id": device_id,
         "camera": camera,
+        "road_camera": road_camera,
         "http_gps_port": http_gps_port,
         "ear_threshold": ear_threshold,
         "mar_threshold": mar_threshold,
@@ -1748,7 +1790,8 @@ def main():
     parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2.4 - GPS socket, face pickle, strict verify)")
     parser.add_argument("--backend", default=None, help="Backend URL (e.g. http://192.168.1.100:3000)")
     parser.add_argument("--device-id", default=None, help="Device ID registered in admin panel")
-    parser.add_argument("--camera", type=str, default=None, help="Camera index or IP URL")
+    parser.add_argument("--camera", type=str, default=None, help="Driver Camera index or IP URL")
+    parser.add_argument("--road-camera", type=str, default=None, help="Road Camera index or IP URL (for YOLO violations)")
     parser.add_argument("--ear-threshold", type=float, default=None, help="EAR threshold for drowsiness")
     parser.add_argument("--mar-threshold", type=float, default=None, help="MAR threshold for yawning")
     parser.add_argument("--verify-interval", type=int, default=None, help="Driver re-verification interval (seconds)")
@@ -1781,6 +1824,7 @@ def main():
             "backend":               args.backend or saved.get("backend"),
             "device_id":             args.device_id or saved.get("device_id"),
             "camera":                args.camera or saved.get("camera", "0"),
+            "road_camera":           args.road_camera or saved.get("road_camera", ""),
             "http_gps_port":         args.http_gps_port or saved.get("http_gps_port", 8080),
             "ear_threshold":         args.ear_threshold if args.ear_threshold is not None else saved.get("ear_threshold", 0.25),
             "mar_threshold":         args.mar_threshold if args.mar_threshold is not None else saved.get("mar_threshold", 0.50),
@@ -1805,6 +1849,7 @@ def main():
         backend_url=cfg["backend"],
         device_id=cfg["device_id"],
         camera_index=cfg["camera"],
+        road_camera_index=cfg.get("road_camera"),
         ear_threshold=cfg["ear_threshold"],
         mar_threshold=cfg["mar_threshold"],
         verify_interval=cfg["verify_interval"],
