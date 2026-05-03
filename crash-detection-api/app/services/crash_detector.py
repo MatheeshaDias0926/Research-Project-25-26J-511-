@@ -86,20 +86,26 @@ class CrashDetector:
             logger.info(f"Bus {bus_id} Metrics - Error: {max_error:.4f}, Accel: {max_acceleration:.2f}, Jerk: {max_jerk:.2f}, Pitch: {max_pitch:.1f}, Roll: {max_roll:.1f}")
 
             error_threshold = self.settings.reconstruction_error_threshold
-            accel_threshold = 5.0    # Lowered from 10.0 for higher sensitivity
-            jerk_threshold = 80.0    # Lowered from 150.0 for higher sensitivity
-            tilt_threshold = 35.0    # Lowered from 45.0
-
-            # Multi-factor crash detection logic
-            ml_detected = max_error > error_threshold and max_acceleration > accel_threshold
-            jerk_detected = max_jerk > jerk_threshold and max_acceleration > (accel_threshold * 0.8)
+            accel_threshold = 10.0   # Balanced for toy vehicles
+            jerk_threshold = 120.0   # ignores noise, catches wall hits
+            tilt_threshold = 56.0    # Final rollover threshold for toy vehicle
+            
+            # Multi-factor crash detection logic: Any single factor triggers it
+            ml_match = max_error > error_threshold
+            jerk_detected = max_jerk > jerk_threshold
+            accel_detected = max_acceleration > accel_threshold
             rollover_detected = max_pitch > tilt_threshold or max_roll > tilt_threshold
-
-            crash_detected = ml_detected or jerk_detected or rollover_detected
+            
+            crash_detected = ml_match or jerk_detected or accel_detected or rollover_detected
 
             if crash_detected:
-                reason = "ML Match" if ml_detected else ("High Jerk" if jerk_detected else "Rollover")
-                logger.warning(f"🚨 CRASH DETECTED for Bus {bus_id} | Reason: {reason} | Accel: {max_acceleration:.2f} m/s², Jerk: {max_jerk:.2f}, Max Tilt: {max(max_pitch, max_roll):.1f}°")
+                reasons = []
+                if ml_match: reasons.append("ML")
+                if jerk_detected: reasons.append("Jerk")
+                if accel_detected: reasons.append("Accel")
+                if rollover_detected: reasons.append("Rollover")
+                reason_str = "/".join(reasons)
+                logger.warning(f"🚨 CRASH DETECTED for Bus {bus_id} | Reasons: {reason_str} | Accel: {max_acceleration:.2f} m/s², Jerk: {max_jerk:.2f}")
             else:
                 logger.info(f"Bus {bus_id} - Normal Driving")
             confidence = min(

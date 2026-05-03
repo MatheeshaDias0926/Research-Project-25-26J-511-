@@ -136,7 +136,7 @@ async def forward_crash_to_backend(crash_event: CrashEvent):
             else:
                 sensor_data_serializable[key] = value
 
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             payload = {
                 "bus_id": crash_event.bus_id,
                 "reconstruction_error": float(crash_event.reconstruction_error),
@@ -161,7 +161,7 @@ async def forward_crash_to_backend(crash_event: CrashEvent):
                 logger.warning(f"Failed to forward crash to backend: {response.status_code} - {response.text}")
 
     except Exception as e:
-        logger.error(f"Error forwarding crash to backend: {e}")
+        logger.error(f"❌ BACKEND ERROR: Could not connect to http://localhost:5001. Error: {type(e).__name__} - {str(e)}")
 
 
 @router.get("/events/{bus_id}")

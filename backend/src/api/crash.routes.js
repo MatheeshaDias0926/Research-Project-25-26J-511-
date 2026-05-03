@@ -1,5 +1,5 @@
 import express from "express";
-import { reportCrash, getCrashes, updateCrashStatus } from "../controllers/crash.controller.js";
+import { reportCrash, getCrashes, updateCrashStatus, deleteCrash, deleteMultipleCrashes } from "../controllers/crash.controller.js";
 import {
     getEmergencyMessage,
     updateEmergencyMessage,
@@ -8,14 +8,11 @@ import { protect, isAuthority } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-/**
- * @route   POST /api/crashes
- * @desc    Report a crash event (Trigger SMS)
- * @access  Public (or protected by API Key in future)
- */
 router.get("/", protect, getCrashes);
 router.post("/", reportCrash);
 router.patch("/:id/status", protect, updateCrashStatus);
+router.delete("/:id", protect, deleteCrash);
+router.post("/bulk-delete", protect, deleteMultipleCrashes);
 
 /**
  * @route   GET /api/crashes/config/message

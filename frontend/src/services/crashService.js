@@ -24,3 +24,13 @@ export const getActiveCrashes = async () => {
   const response = await api.get('/crashes', { params: { status: 'active' } });
   return response.data.crashes || [];
 };
+
+export const deleteCrash = async (id) => {
+  const response = await api.delete(`/crashes/${id}`);
+  return response.data;
+};
+
+export const deleteMultipleCrashes = async (ids) => {
+  const response = await api.post('/crashes/bulk-delete', { ids });
+  return response.data;
+};

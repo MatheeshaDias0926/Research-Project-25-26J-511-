@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { getCrashes, updateCrashStatus } from '../../services/crashService';
+import { getCrashes, updateCrashStatus, deleteMultipleCrashes } from '../../services/crashService';
 import { Card, CardContent } from '../../components/ui/Card';
-import { AlertTriangle, Clock, CheckCircle, MapPin, Activity, ChevronDown, Flame, Loader, Check, Ban, Search, Filter, XCircle, Map as MapIcon, Navigation, Locate } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle, MapPin, Activity, ChevronDown, Flame, Loader, Check, Ban, Search, Filter, XCircle, Map as MapIcon, Navigation, Locate, Trash2, CheckSquare, Square } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -135,6 +135,8 @@ const CrashesPage = () => {
   const [addressMap, setAddressMap] = useState({});
   const [policeStations, setPoliceStations] = useState([]);
   const [hospitals, setHospitals] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchCrashes();
@@ -255,6 +257,36 @@ const CrashesPage = () => {
     }
   };
 
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filtered.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filtered.map(c => c._id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} crash records?`)) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteMultipleCrashes(selectedIds);
+      setSelectedIds([]);
+      await fetchCrashes();
+    } catch (error) {
+      console.error('Failed to delete crashes:', error);
+      alert('Failed to delete crashes');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const filtered = crashes.filter(c =>
     (c.bus_id || '').toLowerCase().includes(search.toLowerCase()) ||
     (c.location?.address || '').toLowerCase().includes(search.toLowerCase())
@@ -291,22 +323,42 @@ const CrashesPage = () => {
             <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0, marginTop: 2 }}>Monitor and manage crash incidents</p>
           </div>
         </div>
-        <button 
-          onClick={() => setShowMap(!showMap)}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "10px 18px", borderRadius: 12,
-            background: showMap ? "var(--bg-surface)" : "var(--color-primary-600)",
-            color: showMap ? "var(--text-primary)" : "#fff",
-            border: "1px solid var(--border-light)",
-            fontSize: 14, fontWeight: 600, cursor: "pointer",
-            transition: "all 0.2s",
-            boxShadow: showMap ? "none" : "0 4px 12px rgba(37,99,235,0.2)"
-          }}
-        >
-          {showMap ? <XCircle size={18} /> : <MapIcon size={18} />}
-          {showMap ? "Hide Map" : "Show Map View"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {selectedIds.length > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              disabled={isDeleting}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "10px 18px", borderRadius: 12,
+                background: "#fee2e2", color: "#dc2626",
+                border: "1px solid #fecaca",
+                fontSize: 14, fontWeight: 700, cursor: "pointer",
+                transition: "all 0.2s",
+                boxShadow: "0 4px 12px rgba(220,38,38,0.1)"
+              }}
+            >
+              <Trash2 size={18} />
+              {isDeleting ? "Deleting..." : `Delete Selected (${selectedIds.length})`}
+            </button>
+          )}
+          <button 
+            onClick={() => setShowMap(!showMap)}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "10px 18px", borderRadius: 12,
+              background: showMap ? "var(--bg-surface)" : "var(--color-primary-600)",
+              color: showMap ? "var(--text-primary)" : "#fff",
+              border: "1px solid var(--border-light)",
+              fontSize: 14, fontWeight: 600, cursor: "pointer",
+              transition: "all 0.2s",
+              boxShadow: showMap ? "none" : "0 4px 12px rgba(37,99,235,0.2)"
+            }}
+          >
+            {showMap ? <XCircle size={18} /> : <MapIcon size={18} />}
+            {showMap ? "Hide Map" : "Show Map View"}
+          </button>
+        </div>
       </div>
 
       {showMap && (
@@ -484,6 +536,14 @@ const CrashesPage = () => {
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: 40 }}>
+                    <button 
+                      onClick={toggleSelectAll}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 0, display: "flex", alignItems: "center" }}
+                    >
+                      {selectedIds.length === filtered.length && filtered.length > 0 ? <CheckSquare size={20} color="#dc2626" /> : <Square size={20} />}
+                    </button>
+                  </th>
                   {["Bus ID", "Timestamp", "Location", "Severity", "Status", "Acceleration", "Actions"].map(h => (
                     <th key={h}>{h}</th>
                   ))}
@@ -495,7 +555,15 @@ const CrashesPage = () => {
                   const stat = statusConfig[crash.status] || statusConfig.active;
                   const isActive = crash.status === "active";
                   return (
-                    <tr key={crash._id} data-active={isActive ? "true" : undefined}>
+                    <tr key={crash._id} data-active={isActive ? "true" : undefined} style={{ background: selectedIds.includes(crash._id) ? "var(--bg-muted)" : "inherit" }}>
+                      <td>
+                        <button 
+                          onClick={() => toggleSelect(crash._id)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: selectedIds.includes(crash._id) ? "#dc2626" : "var(--text-muted)", padding: 0, display: "flex", alignItems: "center" }}
+                        >
+                          {selectedIds.includes(crash._id) ? <CheckSquare size={20} /> : <Square size={20} />}
+                        </button>
+                      </td>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div style={{

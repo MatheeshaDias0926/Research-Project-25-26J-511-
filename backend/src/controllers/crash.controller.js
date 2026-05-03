@@ -181,3 +181,38 @@ export const updateCrashStatus = async (req, res, next) => {
         next(error);
     }
 };
+
+/**
+ * @desc    Delete a crash
+ * @route   DELETE /api/crashes/:id
+ * @access  Private
+ */
+export const deleteCrash = async (req, res, next) => {
+    try {
+        const crash = await Crash.findByIdAndDelete(req.params.id);
+        if (!crash) {
+            return res.status(404).json({ message: "Crash not found" });
+        }
+        res.json({ success: true, message: "Crash deleted successfully" });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * @desc    Delete multiple crashes
+ * @route   POST /api/crashes/bulk-delete
+ * @access  Private
+ */
+export const deleteMultipleCrashes = async (req, res, next) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids)) {
+            return res.status(400).json({ message: "Invalid request, 'ids' array is required" });
+        }
+        await Crash.deleteMany({ _id: { $in: ids } });
+        res.json({ success: true, message: `${ids.length} crashes deleted successfully` });
+    } catch (error) {
+        next(error);
+    }
+};
