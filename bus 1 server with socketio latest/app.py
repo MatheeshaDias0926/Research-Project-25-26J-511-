@@ -28,6 +28,8 @@ MODELS_DIR = os.path.join(APP_DIR, "models")
 UPLOAD_DIR = os.path.join(APP_DIR, "uploads")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+VIOLATIONS_DIR = os.path.join(UPLOAD_DIR, "violations")
+os.makedirs(VIOLATIONS_DIR, exist_ok=True)
 
 
 # -----------------------------
@@ -473,6 +475,18 @@ def handle_frame(data):
             "double_line": line,
         }
 
+        red_details = red.get("detections", []) if isinstance(red, dict) else []
+        red_summary = ", ".join(
+            f"{det.get('class_name')}({float(det.get('confidence', 0)):.2f})"
+            for det in red_details[:5]
+        ) or "none"
+        line_top = line.get("top1", {}) if isinstance(line, dict) else {}
+        print(
+            f"📷 CAMERA CAPTURE | redlight_count={red.get('count', 0) if isinstance(red, dict) else 0} "
+            f"redlight=[{red_summary}] | double_line_top={line_top.get('class_name')} "
+            f"({float(line_top.get('confidence', 0)):.2f})"
+        )
+
         # -----------------------------
         # SPEED LIMIT DETECTION
         # -----------------------------
@@ -544,8 +558,10 @@ def handle_frame(data):
         detected_limit = result.get("speed_limit_detected_kmh")
 
         # Red Light Violation
-        if red["count"] > 0 and current_speed > 5:
-            print(f"🚨 RED LIGHT DETECTED at {current_speed} km/h!")
+        if red.get("count", 0) > 0 and current_speed > 5:
+            dets = red.get("detections", [])
+            dets_summary = ", ".join([f"{d.get('class_name')}({d.get('confidence',0):.2f})" for d in dets[:5]]) or "(no details)"
+            print(f"🚨 RED LIGHT DETECTED at {current_speed} km/h! detections={red.get('count')} [{dets_summary}] GPS={gps_coords}")
             trigger_mqtt_buzzer()
             result["red_light_violation"] = post_violation(
                 bus_id,
@@ -554,10 +570,30 @@ def handle_frame(data):
                 gps_coords,
                 license_plate=ACTIVE_BUS_LICENSE_PLATE,
             )
+            # Save annotated capture for inspection (best-effort)
+            try:
+                ts = int(time.time() * 1000)
+                fname = f"red_{bus_id}_{ts}.jpg"
+                fpath = os.path.join(VIOLATIONS_DIR, fname)
+                ann = run_detect(red_model, img, True)
+                ann_b64 = ann.get("annotated_image_base64_jpg") if isinstance(ann, dict) else None
+                if ann_b64:
+                    with open(fpath, "wb") as fh:
+                        fh.write(base64.b64decode(ann_b64))
+                else:
+                    cv2.imwrite(fpath, img)
+                print(f"Saved red-light capture: {fpath}")
+                if os.name == "nt":
+                    try:
+                        os.startfile(fpath)
+                    except Exception as e:
+                        print("Failed to open image automatically:", e)
+            except Exception as e:
+                print("Failed to save/red-annotate capture:", e)
 
         # Speed Violation
         if detected_limit and current_speed > detected_limit:
-            print(f"🚨 SPEED VIOLATION: {current_speed} > {detected_limit} km/h!")
+            print(f"🚨 SPEED VIOLATION: {current_speed} > {detected_limit} km/h! (det_conf={conf:.2f}) GPS={gps_coords}")
             trigger_mqtt_buzzer()
             result["speed_violation"] = post_violation(
                 bus_id,
@@ -567,19 +603,34 @@ def handle_frame(data):
                 license_plate=ACTIVE_BUS_LICENSE_PLATE,
             )
         elif detected_limit:
-            print(f"✅ Speed OK: {current_speed} <= {detected_limit} km/h")
+            print(f"✅ Speed OK: {current_speed} <= {detected_limit} km/h (det_conf={conf:.2f})")
 
         # Double Line Violation
-        if line.get("top1", {}).get("class_name") == "violation":
-             print(f"🚨 DOUBLE LINE VIOLATION at {current_speed} km/h!")
-             trigger_mqtt_buzzer()
-             result["double_line_violation"] = post_violation(
-                     bus_id,
+        line_top = line.get("top1", {})
+        if line_top.get("class_name") == "violation":
+            print(f"🚨 DOUBLE LINE VIOLATION at {current_speed} km/h! top={line_top.get('class_name')} conf={line_top.get('confidence',0):.2f} GPS={gps_coords}")
+            trigger_mqtt_buzzer()
+            result["double_line_violation"] = post_violation(
+                bus_id,
                 "double-line",
                 current_speed,
                 gps_coords,
                 license_plate=ACTIVE_BUS_LICENSE_PLATE,
             )
+            # Save raw frame for quick inspection
+            try:
+                ts = int(time.time() * 1000)
+                fname = f"double_line_{bus_id}_{ts}.jpg"
+                fpath = os.path.join(VIOLATIONS_DIR, fname)
+                cv2.imwrite(fpath, img)
+                print(f"Saved double-line capture: {fpath}")
+                if os.name == "nt":
+                    try:
+                        os.startfile(fpath)
+                    except Exception as e:
+                        print("Failed to open image automatically:", e)
+            except Exception as e:
+                print("Failed to save double-line capture:", e)
 
         socketio.emit("result", result)
 

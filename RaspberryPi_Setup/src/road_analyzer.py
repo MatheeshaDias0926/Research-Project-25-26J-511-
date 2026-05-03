@@ -64,7 +64,15 @@ class RoadAnalyzerWorker:
             self.red_model = YOLO(red_pt)
             self.line_model = YOLO(line_pt)
             self.models_loaded = True
-            log.info("[ROAD] YOLO models successfully loaded on Edge Device.")
+            # Log model class names for quick debugging
+            try:
+                speed_names = getattr(self.speed_model, 'names', None)
+                red_names = getattr(self.red_model, 'names', None)
+                line_names = getattr(self.line_model, 'names', None)
+                log.info(f"[ROAD] YOLO models successfully loaded. speed_names={list(speed_names) if speed_names else 'N/A'}")
+                log.info(f"[ROAD] red_names={list(red_names) if red_names else 'N/A'} | line_names={list(line_names) if line_names else 'N/A'}")
+            except Exception:
+                log.info("[ROAD] YOLO models successfully loaded on Edge Device.")
             return True
         except Exception as e:
             log.error(f"[ROAD] Error loading models: {e}")
@@ -128,8 +136,21 @@ class RoadAnalyzerWorker:
 
         # Check red light (assuming class names indicate a red light)
         red_light_detected = False
-        if red_res.boxes is not None and len(red_res.boxes) > 0:
-             red_light_detected = True
+        red_dets = []
+        try:
+            if getattr(red_res, 'boxes', None) is not None and len(red_res.boxes) > 0:
+                for b in red_res.boxes:
+                    cls_i = int(b.cls.item()) if hasattr(b, 'cls') else None
+                    name = red_res.names[cls_i] if cls_i is not None and cls_i in red_res.names else str(cls_i)
+                    conf = float(b.conf.item()) if hasattr(b, 'conf') else 0.0
+                    red_dets.append({'class_name': name, 'confidence': conf})
+        except Exception as e:
+            log.debug(f"[ROAD] Error parsing red_res boxes: {e}")
+        if red_dets:
+            red_light_detected = True
+            log.info(f"[ROAD] Red detections: count={len(red_dets)} sample={red_dets[:5]}")
+        else:
+            log.debug(f"[ROAD] No red detections (red_res summary): boxes={getattr(red_res, 'boxes', None)}")
 
         # Check double line crossed
         double_line_crossed = False
@@ -143,19 +164,101 @@ class RoadAnalyzerWorker:
         current_speed = gps["speed"] if gps and "speed" in gps else 0.0
         
         # 3. Assess Violations
+        # Prepare violations directory (RaspberryPi_Setup/uploads/violations)
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        violations_dir = os.path.join(base_dir, "uploads", "violations")
+        os.makedirs(violations_dir, exist_ok=True)
+
+        # Provide detailed terminal logs and save annotated captures when detections occur
         if current_speed > 5:
             # Over speed
             if detected_limit and current_speed > detected_limit:
-                log.warning(f"🚨 [ROAD] SPEED VIOLATION! {current_speed} > {detected_limit} km/h")
+                conf = 0.0
+                # try extract best confidence from speed_res
+                try:
+                    dets = []
+                    if speed_res.boxes is not None:
+                        for b in speed_res.boxes:
+                            dets.append({
+                                "class_name": speed_res.names[int(b.cls.item())],
+                                "confidence": float(b.conf.item())
+                            })
+                    if dets:
+                        best = max(dets, key=lambda d: d.get("confidence", 0))
+                        conf = best.get("confidence", 0.0)
+                except Exception:
+                    pass
+                log.warning(f"🚨 [ROAD] SPEED VIOLATION! {current_speed} > {detected_limit} km/h (det_conf={conf:.2f}) GPS={gps}")
+                # save annotated frame for inspection
+                try:
+                    ann = speed_res.plot()
+                    ts = int(time.time() * 1000)
+                    fname = f"speed_{self.pi_client.device_id}_{ts}.jpg"
+                    fpath = os.path.join(violations_dir, fname)
+                    cv2.imwrite(fpath, ann)
+                    log.info(f"[ROAD] Saved speed capture: {fpath}")
+                    if os.name == "nt":
+                        try:
+                            os.startfile(fpath)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    log.warning(f"[ROAD] Failed to save speed capture: {e}")
                 self.pi_client.post_traffic_violation("speed", current_speed, gps)
-                
+
             # Red light
             if red_light_detected:
-                log.warning(f"🚨 [ROAD] RED LIGHT VIOLATION at {current_speed} km/h!")
+                # summarize detections
+                red_dets = []
+                try:
+                    if red_res.boxes is not None:
+                        for b in red_res.boxes:
+                            red_dets.append({
+                                "class_name": red_res.names[int(b.cls.item())],
+                                "confidence": float(b.conf.item())
+                            })
+                except Exception:
+                    pass
+                summary = ", ".join([f"{d['class_name']}({d['confidence']:.2f})" for d in red_dets[:5]]) or "(none)"
+                log.warning(f"🚨 [ROAD] RED LIGHT DETECTED at {current_speed} km/h! detections={len(red_dets)} [{summary}] GPS={gps}")
+                try:
+                    ann = red_res.plot()
+                    ts = int(time.time() * 1000)
+                    fname = f"red_{self.pi_client.device_id}_{ts}.jpg"
+                    fpath = os.path.join(violations_dir, fname)
+                    cv2.imwrite(fpath, ann)
+                    log.info(f"[ROAD] Saved red-light capture: {fpath}")
+                    if os.name == "nt":
+                        try:
+                            os.startfile(fpath)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    log.warning(f"[ROAD] Failed to save red capture: {e}")
                 self.pi_client.post_traffic_violation("red-light", current_speed, gps)
-                
+
             # Double line
             if double_line_crossed:
-                log.warning(f"🚨 [ROAD] DOUBLE LINE VIOLATION at {current_speed} km/h!")
+                try:
+                    top_conf = float(line_res.probs.top1conf)
+                    top_name = line_res.names[int(line_res.probs.top1)]
+                except Exception:
+                    top_conf = 0.0
+                    top_name = "unknown"
+                log.warning(f"🚨 [ROAD] DOUBLE LINE VIOLATION at {current_speed} km/h! top={top_name} conf={top_conf:.2f} GPS={gps}")
+                try:
+                    ann = line_res.plot()
+                    ts = int(time.time() * 1000)
+                    fname = f"double_line_{self.pi_client.device_id}_{ts}.jpg"
+                    fpath = os.path.join(violations_dir, fname)
+                    cv2.imwrite(fpath, ann)
+                    log.info(f"[ROAD] Saved double-line capture: {fpath}")
+                    if os.name == "nt":
+                        try:
+                            os.startfile(fpath)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    log.warning(f"[ROAD] Failed to save double-line capture: {e}")
                 self.pi_client.post_traffic_violation("double-line", current_speed, gps)
 
