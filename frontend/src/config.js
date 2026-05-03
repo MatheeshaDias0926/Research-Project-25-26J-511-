@@ -7,8 +7,8 @@
  */
 
 // ── Backend Server Configuration ──
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:3000";
-const ML_SERVICE_URL = process.env.REACT_APP_ML_SERVICE_URL || "http://localhost:5001";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const ML_SERVICE_URL = import.meta.env.VITE_ML_SERVICE_URL || "http://localhost:5001";
 
 // ── API Endpoints ──
 export const API_BASE_URL = BACKEND_URL;
