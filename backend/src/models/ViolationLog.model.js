@@ -13,6 +13,8 @@ const violationLogSchema = new mongoose.Schema(
       default: null,
     },
     driverName: { type: String, default: null },
+    driverLicenseNumber: { type: String, default: null },
+    driverConfidence: { type: Number, default: null },
     gps: {
       lat: { type: Number },
       lon: { type: Number },

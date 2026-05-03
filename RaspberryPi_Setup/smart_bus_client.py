@@ -336,10 +336,11 @@ class SmartBusPiClient:
             "speed": speed,
             "gps": gps or {"lat": 0, "lon": 0},
             "timestamp": int(time.time() * 1000),
-            "busId": self.device_id,
+            "busId": None,
             "deviceId": self.device_id,
-            "licensePlate": "NP-1234",
             "driverName": self.verified_driver or "Unknown",
+            "driverId": self.verified_driver_id or None,
+            "driverConfidence": self.verified_driver_confidence,
         }
         
         # Encode frame as base64 if provided

@@ -156,20 +156,24 @@ const ViolationsTab = () => {
                       {formatDateTime(v.timestamp || v.createdAt)}
                     </td>
                     <td style={{ padding: "12px", fontSize: "0.875rem" }}>
-                      {v.driverRef?.name || "Unknown"}
-                      {v.driverRef?.licenseNumber && <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{v.driverRef.licenseNumber}</div>}
+                      {v.driverRef?.name || v.driverName || "Unknown"}
+                      {(v.driverRef?.licenseNumber || v.driverLicenseNumber) && (
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                          {v.driverRef?.licenseNumber || v.driverLicenseNumber}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: "12px", fontSize: "0.875rem" }}>
-                      {v.busId?.licensePlate || "N/A"}
+                      {v.busId?.licensePlate || v.licensePlate || "N/A"}
                     </td>
                     <td style={{ padding: "12px", fontSize: "0.875rem" }}>
                       {getSeverityBadge(v.violationType)}
                     </td>
                     <td style={{ padding: "12px", fontSize: "0.875rem" }}>
-                      {v.speed ? v.speed + " km/h" : "-"}
+                      {v.speed != null ? `${v.speed} km/h` : "-"}
                     </td>
                     <td style={{ padding: "12px", fontSize: "0.875rem" }}>
-                      {v.gps?.lat && v.gps?.lon ? `${v.gps.lat.toFixed(4)}, ${v.gps.lon.toFixed(4)}` : "Unknown"}
+                      {v.gps?.lat != null && v.gps?.lon != null ? `${v.gps.lat.toFixed(4)}, ${v.gps.lon.toFixed(4)}` : "Unknown"}
                     </td>
                   </tr>
                 ))}

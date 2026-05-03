@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import {
   createEdgeDevice,
   getAllEdgeDevices,
@@ -962,17 +963,28 @@ router.delete("/:id", protect, isAdmin, deleteEdgeDevice);
  */
 router.post("/traffic-violations", async (req, res) => {
   try {
-    const { violationType, speed, gps, busId, deviceId, licensePlate, imageBase64 } = req.body;
+    const {
+      violationType,
+      speed,
+      gps,
+      busId,
+      deviceId,
+      imageBase64,
+      driverName,
+      driverId,
+      driverConfidence,
+    } = req.body;
     const reportedDeviceId = req.headers["x-device-id"] || deviceId;
-    
-    console.log(`[TRAFFIC VIOLATION] Received: ${violationType}, image=${imageBase64 ? imageBase64.length : 0} bytes, device=${reportedDeviceId}`);
+
+    console.log(
+      `[TRAFFIC VIOLATION] Received: ${violationType}, image=${imageBase64 ? imageBase64.length : 0} bytes, device=${reportedDeviceId}`
+    );
 
     if (!reportedDeviceId) {
       console.error("[TRAFFIC VIOLATION] No device ID (header or body)");
       return res.status(401).json({ error: "Missing x-device-id header or deviceId in body" });
     }
 
-    // Verify device exists
     const device = await EdgeDevice.findOne({ deviceId: reportedDeviceId });
     if (!device) {
       console.warn(`[TRAFFIC VIOLATION] Device not found: ${reportedDeviceId}`);
@@ -981,7 +993,6 @@ router.post("/traffic-violations", async (req, res) => {
 
     let evidenceUrl = null;
 
-    // Upload image to Cloudinary if provided
     if (imageBase64) {
       try {
         console.log(`[CLOUDINARY] Uploading ${(imageBase64.length / 1024 / 1024).toFixed(2)}MB image...`);
@@ -1000,33 +1011,65 @@ router.post("/traffic-violations", async (req, res) => {
       } catch (uploadError) {
         console.error(`[CLOUDINARY] ✗ Upload failed: ${uploadError.message}`);
         console.error(uploadError);
-        // Continue without image if upload fails
       }
     }
 
-    // Create violation log
-    const busObjectId = busId ? (await Bus.findOne({ licensePlate: licensePlate }))?._id : null;
-    
+    const normalizedViolationType = (() => {
+      const raw = String(violationType || "").trim().toLowerCase();
+      const mapping = {
+        "red-light": "traffic_light",
+        "red_light": "traffic_light",
+        "traffic-light": "traffic_light",
+        "traffic light": "traffic_light",
+        speed: "driving_limit",
+        overspeeding: "driving_limit",
+        "double-line": "double_line",
+        "double_line": "double_line",
+        "double line": "double_line",
+        drowsy: "drowsiness",
+      };
+      return mapping[raw] || raw || "traffic_light";
+    })();
+
+    const busDoc = device.assignedBus
+      ? await Bus.findById(device.assignedBus).select("licensePlate routeId").lean()
+      : null;
+    const busObjectId =
+      (busId && mongoose.Types.ObjectId.isValid(busId) ? busId : null) ||
+      device.assignedBus ||
+      busDoc?._id ||
+      null;
+
+    let driverDoc = null;
+    if (driverId) {
+      driverDoc = await Driver.findOne({ licenseNumber: driverId })
+        .select("name licenseNumber")
+        .lean();
+    }
+
     const violation = await ViolationLog.create({
       busId: busObjectId,
-      driverName: req.body.driverName || "Unknown",
-      gps,
-      violationType: violationType || "traffic_light",
-      speed,
+      driverRef: driverDoc?._id || null,
+      driverName: driverName || driverDoc?.name || "Unknown",
+      driverLicenseNumber: driverId || driverDoc?.licenseNumber || null,
+      driverConfidence: driverConfidence ?? null,
+      gps: gps || { lat: 0, lon: 0 },
+      violationType: normalizedViolationType,
+      speed: speed ?? 0,
       evidenceImageUrl: evidenceUrl,
       deviceId: reportedDeviceId,
-      licensePlate: licensePlate || req.body.licensePlate,
+      licensePlate: busDoc?.licensePlate || null,
     });
 
     console.log(
-      `[TRAFFIC VIOLATION] ✓ ${violationType} from ${reportedDeviceId} at ${speed} km/h. Evidence: ${evidenceUrl ? "✓" : "✗"}`
+      `[TRAFFIC VIOLATION] ✓ ${normalizedViolationType} from ${reportedDeviceId} at ${speed} km/h. Evidence: ${evidenceUrl ? "✓" : "✗"}`
     );
 
     res.status(201).json({
       success: true,
       violation,
       evidenceUrl,
-      message: `${violationType} violation logged with evidence`,
+      message: `${normalizedViolationType} violation logged with evidence`,
     });
   } catch (error) {
     console.error(`[TRAFFIC VIOLATION] Error: ${error.message}`);
