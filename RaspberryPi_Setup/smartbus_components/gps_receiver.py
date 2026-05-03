@@ -17,8 +17,9 @@ class MobileGPSReceiver:
 	"""Receives GPS data from the driver's mobile phone.
 
 	Supports TCP socket (port 5555) for raw JSON packets and an HTTP server
-	for Traccar Client query parameters. Forwards updates to backend if
-	backend info is provided by the parent client.
+	for Traccar Client query parameters. Can also poll a custom HTTP URL that
+	returns JSON with GPS location and optional vehicle speed. Forwards updates
+	to backend if backend info is provided by the parent client.
 	"""
 
 	def __init__(self, host="0.0.0.0", tcp_port=5555, http_port=8080, http_url=None):
@@ -49,8 +50,10 @@ class MobileGPSReceiver:
 		except Exception as e:
 			log.debug(f"[GPS-HTTP] Failed to forward to backend: {e}")
 
-	def _update_gps(self, lat, lon, speed, accuracy=0):
+	def _update_gps(self, lat, lon, speed=None, accuracy=0):
 		with self._lock:
+			if speed is None:
+				speed = self._latest.get("speed", 0.0) if self._latest else 0.0
 			self._latest = {
 				"lat": float(lat),
 				"lon": float(lon),
@@ -256,9 +259,15 @@ class MobileGPSReceiver:
 				if lat is None or lng is None:
 					time.sleep(poll_interval)
 					continue
-				speed = data.get("speed", 0) or loc.get("speed", 0)
+				speed = data.get("speed")
+				if speed is None:
+					speed = data.get("vehicle_speed")
+				if speed is None:
+					speed = loc.get("speed")
+				if speed is None:
+					speed = loc.get("vehicle_speed")
 				try:
-					self._update_gps(float(lat), float(lng), float(speed), accuracy=0)
+					self._update_gps(float(lat), float(lng), speed, accuracy=0)
 					log.info(f"[GPS-POLL] Polled {self._http_url} → lat={lat}, lon={lng}, speed={speed}")
 					self._forward_gps_to_backend(lat, lng, speed)
 				except Exception as e:

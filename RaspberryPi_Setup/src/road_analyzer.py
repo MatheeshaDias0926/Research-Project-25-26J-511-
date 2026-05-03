@@ -17,6 +17,7 @@ except ImportError:
 log = logging.getLogger("SmartBus")
 
 SPEED_RE = re.compile(r"(\d{2,3})")
+MIN_VIOLATION_SPEED_KMH = 5.0
 
 
 def _resolve_class_name(names, index):
@@ -209,6 +210,7 @@ class RoadAnalyzerWorker:
         # 2. Get speed from GPS via PiClient
         gps = self.pi_client.gps_receiver.latest
         current_speed = gps["speed"] if gps and "speed" in gps else 0.0
+        can_validate_violation = current_speed > MIN_VIOLATION_SPEED_KMH
         
         # 3. Assess Violations
         # Prepare violations directory (RaspberryPi_Setup/uploads/violations)
@@ -221,7 +223,7 @@ class RoadAnalyzerWorker:
             log.debug(f"[ROAD] Red detections candidate count={len(red_dets)} sample={red_dets[:5]}")
 
         # Over speed is still gated by actual speed.
-        if current_speed > 5 and detected_limit and current_speed > detected_limit:
+        if can_validate_violation and detected_limit and current_speed > detected_limit:
             conf = 0.0
             try:
                 dets = []
@@ -253,8 +255,8 @@ class RoadAnalyzerWorker:
                 log.warning(f"[ROAD] Failed to save speed capture: {e}")
             self.pi_client.post_traffic_violation("speed", current_speed, gps, frame=frame)
 
-        # Red-light violations should not depend on GPS speed being valid.
-        if red_light_detected:
+        # Red-light violations are only valid when the bus is moving above the minimum threshold.
+        if red_light_detected and can_validate_violation:
             now = time.time()
             can_post_red = (now - self.last_red_light_post_time) >= self.VIOLATION_COOLDOWN_SECONDS
             red_dets = []
@@ -283,9 +285,11 @@ class RoadAnalyzerWorker:
                 self.last_red_light_post_time = now
             else:
                 log.debug(f"[ROAD] Red-light cooldown: skipping post (last {now - self.last_red_light_post_time:.1f}s ago)")
+        elif red_light_detected:
+            log.debug(f"[ROAD] Red-light detected but speed {current_speed:.1f} km/h is below validation threshold {MIN_VIOLATION_SPEED_KMH:.1f}")
 
-        # Double-line violations should also be reported regardless of GPS speed.
-        if double_line_crossed:
+        # Double-line violations are only valid above the minimum speed threshold.
+        if double_line_crossed and can_validate_violation:
             log.warning(f"🚨 [ROAD] DOUBLE LINE VIOLATION! top={line_top_name} conf={line_top_conf:.2f} GPS={gps}")
             try:
                 ann = line_res.plot()
@@ -302,16 +306,18 @@ class RoadAnalyzerWorker:
             except Exception as e:
                 log.warning(f"[ROAD] Failed to save double-line capture: {e}")
             self.pi_client.post_traffic_violation("double-line", current_speed, gps, frame=frame)
+        elif double_line_crossed:
+            log.debug(f"[ROAD] Double-line detected but speed {current_speed:.1f} km/h is below validation threshold {MIN_VIOLATION_SPEED_KMH:.1f}")
 
         self.latest_road_status = "ROAD MONITOR: OK"
         self.latest_road_color = (0, 200, 0)
-        if current_speed > 5 and detected_limit and current_speed > detected_limit:
+        if can_validate_violation and detected_limit and current_speed > detected_limit:
             self.latest_road_status = f"ROAD MONITOR: SPEED {current_speed:.0f}>{detected_limit}"
             self.latest_road_color = (0, 165, 255)
-        if red_light_detected:
+        if red_light_detected and can_validate_violation:
             self.latest_road_status = "ROAD MONITOR: RED LIGHT"
             self.latest_road_color = (0, 0, 255)
-        if double_line_crossed:
+        if double_line_crossed and can_validate_violation:
             self.latest_road_status = "ROAD MONITOR: DOUBLE LINE"
             self.latest_road_color = (0, 0, 255)
 
