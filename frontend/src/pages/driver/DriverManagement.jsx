@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { API_ENDPOINTS } from "../../config.js";
 import { toast } from "react-toastify";
 import { UserPlus, Search, User, CheckCircle, AlertTriangle, Camera, FileText, Phone, Edit, Trash2, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
@@ -35,7 +36,7 @@ const DriverManagement = () => {
         try {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.get("http://localhost:3000/api/driver", config);
+            const res = await axios.get(API_ENDPOINTS.driver.list, config);
             setDrivers(res.data);
         } catch (error) {
             console.error("Error fetching drivers:", error);
@@ -78,7 +79,7 @@ const DriverManagement = () => {
         if (window.confirm("Are you sure you want to remove this driver? This action cannot be undone.")) {
             try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`http://localhost:3000/api/driver/${id}`, {
+                await axios.delete(API_ENDPOINTS.driver.delete(id), {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 toast.success("Driver removed successfully");
@@ -112,11 +113,11 @@ const DriverManagement = () => {
             };
 
             if (editingDriverId) {
-                await axios.put(`http://localhost:3000/api/driver/${editingDriverId}`, data, config);
+                await axios.put(API_ENDPOINTS.driver.update(editingDriverId), data, config);
                 toast.success("Driver updated successfully!");
                 handleCancelEdit();
             } else {
-                await axios.post("http://localhost:3000/api/driver/register", data, config);
+                await axios.post(API_ENDPOINTS.driver.register, data, config);
                 toast.success("Driver registered successfully!");
                 setFormData({ name: "", licenseNumber: "", contactNumber: "", photo: null });
                 setPhotoPreview(null);

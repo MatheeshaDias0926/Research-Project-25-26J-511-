@@ -42,6 +42,8 @@ import logging
 import numpy as np
 import requests
 import mediapipe as mp
+from mediapipe.tasks.python import vision as mp_vision
+from mediapipe.tasks.python.core import base_options as mp_base_options
 
 # Optional: face_recognition for local verification
 try:
@@ -73,9 +75,6 @@ logging.basicConfig(
 )
 log = logging.getLogger("SmartBus")
 
-# ── MediaPipe FaceMesh setup ──
-mp_face_mesh = mp.solutions.face_mesh
-
 # EAR / MAR landmark indices (MediaPipe 468-point mesh)
 LEFT_EYE = [362, 385, 387, 263, 373, 380]
 RIGHT_EYE = [33, 160, 158, 133, 153, 144]
@@ -83,12 +82,36 @@ MOUTH = [61, 291, 39, 181, 0, 17, 269, 405]
 
 # Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+FACE_LANDMARKER_MODEL_PATHS = [
+    os.path.join(SCRIPT_DIR, "face_landmarker.task"),
+    os.path.join(os.path.dirname(SCRIPT_DIR), "Face_Mesh", "face_landmarker.task"),
+]
 FACE_CACHE_PATH = os.path.join(SCRIPT_DIR, "face_cache.json")
 FACE_PICKLE_PATH = os.path.join(SCRIPT_DIR, "face_Recognition.pickle")
 ALERT_QUEUE_PATH = os.path.join(SCRIPT_DIR, "alert_queue.json")
 ALARM_SOUND_PATH = os.path.join(SCRIPT_DIR, "alarm.wav")
 VERIFIED_DRIVER_CACHE_PATH = os.path.join(SCRIPT_DIR, "verified_driver_cache.json")
 DRIVING_STATE_PATH = os.path.join(SCRIPT_DIR, "driving_state.json")
+
+
+def _create_face_landmarker():
+    """Create the MediaPipe face landmarker using a local model asset."""
+    model_path = next((path for path in FACE_LANDMARKER_MODEL_PATHS if os.path.exists(path)), None)
+    if not model_path:
+        raise FileNotFoundError(
+            "Could not find face_landmarker.task. Looked in: "
+            + ", ".join(FACE_LANDMARKER_MODEL_PATHS)
+        )
+
+    options = mp_vision.FaceLandmarkerOptions(
+        base_options=mp_base_options.BaseOptions(model_asset_path=model_path),
+        running_mode=mp_vision.RunningMode.IMAGE,
+        num_faces=1,
+        min_face_detection_confidence=0.5,
+        min_face_presence_confidence=0.5,
+        min_tracking_confidence=0.5,
+    )
+    return mp_vision.FaceLandmarker.create_from_options(options)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -1445,12 +1468,7 @@ class SmartBusPiClient:
         bg = threading.Thread(target=self._bg_heartbeat_loop, daemon=True)
         bg.start()
 
-        with mp_face_mesh.FaceMesh(
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        ) as face_mesh:
+        with _create_face_landmarker() as face_mesh:
 
             log.info("Running — press 'q' to quit (if display available)")
             _frame_interval = 1.0 / 15  # target ~15 FPS to reduce CPU load
@@ -1474,7 +1492,9 @@ class SmartBusPiClient:
 
                 h, w = frame.shape[:2]
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                results = face_mesh.process(rgb)
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                results = face_mesh.detect(mp_image)
+                face_landmarks_list = results.face_landmarks or []
                 now = time.time()
 
                 # ── Driver verification (periodic, local-first, or forced by admin) ──
@@ -1482,16 +1502,16 @@ class SmartBusPiClient:
                 if force:
                     self._force_verify = False
                 if force or (now - self.last_verify_time >= self.verify_interval):
-                    if results.multi_face_landmarks:
+                    if face_landmarks_list:
                         self.verify_driver_local(frame)
                     else:
                         self.last_verify_time = now
 
                 # ── Drowsiness + alertness detection ──
-                if results.multi_face_landmarks:
+                if face_landmarks_list:
                     self.last_face_seen = now
                     self.no_face_alerted = False
-                    landmarks = results.multi_face_landmarks[0].landmark
+                    landmarks = face_landmarks_list[0]
 
                     left_ear = eye_aspect_ratio(landmarks, LEFT_EYE, w, h)
                     right_ear = eye_aspect_ratio(landmarks, RIGHT_EYE, w, h)
@@ -1602,7 +1622,7 @@ class SmartBusPiClient:
                                         driverId=self.verified_driver_id or "")
 
                 # ── Driving time tracking ──
-                face_detected = results.multi_face_landmarks is not None
+                face_detected = bool(face_landmarks_list)
                 driving_warnings = self.driving_tracker.update(face_detected, now)
 
                 # Trigger alarm for driving limit violations

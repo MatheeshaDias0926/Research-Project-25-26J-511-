@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/Ca
 import Button from "../../components/ui/Button";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { API_ENDPOINTS } from "../../config.js";
 
 const Settings = () => {
     // Face Mesh Settings
@@ -47,7 +48,7 @@ const Settings = () => {
             // We assume there's a proxy or direct call. 
             // In dev environment, calling ML service directly or via backend proxy.
             // Let's call ML service directly for now (CORS enabled in ml_service.py)
-            await axios.post("http://localhost:5001/api/face/settings", settings);
+            await axios.post(API_ENDPOINTS.ml.faceSettings, settings);
 
             toast.success("Settings saved and synced with Face ID System!");
             setSaved(true);

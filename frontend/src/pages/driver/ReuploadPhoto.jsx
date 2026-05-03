@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { API_ENDPOINTS } from "../../config.js";
 import { toast } from "react-toastify";
 import { Camera, X } from "lucide-react";
 import Button from "../../components/ui/Button";
@@ -29,7 +30,7 @@ const ReuploadPhoto = ({ driverId, onSuccess, onCancel }) => {
         try {
             const token = localStorage.getItem("token");
             await axios.post(
-                "http://localhost:3000/api/driver/reupload-photo",
+                API_ENDPOINTS.driver.reuploadPhoto,
                 data,
                 {
                     headers: {
