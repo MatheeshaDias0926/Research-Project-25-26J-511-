@@ -47,6 +47,12 @@ class RoadAnalyzerWorker:
         self.preview_window_name = "Smart Bus - Road Monitor"
         self.latest_road_status = "ROAD MONITOR: OK"
         self.latest_road_color = (0, 200, 0)
+        
+        # Violation cooldown - prevent spamming same event
+        self.VIOLATION_COOLDOWN_SECONDS = 5
+        self.last_red_light_post_time = 0
+        self.last_double_line_post_time = 0
+        self.last_speed_post_time = 0
 
     def start(self):
         if not YOLO_AVAILABLE:
@@ -249,6 +255,8 @@ class RoadAnalyzerWorker:
 
         # Red-light violations should not depend on GPS speed being valid.
         if red_light_detected:
+            now = time.time()
+            can_post_red = (now - self.last_red_light_post_time) >= self.VIOLATION_COOLDOWN_SECONDS
             red_dets = []
             try:
                 if red_res.boxes is not None:
@@ -261,21 +269,20 @@ class RoadAnalyzerWorker:
                 pass
             summary = ", ".join([f"{d['class_name']}({d['confidence']:.2f})" for d in red_dets[:5]]) or "(none)"
             log.warning(f"🚨 [ROAD] RED LIGHT DETECTED! detections={len(red_dets)} [{summary}] GPS={gps}")
-            try:
-                ann = red_res.plot()
-                ts = int(time.time() * 1000)
-                fname = f"red_{self.pi_client.device_id}_{ts}.jpg"
-                fpath = os.path.join(violations_dir, fname)
-                cv2.imwrite(fpath, ann)
-                log.info(f"[ROAD] Saved red-light capture: {fpath}")
-                if os.name == "nt":
-                    try:
-                        os.startfile(fpath)
-                    except Exception:
-                        pass
-            except Exception as e:
-                log.warning(f"[ROAD] Failed to save red capture: {e}")
-            self.pi_client.post_traffic_violation("red-light", current_speed, gps, frame=frame)
+            if can_post_red:
+                try:
+                    ann = red_res.plot()
+                    ts = int(time.time() * 1000)
+                    fname = f"red_{self.pi_client.device_id}_{ts}.jpg"
+                    fpath = os.path.join(violations_dir, fname)
+                    cv2.imwrite(fpath, ann)
+                    log.info(f"[ROAD] Saved red-light capture: {fpath}")
+                except Exception as e:
+                    log.warning(f"[ROAD] Failed to save red capture: {e}")
+                self.pi_client.post_traffic_violation("red-light", current_speed, gps, frame=frame)
+                self.last_red_light_post_time = now
+            else:
+                log.debug(f"[ROAD] Red-light cooldown: skipping post (last {now - self.last_red_light_post_time:.1f}s ago)")
 
         # Double-line violations should also be reported regardless of GPS speed.
         if double_line_crossed:
