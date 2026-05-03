@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import User from "../models/User.model.js";
 import Bus from "../models/Bus.model.js";
+import Conductor from "../models/Conductor.model.js";
 
 /**
  * Generate JWT Token
@@ -274,18 +276,51 @@ export const getConductors = async (req, res, next) => {
   try {
     const conductors = await User.find({ role: "conductor" })
       .select("-password")
-      .populate({
-        path: "conductorProfile",
-        populate: { path: "assignedBus", select: "licensePlate routeId" }
-      });
-    
-    // Map assignedBus to root level for backward compatibility
-    const mappedConductors = conductors.map(c => {
-      const obj = c.toObject();
-      obj.assignedBus = c.conductorProfile?.assignedBus || null;
-      obj.nic = c.conductorProfile?.nic;
-      obj.licenceNumber = c.conductorProfile?.conductorLicenseNumber;
-      return obj;
+      .lean();
+
+    const conductorProfileIds = conductors
+      .map((conductor) => conductor.conductorProfile)
+      .filter((profileId) => mongoose.Types.ObjectId.isValid(profileId));
+
+    const conductorProfiles = conductorProfileIds.length
+      ? await Conductor.find({ _id: { $in: conductorProfileIds } }).lean()
+      : [];
+
+    const busIds = conductorProfiles
+      .map((profile) => profile.assignedBus)
+      .filter((busId) => mongoose.Types.ObjectId.isValid(busId));
+
+    const buses = busIds.length
+      ? await Bus.find({ _id: { $in: busIds } })
+          .select("licensePlate routeId")
+          .lean()
+      : [];
+
+    const profileById = new Map(
+      conductorProfiles.map((profile) => [String(profile._id), profile])
+    );
+    const busById = new Map(buses.map((bus) => [String(bus._id), bus]));
+
+    const mappedConductors = conductors.map((conductor) => {
+      const profile = conductor.conductorProfile
+        ? profileById.get(String(conductor.conductorProfile)) || null
+        : null;
+      const assignedBus = profile?.assignedBus
+        ? busById.get(String(profile.assignedBus)) || null
+        : null;
+
+      return {
+        ...conductor,
+        conductorProfile: profile || conductor.conductorProfile || null,
+        assignedBus,
+        nic: profile?.nic || "",
+        licenceNumber: profile?.conductorLicenseNumber || "",
+        conductorLicenseNumber: profile?.conductorLicenseNumber || "",
+        licenseExpiryDate: profile?.licenseExpiryDate || null,
+        contactNumber: profile?.contactNumber || conductor.contactNumber || "",
+        profileImage: profile?.photoUrl || conductor.profileImage || "",
+        fullName: conductor.fullName || profile?.name || conductor.username || "",
+      };
     });
 
     res.json(mappedConductors);

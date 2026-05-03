@@ -888,16 +888,40 @@ const AssignmentsTab = () => {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [busRes, driverRes, conductorRes, deviceRes] = await Promise.all([
+      const [busRes, driverRes, conductorRes, deviceRes] = await Promise.allSettled([
         api.get("/assignments"),
         api.get("/driver"),
         api.get("/auth/conductors"),
         api.get("/edge-devices"),
       ]);
-      setBuses(busRes.data);
-      setDrivers(driverRes.data);
-      setConductors(conductorRes.data);
-      setEdgeDevices(deviceRes.data);
+
+      if (busRes.status === "fulfilled") {
+        setBuses(busRes.value.data);
+      } else {
+        console.error("Failed to load buses:", busRes.reason);
+        setBuses([]);
+      }
+
+      if (driverRes.status === "fulfilled") {
+        setDrivers(driverRes.value.data);
+      } else {
+        console.error("Failed to load drivers:", driverRes.reason);
+        setDrivers([]);
+      }
+
+      if (conductorRes.status === "fulfilled") {
+        setConductors(conductorRes.value.data);
+      } else {
+        console.error("Failed to load conductors:", conductorRes.reason);
+        setConductors([]);
+      }
+
+      if (deviceRes.status === "fulfilled") {
+        setEdgeDevices(deviceRes.value.data);
+      } else {
+        console.error("Failed to load edge devices:", deviceRes.reason);
+        setEdgeDevices([]);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -1381,12 +1405,24 @@ const EmployeeTab = () => {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [driverRes, conductorRes] = await Promise.all([
+      const [driverRes, conductorRes] = await Promise.allSettled([
         api.get("/auth/drivers"),
         api.get("/auth/conductors"),
       ]);
-      setDrivers(driverRes.data);
-      setConductors(conductorRes.data);
+
+      if (driverRes.status === "fulfilled") {
+        setDrivers(driverRes.value.data);
+      } else {
+        console.error("Failed to load drivers:", driverRes.reason);
+        setDrivers([]);
+      }
+
+      if (conductorRes.status === "fulfilled") {
+        setConductors(conductorRes.value.data);
+      } else {
+        console.error("Failed to load conductors:", conductorRes.reason);
+        setConductors([]);
+      }
     } catch (err) {
       console.error(err);
     } finally {
