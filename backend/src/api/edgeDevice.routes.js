@@ -13,6 +13,7 @@ import EdgeDevice from "../models/EdgeDevice.model.js";
 import Bus from "../models/Bus.model.js";
 import DriverSession from "../models/DriverSession.model.js";
 import Driver from "../models/Driver.model.js";
+import User from "../models/User.model.js";
 import ViolationLog from "../models/ViolationLog.model.js";
 import axios from "axios";
 
@@ -991,6 +992,110 @@ router.post("/traffic-violations", async (req, res) => {
       return res.status(404).json({ error: "Device not found" });
     }
 
+        const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
+
+        const resolveDriver = async (rawDriverId) => {
+            if (!rawDriverId) return null;
+            const lookup = String(rawDriverId).trim();
+            if (!lookup) return null;
+
+            if (isValidObjectId(lookup)) {
+                const byId = await Driver.findById(lookup)
+                    .select("name licenseNumber assignedBus userId")
+                    .lean();
+                if (byId) return byId;
+            }
+
+            return Driver.findOne({ licenseNumber: lookup })
+                .select("name licenseNumber assignedBus userId")
+                .lean();
+        };
+
+        const reportedBusId = busId && isValidObjectId(busId) ? String(busId) : null;
+        const assignedBusId = device.assignedBus ? String(device.assignedBus) : null;
+        const resolvedBusId = assignedBusId || reportedBusId;
+
+        const busDoc = resolvedBusId
+            ? await Bus.findById(resolvedBusId)
+                    .populate("assignedDriver", "name licenseNumber userId assignedBus")
+                    .populate("assignedConductor", "username fullName role conductorProfile")
+                    .populate("assignedEdgeDevice", "deviceId name type status assignedBus")
+                    .lean()
+            : null;
+
+        const driverDoc = await resolveDriver(driverId);
+        const conductorDoc = busDoc?.assignedConductor?._id
+            ? await User.findById(busDoc.assignedConductor._id).select("username fullName role conductorProfile").lean()
+            : null;
+
+        const mismatchReasons = [];
+        const edgeDeviceStatus = assignedBusId
+            ? reportedBusId && reportedBusId !== assignedBusId
+                ? "mismatch"
+                : "matched"
+            : reportedBusId
+                ? "mismatch"
+                : "unassigned";
+
+        const assignedDriverId = busDoc?.assignedDriver?._id ? String(busDoc.assignedDriver._id) : null;
+        const reportedDriverId = driverDoc?._id ? String(driverDoc._id) : driverId ? String(driverId).trim() : null;
+        let reportedDriverStatus = "unknown";
+        if (assignedDriverId && reportedDriverId) {
+            reportedDriverStatus = reportedDriverId === assignedDriverId ? "assigned" : "other";
+        } else if (reportedDriverId) {
+            reportedDriverStatus = "other";
+        }
+
+        if (!reportedDriverId) {
+            mismatchReasons.push("reported_driver_unknown");
+        }
+
+        if (!assignedDriverId && reportedDriverId) {
+            mismatchReasons.push("bus_has_no_assigned_driver");
+        }
+
+        if (assignedBusId && reportedBusId && reportedBusId !== assignedBusId) {
+            mismatchReasons.push(`edge_device_assigned_bus:${assignedBusId}!=reported_bus:${reportedBusId}`);
+        }
+
+        if (busDoc?.assignedEdgeDevice && String(busDoc.assignedEdgeDevice.deviceId) !== String(reportedDeviceId)) {
+            mismatchReasons.push(`bus_assigned_edge_device:${busDoc.assignedEdgeDevice.deviceId}!=reported_device:${reportedDeviceId}`);
+        }
+
+        if (assignedDriverId && reportedDriverId && reportedDriverId !== assignedDriverId) {
+            mismatchReasons.push(`assigned_driver:${assignedDriverId}!=reported_driver:${reportedDriverId}`);
+        }
+
+        const assignedConductorId = busDoc?.assignedConductor?._id ? String(busDoc.assignedConductor._id) : null;
+        const conductorStatus = assignedConductorId ? "matched" : "unknown";
+        if (!busDoc?.assignedConductor) {
+            mismatchReasons.push("bus_has_no_assigned_conductor");
+        }
+
+        if (driverDoc?.assignedBus && String(driverDoc.assignedBus) !== String(resolvedBusId || "")) {
+            mismatchReasons.push(`driver_assigned_bus:${driverDoc.assignedBus}!=bus:${resolvedBusId}`);
+        }
+
+        const assignmentCheck = {
+            busId: resolvedBusId || null,
+            edgeDeviceId: device._id,
+            assignedDriverId,
+            assignedConductorId,
+            reportedDriverId,
+            reportedDriverName: driverDoc?.name || driverName || null,
+            reportedDriverStatus,
+            edgeDeviceStatus,
+            conductorStatus,
+            mismatchReasons,
+            isMismatch: mismatchReasons.length > 0,
+        };
+
+        if (assignmentCheck.isMismatch) {
+            console.warn(
+                `[ASSIGNMENT CHECK] MISMATCH device=${reportedDeviceId} bus=${resolvedBusId || "none"} driver=${reportedDriverId || "none"} reasons=${mismatchReasons.join("; ")}`
+            );
+        }
+
     let evidenceUrl = null;
 
     if (imageBase64) {
@@ -1031,21 +1136,11 @@ router.post("/traffic-violations", async (req, res) => {
       return mapping[raw] || raw || "traffic_light";
     })();
 
-    const busDoc = device.assignedBus
-      ? await Bus.findById(device.assignedBus).select("licensePlate routeId").lean()
-      : null;
     const busObjectId =
       (busId && mongoose.Types.ObjectId.isValid(busId) ? busId : null) ||
       device.assignedBus ||
-      busDoc?._id ||
+            busDoc?._id ||
       null;
-
-    let driverDoc = null;
-    if (driverId) {
-      driverDoc = await Driver.findOne({ licenseNumber: driverId })
-        .select("name licenseNumber")
-        .lean();
-    }
 
     const violation = await ViolationLog.create({
       busId: busObjectId,
@@ -1056,13 +1151,15 @@ router.post("/traffic-violations", async (req, res) => {
       gps: gps || { lat: 0, lon: 0 },
       violationType: normalizedViolationType,
       speed: speed ?? 0,
+            speedAtViolation: speed ?? null,
       evidenceImageUrl: evidenceUrl,
       deviceId: reportedDeviceId,
       licensePlate: busDoc?.licensePlate || null,
+            assignmentCheck,
     });
 
     console.log(
-      `[TRAFFIC VIOLATION] ✓ ${normalizedViolationType} from ${reportedDeviceId} at ${speed} km/h. Evidence: ${evidenceUrl ? "✓" : "✗"}`
+            `[TRAFFIC VIOLATION] ✓ ${normalizedViolationType} from ${reportedDeviceId} at ${speed} km/h. Evidence: ${evidenceUrl ? "✓" : "✗"}`
     );
 
     res.status(201).json({
