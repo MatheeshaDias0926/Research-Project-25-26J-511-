@@ -328,29 +328,54 @@ class SmartBusPiClient:
             self.alert_queue.push(payload)
             log.warning(f"[ALERT] Queued offline ({alert_type}): {e} | Queue size: {self.alert_queue.size}")
 
-    def post_traffic_violation(self, violation_type, speed, gps):
-        """Sends a traffic violation payload to the backend."""
+    def post_traffic_violation(self, violation_type, speed, gps, frame=None):
+        """Sends a traffic violation payload to the backend with optional evidence image."""
         payload = {
             "violationType": violation_type,
             "speed": speed,
             "gps": gps or {"lat": 0, "lon": 0},
             "timestamp": int(time.time() * 1000),
-            "busId": self.device_id,  # Assume device_id is related to busId or fallback mapping
-            "licensePlate": "NP-1234" 
+            "busId": self.device_id,
+            "deviceId": self.device_id,
+            "licensePlate": "NP-1234",
+            "driverName": self.verified_driver or "Unknown",
         }
+        
+        # Encode frame as base64 if provided
+        image_size = 0
+        if frame is not None:
+            try:
+                _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                payload["imageBase64"] = base64.b64encode(buf).decode("utf-8")
+                image_size = len(payload['imageBase64'])
+                log.debug(f"[VIOLATION] Evidence image encoded ({image_size} bytes)")
+            except Exception as e:
+                log.error(f"[VIOLATION] Failed to encode evidence image: {e}")
+                image_size = 0
+        
         try:
-            log.info(f"[VIOLATION] Sending {violation_type} traffic violation to backend...")
+            log.info(f"[VIOLATION] Sending {violation_type} at {speed} km/h (image: {image_size} bytes)...")
             resp = requests.post(
-                f"{self.backend_url}/api/violations/traffic",
-                headers=self.headers, json=payload, timeout=5,
+                f"{self.backend_url}/api/edge-devices/traffic-violations",
+                headers=self.headers, json=payload, timeout=10,
             )
+            log.debug(f"[VIOLATION] Backend response: {resp.status_code}")
             if resp.status_code == 200 or resp.status_code == 201:
-                log.info(f"[VIOLATION] {violation_type} sent successfully")
+                try:
+                    result = resp.json()
+                    img_url = result.get("evidenceUrl")
+                    if img_url:
+                        log.info(f"✓ [VIOLATION] {violation_type} logged with evidence: {img_url}")
+                    else:
+                        log.info(f"✓ [VIOLATION] {violation_type} logged (image not uploaded)")
+                except Exception as e:
+                    log.warning(f"[VIOLATION] Failed to parse response: {e}")
             else:
-                log.warning(f"[VIOLATION] Server returned HTTP {resp.status_code}: {resp.text[:200]}")
-                # We could queue traffic violations locally if required
+                log.error(f"✗ [VIOLATION] Server returned HTTP {resp.status_code}: {resp.text[:500]}")
+        except requests.exceptions.Timeout:
+            log.error(f"✗ [VIOLATION] Request timeout after 10s (large image size: {image_size} bytes?)")
         except Exception as e:
-            log.warning(f"[VIOLATION] Failed to send {violation_type}: {e}")
+            log.error(f"✗ [VIOLATION] Failed to send {violation_type}: {e}")
 
     def flush_alert_queue(self):
         """Try to send all queued alerts."""

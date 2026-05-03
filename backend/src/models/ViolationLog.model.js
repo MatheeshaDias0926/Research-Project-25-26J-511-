@@ -24,6 +24,9 @@ const violationLogSchema = new mongoose.Schema(
       default: "footboard",
     },
     speed: { type: Number }, // Speed at the time of violation
+    evidenceImageUrl: { type: String, default: null }, // Cloudinary URL for evidence photo
+    deviceId: { type: String, default: null }, // Edge device ID that reported the violation
+    licensePlate: { type: String, default: null }, // Bus license plate
   },
   { timestamps: true } // Adds createdAt and updatedAt
 );

@@ -955,4 +955,83 @@ router.put("/:id", protect, isAdmin, updateEdgeDevice);
  */
 router.delete("/:id", protect, isAdmin, deleteEdgeDevice);
 
+/**
+ * @route   POST /api/edge-devices/traffic-violations
+ * @desc    Report traffic violations (red-light, double-line, speed) with evidence images
+ * @access  Private (Edge device authenticated via x-device-id header)
+ */
+router.post("/traffic-violations", async (req, res) => {
+  try {
+    const { violationType, speed, gps, busId, deviceId, licensePlate, imageBase64 } = req.body;
+    const reportedDeviceId = req.headers["x-device-id"] || deviceId;
+    
+    console.log(`[TRAFFIC VIOLATION] Received: ${violationType}, image=${imageBase64 ? imageBase64.length : 0} bytes, device=${reportedDeviceId}`);
+
+    if (!reportedDeviceId) {
+      console.error("[TRAFFIC VIOLATION] No device ID (header or body)");
+      return res.status(401).json({ error: "Missing x-device-id header or deviceId in body" });
+    }
+
+    // Verify device exists
+    const device = await EdgeDevice.findOne({ deviceId: reportedDeviceId });
+    if (!device) {
+      console.warn(`[TRAFFIC VIOLATION] Device not found: ${reportedDeviceId}`);
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    let evidenceUrl = null;
+
+    // Upload image to Cloudinary if provided
+    if (imageBase64) {
+      try {
+        console.log(`[CLOUDINARY] Uploading ${(imageBase64.length / 1024 / 1024).toFixed(2)}MB image...`);
+        const { cloudinary } = await import("../services/cloudinary.service.js");
+        const uploadResult = await cloudinary.uploader.upload(
+          `data:image/jpeg;base64,${imageBase64}`,
+          {
+            public_id: `traffic_violations/${violationType}_${reportedDeviceId}_${Date.now()}`,
+            folder: "traffic_violations",
+            overwrite: true,
+            resource_type: "auto",
+          }
+        );
+        evidenceUrl = uploadResult.secure_url;
+        console.log(`[CLOUDINARY] ✓ Evidence uploaded: ${evidenceUrl}`);
+      } catch (uploadError) {
+        console.error(`[CLOUDINARY] ✗ Upload failed: ${uploadError.message}`);
+        console.error(uploadError);
+        // Continue without image if upload fails
+      }
+    }
+
+    // Create violation log
+    const busObjectId = busId ? (await Bus.findOne({ licensePlate: licensePlate }))?._id : null;
+    
+    const violation = await ViolationLog.create({
+      busId: busObjectId,
+      driverName: req.body.driverName || "Unknown",
+      gps,
+      violationType: violationType || "traffic_light",
+      speed,
+      evidenceImageUrl: evidenceUrl,
+      deviceId: reportedDeviceId,
+      licensePlate: licensePlate || req.body.licensePlate,
+    });
+
+    console.log(
+      `[TRAFFIC VIOLATION] ✓ ${violationType} from ${reportedDeviceId} at ${speed} km/h. Evidence: ${evidenceUrl ? "✓" : "✗"}`
+    );
+
+    res.status(201).json({
+      success: true,
+      violation,
+      evidenceUrl,
+      message: `${violationType} violation logged with evidence`,
+    });
+  } catch (error) {
+    console.error(`[TRAFFIC VIOLATION] Error: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

@@ -154,10 +154,36 @@ class RoadAnalyzerWorker:
 
         # Check double line crossed
         double_line_crossed = False
-        if float(line_res.probs.top1conf) >= 0.6:
-            class_name = line_res.names[int(line_res.probs.top1)]
-            if class_name == "violation":
+        line_top_name = None
+        line_top_conf = 0.0
+        try:
+            top_idx = getattr(line_res.probs, 'top1', None)
+            top_conf = getattr(line_res.probs, 'top1conf', None)
+            if top_idx is not None:
+                top_idx = int(top_idx)
+            if top_conf is not None:
+                top_conf = float(top_conf)
+            if top_idx is not None and top_idx in line_res.names:
+                line_top_name = line_res.names[top_idx]
+                line_top_conf = top_conf or 0.0
+        except Exception as e:
+            log.debug(f"[ROAD] Error reading line_res.probs: {e}")
+
+        # Log classifier top choice for debugging
+        if line_top_name:
+            log.debug(f"[ROAD] Line classifier top: {line_top_name} (conf={line_top_conf:.2f})")
+        else:
+            log.debug(f"[ROAD] Line classifier has no reliable top prediction: probs={getattr(line_res, 'probs', None)}")
+
+        # Accept several possible class name variants; allow slightly lower threshold for edge cases
+        if line_top_name:
+            lname = str(line_top_name).lower()
+            if ("violation" in lname or "double" in lname or "double_line" in lname or "double-line" in lname) and line_top_conf >= 0.50:
                 double_line_crossed = True
+            else:
+                # If confidence is borderline, log for inspection
+                if line_top_conf >= 0.40 and ("violation" in lname or "double" in lname):
+                    log.info(f"[ROAD] Line classifier borderline: {line_top_name} conf={line_top_conf:.2f}")
 
         # 2. Get speed from GPS via PiClient
         gps = self.pi_client.gps_receiver.latest
@@ -169,7 +195,22 @@ class RoadAnalyzerWorker:
         violations_dir = os.path.join(base_dir, "uploads", "violations")
         os.makedirs(violations_dir, exist_ok=True)
 
-        # Provide detailed terminal logs and save annotated captures when detections occur
+        # Always log detections so they appear in the terminal even if GPS speed is low/missing.
+        if red_dets:
+            log.info(f"[ROAD] (capture) Red detections present: {len(red_dets)} {red_dets[:5]}")
+            try:
+                ann = red_res.plot()
+                ts = int(time.time() * 1000)
+                fname = f"red_{self.pi_client.device_id}_{ts}.jpg"
+                fpath = os.path.join(violations_dir, fname)
+                cv2.imwrite(fpath, ann)
+                log.info(f"[ROAD] Saved red capture (no-post): {fpath}")
+            except Exception:
+                pass
+
+        if line_top_name:
+            log.debug(f"[ROAD] Line classifier top: {line_top_name} conf={line_top_conf:.2f}")
+
         if current_speed > 5:
             # Over speed
             if detected_limit and current_speed > detected_limit:
@@ -204,7 +245,7 @@ class RoadAnalyzerWorker:
                             pass
                 except Exception as e:
                     log.warning(f"[ROAD] Failed to save speed capture: {e}")
-                self.pi_client.post_traffic_violation("speed", current_speed, gps)
+                self.pi_client.post_traffic_violation("speed", current_speed, gps, frame=frame)
 
             # Red light
             if red_light_detected:
@@ -235,7 +276,7 @@ class RoadAnalyzerWorker:
                             pass
                 except Exception as e:
                     log.warning(f"[ROAD] Failed to save red capture: {e}")
-                self.pi_client.post_traffic_violation("red-light", current_speed, gps)
+                self.pi_client.post_traffic_violation("red-light", current_speed, gps, frame=frame)
 
             # Double line
             if double_line_crossed:
@@ -260,5 +301,5 @@ class RoadAnalyzerWorker:
                             pass
                 except Exception as e:
                     log.warning(f"[ROAD] Failed to save double-line capture: {e}")
-                self.pi_client.post_traffic_violation("double-line", current_speed, gps)
+                self.pi_client.post_traffic_violation("double-line", current_speed, gps, frame=frame)
 
