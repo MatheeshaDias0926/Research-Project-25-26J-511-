@@ -52,8 +52,14 @@ export const ingestMockData = async (req, res, next) => {
     });
     await newLog.save();
 
-    // 3. Update the bus's 'currentStatus' to point to this latest log
+    // 3. Update the bus's 'currentStatus' and live location
     bus.currentStatus = newLog._id;
+    bus.liveLocation = {
+      lat: gps.lat,
+      lon: gps.lon,
+      speed: speed || 0,
+      updatedAt: new Date(),
+    };
     await bus.save();
 
     // This abstracts the violation logic from the controller

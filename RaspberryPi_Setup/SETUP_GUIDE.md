@@ -237,6 +237,39 @@ When the network is unavailable, alerts are saved to `alert_queue.json` on disk:
 
 ## Auto-Start on Boot (systemd)
 
+### Quick Setup (Recommended)
+
+Run the setup script on the Pi — it will configure everything automatically:
+
+```bash
+cd ~/smart-bus/RaspberryPi_Setup
+chmod +x setup_autostart.sh
+./setup_autostart.sh --backend http://YOUR_BACKEND_IP:3000 --device-id RPi5-BUS-001
+```
+
+Example (replace with your actual backend IP — shown in backend terminal on startup):
+```bash
+./setup_autostart.sh --backend http://10.220.172.221:3000 --device-id RPi5-BUS-001
+```
+
+After running this, the Pi client will:
+- **Start automatically every time the Pi powers on / plugs in**
+- **Restart automatically if it crashes** (within 5 seconds)
+- **Wait for network** to be available before starting
+
+Useful commands after setup:
+```bash
+sudo systemctl status smart-bus       # Check if running
+sudo journalctl -u smart-bus -f       # View live logs
+sudo systemctl stop smart-bus         # Stop manually
+sudo systemctl restart smart-bus      # Restart
+sudo systemctl disable smart-bus      # Disable auto-start
+```
+
+### Manual Setup
+
+If you prefer to create the systemd service manually:
+
 Create a systemd service to start the client automatically:
 
 ```bash

@@ -1,6 +1,5 @@
 import axios from "axios";
-
-const API_URL = "http://localhost:5001/api";
+import { API_URL } from "../config.js";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -27,12 +26,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Don't redirect on login/register 401s — let the form handle the error
-    const url = error.config?.url || "";
-    const isAuthRoute = url.includes("/auth/login") || url.includes("/auth/register");
-    if (error.response?.status === 401 && !isAuthRoute) {
+    if (error.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      // Optional: Redirect to login or trigger an event
       window.location.href = "/login";
     }
     return Promise.reject(error);

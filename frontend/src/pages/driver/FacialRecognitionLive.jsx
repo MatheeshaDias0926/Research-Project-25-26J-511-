@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import Webcam from "react-webcam";
 import axios from "axios";
+import { API_ENDPOINTS } from "../../config.js";
 import {
   Terminal,
   Activity,
@@ -37,7 +38,7 @@ const FacialRecognitionLive = () => {
     if (mode === "auto") {
       interval = setInterval(async () => {
         try {
-          const res = await axios.get("http://localhost:5001/api/face/status");
+          const res = await axios.get(API_ENDPOINTS.ml.faceStatus);
 
           setSafetyStatus(prev => {
             if (res.data.drowsy && !prev.drowsy) addLog("⚠️ DROWSY ALERT");
@@ -72,7 +73,7 @@ const FacialRecognitionLive = () => {
     form.append("image", blob);
 
     try {
-      const res = await axios.post("http://localhost:3000/api/driver/verify", form);
+      const res = await axios.post(API_ENDPOINTS.driver.verify, form);
       setResult(res.data);
       addLog(res.data.verified ? "Access granted" : "Access denied");
     } catch {
@@ -116,7 +117,7 @@ const FacialRecognitionLive = () => {
           {mode === "auto" ? (
             !videoError ? (
               <img
-                src="http://localhost:5001/api/face/feed"
+                src={API_ENDPOINTS.ml.faceFeed}
                 style={videoStyle}
                 onError={() => setVideoError(true)}
               />

@@ -22,7 +22,9 @@ export const getPhysicsModel = async (req, res, next) => {
 
     // 1. Get Real-time Weather / Road Condition
     const weatherData = await getRoadWeather(lat, lon);
-    console.log(`[Physics] Weather at (${lat}, ${lon}): ${weatherData.condition} (Friction: ${weatherData.friction})`);
+    console.log(
+      `[Physics] Weather at (${lat}, ${lon}): ${weatherData.condition} (Friction: ${weatherData.friction})`,
+    );
 
     // 2. Run Physics Model with dynamic friction
     const result = await getPhysicsModelResult({
@@ -62,12 +64,12 @@ export const getPhysicsModel = async (req, res, next) => {
         });
         console.log("Saved physics simulation data for training.");
     } catch (saveError) {
-        console.error("Failed to save training data:", saveError);
+      console.error("Failed to save training data:", saveError);
     }
-    
+
     // Add weather info to response
     result["Weather Condition"] = weatherData.condition;
-    
+
     res.json(result);
   } catch (error) {
     next(error);

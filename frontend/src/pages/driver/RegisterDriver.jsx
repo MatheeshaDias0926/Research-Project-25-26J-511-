@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { API_ENDPOINTS } from "../../config.js";
 import { toast } from "react-toastify";
 import { UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
@@ -51,7 +52,7 @@ const RegisterDriver = ({ onSuccess }) => {
                 },
             };
 
-            await axios.post("http://localhost:3000/api/driver/register", data, config);
+            await axios.post(API_ENDPOINTS.driver.register, data, config);
             toast.success("Driver registered successfully!");
             setFormData({ name: "", licenseNumber: "", contactNumber: "" });
             setPhoto(null);

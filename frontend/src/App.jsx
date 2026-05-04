@@ -19,6 +19,7 @@ import Profile from "./pages/auth/Profile";
 // Passenger Pages
 import PassengerDashboard from "./pages/passenger/PassengerDashboard";
 import Prediction from "./pages/passenger/Prediction";
+import LiveLocation from "./pages/passenger/LiveLocation";
 
 // Admin Panel (unified tabbed)
 import AdminPanel from "./pages/admin/AdminPanel";
@@ -64,18 +65,20 @@ function App() {
             <Route element={<PrivateRoutes roles={["passenger"]} />}>
               <Route path="/passenger" element={<PassengerDashboard />} />
               <Route path="/passenger/prediction" element={<Prediction />} />
-              <Route path="/passenger/live-map" element={<PassengerDashboard />} />
+              <Route path="/passenger/live-map" element={<LiveLocation />} />
             </Route>
 
             {/* Conductor Routes */}
             <Route element={<PrivateRoutes roles={["conductor"]} />}>
               <Route path="/conductor" element={<ConductorPanel />} />
+              <Route path="/conductor/live-map" element={<ConductorPanel />} />
               <Route path="/conductor/maintenance" element={<ConductorPanel />} />
             </Route>
 
             {/* Driver Routes */}
             <Route element={<PrivateRoutes roles={["driver"]} />}>
               <Route path="/driver" element={<DriverPanel />} />
+              <Route path="/driver/live-map" element={<DriverPanel />} />
               <Route path="/driver/maintenance" element={<DriverPanel />} />
               <Route path="/driver/alerts" element={<DriverPanel />} />
             </Route>
@@ -85,11 +88,18 @@ function App() {
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/admin/fleet" element={<AdminPanel />} />
               <Route path="/admin/assignments" element={<AdminPanel />} />
+              <Route path="/admin/violations" element={<AdminPanel />} />
               <Route path="/admin/employees" element={<AdminPanel />} />
               <Route path="/admin/edge-devices" element={<AdminPanel />} />
               <Route path="/admin/sos" element={<AdminPanel />} />
               <Route path="/admin/face-recognition" element={<AdminPanel />} />
               <Route path="/admin/live-map" element={<AdminPanel />} />
+              <Route path="/admin/live-monitor" element={<AdminPanel />} />
+              <Route path="/admin/iot-simulator" element={<AdminPanel />} />
+              <Route path="/admin/scenario-sim" element={<AdminPanel />} />
+              <Route path="/admin/physics-check" element={<AdminPanel />} />
+              <Route path="/admin/safety-theories" element={<AdminPanel />} />
+              
               {/* Crash Management */}
               <Route path="/admin/crashes" element={<CrashesPage />} />
               <Route path="/admin/police-stations" element={<PoliceStationsPage />} />
@@ -99,7 +109,10 @@ function App() {
             </Route>
 
             {/* Legacy authority routes redirect to admin */}
-            <Route path="/authority/*" element={<Navigate to="/admin" replace />} />
+            <Route
+              path="/authority/*"
+              element={<Navigate to="/admin" replace />}
+            />
 
             {/* Default redirect for root */}
             <Route path="/" element={<RoleRedirect />} />

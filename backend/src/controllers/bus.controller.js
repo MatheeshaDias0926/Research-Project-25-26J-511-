@@ -1,7 +1,10 @@
 import Bus from "../models/Bus.model.js";
 import BusDataLog from "../models/BusDataLog.model.js";
 import ViolationLog from "../models/ViolationLog.model.js";
-import { getOccupancyPrediction, getSafetyPrediction } from "../services/ml.service.js";
+import {
+  getOccupancyPrediction,
+  getSafetyPrediction,
+} from "../services/ml.service.js";
 import { getRoadWeather } from "../services/weather.service.js";
 
 /**
@@ -26,6 +29,7 @@ export const getBusStatus = async (req, res, next) => {
         licensePlate: bus.licensePlate,
         capacity: bus.capacity,
         routeId: bus.routeId,
+        liveLocation: bus.liveLocation,
       },
       currentStatus: bus.currentStatus,
     });
@@ -65,6 +69,27 @@ export const getBusByLicensePlate = async (req, res, next) => {
     }
 
     res.json(bus);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get all violations across the entire fleet
+ * @route   GET /api/bus/analytics/all-violations
+ * @access  Private (Authority only)
+ */
+export const getAllViolations = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    
+    const violations = await ViolationLog.find()
+      .populate("busId", "licensePlate routeId")
+      .populate("driverRef", "name licenseNumber")
+      .sort({ createdAt: -1 })
+      .limit(limit);
+      
+    res.json(violations);
   } catch (error) {
     next(error);
   }
@@ -242,26 +267,28 @@ export const getFleetOccupancy = async (req, res, next) => {
   try {
     const buses = await Bus.find().populate("currentStatus");
 
-    const detailedFleetData = buses.map((bus) => {
-      const currentLoad = bus.currentStatus?.currentOccupancy || 0;
-      const capacity = bus.capacity;
-      const occupancyPct = Math.round((currentLoad / capacity) * 100);
+    const detailedFleetData = buses
+      .map((bus) => {
+        const currentLoad = bus.currentStatus?.currentOccupancy || 0;
+        const capacity = bus.capacity;
+        const occupancyPct = Math.round((currentLoad / capacity) * 100);
 
-      let status = "Seated";
-      if (currentLoad === 0) status = "Empty";
-      else if (occupancyPct > 100 && occupancyPct <= 120) status = "Standing";
-      else if (occupancyPct > 120) status = "Overloaded";
+        let status = "Seated";
+        if (currentLoad === 0) status = "Empty";
+        else if (occupancyPct > 100 && occupancyPct <= 120) status = "Standing";
+        else if (occupancyPct > 120) status = "Overloaded";
 
-      return {
-        _id: bus._id,
-        licensePlate: bus.licensePlate,
-        routeId: bus.routeId,
-        occupancyPct,
-        currentLoad,
-        capacity,
-        status,
-      };
-    }).sort((a, b) => b.occupancyPct - a.occupancyPct); // Sort by most crowded
+        return {
+          _id: bus._id,
+          licensePlate: bus.licensePlate,
+          routeId: bus.routeId,
+          occupancyPct,
+          currentLoad,
+          capacity,
+          status,
+        };
+      })
+      .sort((a, b) => b.occupancyPct - a.occupancyPct); // Sort by most crowded
 
     res.json(detailedFleetData);
   } catch (error) {
@@ -327,7 +354,7 @@ export const getPrediction = async (req, res, next) => {
     if (!stop_id || !day_of_week || !time_of_day || !weather) {
       res.status(400);
       throw new Error(
-        "Missing required parameters: stop_id, day_of_week, time_of_day, and weather are required"
+        "Missing required parameters: stop_id, day_of_week, time_of_day, and weather are required",
       );
     }
 
@@ -350,7 +377,7 @@ export const getPrediction = async (req, res, next) => {
       stopId,
       day_of_week,
       time_of_day,
-      weather
+      weather,
     );
 
     res.json(prediction);
@@ -446,7 +473,7 @@ export const getAvailableBuses = async (req, res, next) => {
   try {
     // 1. Find all users who are conductors and have an assigned bus
     const conductors = await import("../models/User.model.js").then(
-      (m) => m.default
+      (m) => m.default,
     );
     const assignedUsers = await conductors
       .find({
