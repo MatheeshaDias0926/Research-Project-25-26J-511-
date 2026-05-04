@@ -657,9 +657,6 @@ class SmartBusPiClient:
                 results = face_mesh.detect(mp_image)
                 face_landmarks_list = results.face_landmarks or []
                 now = time.time()
-                gps = self.gps_receiver.latest
-                current_speed = float(gps.get("speed", 0)) if gps and gps.get("speed") is not None else 0.0
-                can_validate_violation = current_speed > 5.0
 
                 # ── Driver verification (periodic, local-first, or forced by admin) ──
                 force = self._force_verify
@@ -690,18 +687,15 @@ class SmartBusPiClient:
 
                     if self.drowsy_counter >= self.drowsy_frames:
                         if not self.is_drowsy:
-                            if can_validate_violation:
-                                self.is_drowsy = True
-                                log.warning(f"DROWSY detected! EAR={ear:.3f}")
-                                # *** Immediate local alarm ***
-                                self.alarm.trigger("DROWSINESS DETECTED")
-                                self.send_alert("drowsiness", drowsy=True, yawning=False,
-                                                ear=round(ear, 3), mar=round(mar, 3),
-                                                driverName=self.verified_driver or "Unknown",
-                                                driverId=self.verified_driver_id or "",
-                                                alertnessScore=round(self.alertness.score, 1))
-                            else:
-                                log.debug(f"[DRIVER] Drowsy state reached but speed {current_speed:.1f} km/h is below validation threshold")
+                            self.is_drowsy = True
+                            log.warning(f"DROWSY detected! EAR={ear:.3f}")
+                            # *** Immediate local alarm ***
+                            self.alarm.trigger("DROWSINESS DETECTED")
+                            self.send_alert("drowsiness", drowsy=True, yawning=False,
+                                            ear=round(ear, 3), mar=round(mar, 3),
+                                            driverName=self.verified_driver or "Unknown",
+                                            driverId=self.verified_driver_id or "",
+                                            alertnessScore=round(self.alertness.score, 1))
                     else:
                         if self.is_drowsy:
                             self.alarm.stop()
@@ -715,17 +709,14 @@ class SmartBusPiClient:
 
                     if self.yawn_counter >= self.yawn_frames:
                         if not self.is_yawning:
-                            if can_validate_violation:
-                                self.is_yawning = True
-                                log.warning(f"YAWNING detected! MAR={mar:.3f}")
-                                self.alarm.trigger("EXCESSIVE YAWNING")
-                                self.send_alert("drowsiness", drowsy=False, yawning=True,
-                                                ear=round(ear, 3), mar=round(mar, 3),
-                                                driverName=self.verified_driver or "Unknown",
-                                                driverId=self.verified_driver_id or "",
-                                                alertnessScore=round(self.alertness.score, 1))
-                            else:
-                                log.debug(f"[DRIVER] Yawn state reached but speed {current_speed:.1f} km/h is below validation threshold")
+                            self.is_yawning = True
+                            log.warning(f"YAWNING detected! MAR={mar:.3f}")
+                            self.alarm.trigger("EXCESSIVE YAWNING")
+                            self.send_alert("drowsiness", drowsy=False, yawning=True,
+                                            ear=round(ear, 3), mar=round(mar, 3),
+                                            driverName=self.verified_driver or "Unknown",
+                                            driverId=self.verified_driver_id or "",
+                                            alertnessScore=round(self.alertness.score, 1))
                     else:
                         if self.is_yawning:
                             self.alarm.stop()
@@ -768,6 +759,7 @@ class SmartBusPiClient:
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
                     # Show GPS status on overlay
+                    gps = self.gps_receiver.latest
                     if gps and self.gps_receiver.age_seconds < 10:
                         gps_text = f"GPS: {gps['lat']:.4f},{gps['lon']:.4f} {gps['speed']:.0f}km/h"
                         cv2.putText(frame, gps_text, (10, h - 40),
@@ -783,15 +775,12 @@ class SmartBusPiClient:
 
                     # Alert if driver face missing for too long
                     if elapsed_no_face >= self.no_face_alert_timeout and not self.no_face_alerted:
-                        if can_validate_violation:
-                            self.no_face_alerted = True
-                            log.warning(f"No face detected for {elapsed_no_face:.0f}s")
-                            self.alarm.trigger("DRIVER NOT VISIBLE")
-                            self.send_alert("no_face", duration=round(elapsed_no_face, 1),
-                                            driverName=self.verified_driver or "Unknown",
-                                            driverId=self.verified_driver_id or "")
-                        else:
-                            log.debug(f"[DRIVER] No-face timeout reached but speed {current_speed:.1f} km/h is below validation threshold")
+                        self.no_face_alerted = True
+                        log.warning(f"No face detected for {elapsed_no_face:.0f}s")
+                        self.alarm.trigger("DRIVER NOT VISIBLE")
+                        self.send_alert("no_face", duration=round(elapsed_no_face, 1),
+                                        driverName=self.verified_driver or "Unknown",
+                                        driverId=self.verified_driver_id or "")
 
                 # ── Driving time tracking ──
                 face_detected = bool(face_landmarks_list)
