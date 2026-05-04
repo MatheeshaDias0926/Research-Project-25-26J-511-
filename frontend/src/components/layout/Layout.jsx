@@ -1,9 +1,13 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../../context/AuthContext";
+import { useContext } from "react";
+import { EmergencyContext } from "../../context/EmergencyContext";
+import EmergencyIndicator from "../common/EmergencyIndicator";
 
 const Layout = () => {
   const { user } = useAuth();
+  const { visibleAlerts } = useContext(EmergencyContext);
 
   if (!user) {
     return <Outlet />; // For login/register pages
@@ -24,8 +28,10 @@ const Layout = () => {
           flex: 1,
           overflowY: "auto",
           background: "var(--bg-body)",
+          position: "relative"
         }}
       >
+        {visibleAlerts.length > 0 && <EmergencyIndicator />}
         <div
           style={{
             margin: "0 auto",

@@ -150,7 +150,7 @@ async def forward_crash_to_backend(crash_event: CrashEvent):
             }
 
             response = await client.post(
-                "http://localhost:5001/api/crashes",
+                "http://localhost:3000/api/crashes",
                 json=payload,
                 headers={"Content-Type": "application/json"}
             )

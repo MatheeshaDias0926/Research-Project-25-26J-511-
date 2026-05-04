@@ -15,6 +15,9 @@ import {
   Scan,
   ChevronRight,
   MapPin,
+  Hospital,
+  ShieldAlert,
+  AlertTriangle,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -51,7 +54,14 @@ const Sidebar = () => {
     { name: "Face Recognition", href: "/admin/face-recognition", icon: Scan, roles: ["authority", "admin"] },
   ];
 
+  const crashLinks = [
+    { name: "Crashes", href: "/admin/crashes", icon: AlertTriangle, roles: ["authority", "admin"] },
+    { name: "Police Stations", href: "/admin/police-stations", icon: ShieldAlert, roles: ["authority", "admin"] },
+    { name: "Hospitals", href: "/admin/hospitals", icon: Hospital, roles: ["authority", "admin"] },
+  ];
+
   const filteredLinks = links.filter((link) => link.roles.includes(role));
+  const filteredCrashLinks = crashLinks.filter((link) => link.roles.includes(role));
 
   const linkStyle = (isActive) => ({
     display: "flex",
@@ -178,6 +188,43 @@ const Sidebar = () => {
             </Link>
           );
         })}
+
+        {/* Crash Management Section */}
+        {filteredCrashLinks.length > 0 && (
+          <>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "12px 2px 4px" }} />
+            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--color-slate-500)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "12px 14px 8px" }}>
+              Crash Management
+            </p>
+            {filteredCrashLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive = location.pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  style={linkStyle(isActive)}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = "var(--sidebar-hover-bg)";
+                      e.currentTarget.style.color = "#fff";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "var(--sidebar-text)";
+                    }
+                  }}
+                >
+                  <Icon style={{ height: 18, width: 18, flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>{link.name}</span>
+                  {isActive && <ChevronRight style={{ height: 14, width: 14, opacity: 0.7 }} />}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* Footer */}

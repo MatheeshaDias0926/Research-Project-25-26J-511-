@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getActiveCrashes } from '../services/crashService';
+import { toast } from 'react-toastify';
 
 export const EmergencyContext = createContext();
 
@@ -30,7 +31,15 @@ export const EmergencyProvider = ({ children }) => {
         if (brandNew.size > 0) {
           setNewCrashIds(prev => {
             const merged = new Set(prev);
-            brandNew.forEach(id => merged.add(id));
+            brandNew.forEach(id => {
+              merged.add(id);
+              const crash = crashes.find(c => c._id === id);
+              if (crash) {
+                toast.error(`🚨 CRASH DETECTED: Bus ${crash.bus_id || crash.busId}`, {
+                  onClick: () => window.location.href = `/admin/crashes/${id}`
+                });
+              }
+            });
             return merged;
           });
           // Auto-remove "new" highlight after 30 seconds

@@ -1,1 +1,28 @@
-/* Emergency Indicator styles */
+.emergency-indicator {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #dc2626;
+  color: white;
+  padding: 8px 16px;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+  animation: emergencyPulse 2s infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.emergency-text {
+  margin: 0;
+  font-size: 14px;
+}
+
+@keyframes emergencyPulse {
+  0% { background-color: #dc2626; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4); }
+  50% { background-color: #ef4444; box-shadow: 0 4px 24px rgba(220, 38, 38, 0.6); }
+  100% { background-color: #dc2626; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4); }
+}

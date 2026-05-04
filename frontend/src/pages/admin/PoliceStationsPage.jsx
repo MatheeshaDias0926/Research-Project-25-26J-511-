@@ -384,7 +384,13 @@ const PoliceStationsPage = () => {
                 {crashes.map(crash => (
                   <tr key={crash._id}>
                     <td style={{ fontWeight: 700 }}>{crash.bus_id}</td>
-                    <td>{crash.location?.address || `${crash.location?.lat}, ${crash.location?.lon}`}</td>
+                    <td>
+                      {crash.location?.address || (
+                        (crash.location?.lat || crash.location?.latitude) ? 
+                        `${(crash.location?.lat || crash.location?.latitude).toFixed(4)}, ${(crash.location?.lon || crash.location?.longitude).toFixed(4)}` : 
+                        "Location unknown"
+                      )}
+                    </td>
                     <td>
                       <span style={{
                         padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,

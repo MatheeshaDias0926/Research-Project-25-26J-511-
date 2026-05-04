@@ -1,11 +1,17 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { EmergencyContext } from '../../context/EmergencyContext';
 import './EmergencyIndicator.css';
 
 const EmergencyIndicator = () => {
+  const { visibleAlerts } = useContext(EmergencyContext);
+  
+  if (visibleAlerts.length === 0) return null;
+
   return (
     <div className="emergency-indicator">
-      <div className="pulsing-red-bar"></div>
-      <p className="emergency-text">⚠️ ACTIVE EMERGENCY - IMMEDIATE ACTION REQUIRED</p>
+      <p className="emergency-text">
+        ⚠️ {visibleAlerts.length} ACTIVE EMERGENCY{visibleAlerts.length > 1 ? 'IES' : ''} - IMMEDIATE ACTION REQUIRED
+      </p>
     </div>
   );
 };

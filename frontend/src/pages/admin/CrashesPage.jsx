@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getCrashes, updateCrashStatus, deleteMultipleCrashes } from '../../services/crashService';
+import axios from 'axios';
 import { Card, CardContent } from '../../components/ui/Card';
 import { AlertTriangle, Clock, CheckCircle, MapPin, Activity, ChevronDown, Flame, Loader, Check, Ban, Search, Filter, XCircle, Map as MapIcon, Navigation, Locate, Trash2, CheckSquare, Square } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -142,6 +143,10 @@ const CrashesPage = () => {
     fetchCrashes();
     fetchResponders();
     getUserLocation();
+
+    // Auto-refresh crashes every 10 seconds
+    const interval = setInterval(fetchCrashes, 10000);
+    return () => clearInterval(interval);
   }, [filter]);
 
   const fetchResponders = async () => {
@@ -596,11 +601,15 @@ const CrashesPage = () => {
                               const lat = (crash.location?.lat ?? crash.location?.latitude);
                               const lon = (crash.location?.lon ?? crash.location?.longitude);
                               
+                              if (lat === 0 && lon === 0) {
+                                return "📍 Initializing GPS...";
+                              }
+                              
                               if (!lat && !lon) {
                                 return "📍 Location unknown";
                               }
                               
-                              return crash.location?.address || formatAddress(addressMap[crash._id]) || (lat ? `${lat.toFixed(4)}, ${lon.toFixed(4)}` : '—');
+                              return crash.location?.address || formatAddress(addressMap[crash._id]) || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
                             })()}
                           </span>
                         </div>
