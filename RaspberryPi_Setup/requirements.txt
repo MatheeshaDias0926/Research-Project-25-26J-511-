@@ -6,9 +6,6 @@ pygame>=2.5.0
 gpiozero>=2.0.0
 ultralytics>=8.0.0
 picamera2
-# ── Face recognition (required by verifier.py / LocalFaceVerifier) ──
-# dlib must be installed first (requires cmake + a C++ compiler on the Pi)
-# On Raspberry Pi: sudo apt-get install cmake build-essential libopenblas-dev
-# then: pip install dlib face_recognition
-dlib>=19.24.0
-face_recognition>=1.3.0
+# ── Face verification is now REMOTE (Backend → ML Service) ──
+# dlib and face_recognition are NO LONGER needed on the Pi.
+# They remain installed on the ML server only.

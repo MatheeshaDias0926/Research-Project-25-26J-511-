@@ -1,7 +1,9 @@
-"""MobileGPSReceiver — TCP + HTTP GPS receiver for mobile phones.
+"""MobileGPSReceiver — GPS receiver supporting multiple data sources.
 
-This receives GPS updates either via a TCP socket (legacy companion app)
-or via a minimal HTTP endpoint compatible with Traccar Client.
+Supports:
+  1. Flat JSON URL polling (e.g. {"lat": ..., "lng": ..., "speed": ..., "mode": "real"})
+  2. TCP socket (legacy companion app)
+  3. HTTP endpoint for Traccar Client query params
 """
 import socket
 import threading
@@ -14,11 +16,10 @@ log = logging.getLogger("SmartBus")
 
 
 class MobileGPSReceiver:
-	"""Receives GPS data from the driver's mobile phone.
+	"""Receives GPS data from the driver's mobile phone or an external GPS URL.
 
-	Supports TCP socket (port 5555) for raw JSON packets and an HTTP server
-	for Traccar Client query parameters. Forwards updates to backend if
-	backend info is provided by the parent client.
+	Supports TCP socket (port 5555), HTTP server for Traccar Client,
+	and polling an external HTTP URL that returns JSON with lat/lng/speed.
 	"""
 
 	def __init__(self, host="0.0.0.0", tcp_port=5555, http_port=8080, http_url=None):
@@ -121,7 +122,7 @@ class MobileGPSReceiver:
 
 				receiver._update_gps(lat, lon, speed_kmh, accuracy)
 				log.debug(f"[GPS-HTTP] Traccar: lat={lat:.6f}, lon={lon:.6f}, "
-						 f"speed={speed_kmh:.1f} km/h")
+						  f"speed={speed_kmh:.1f} km/h")
 				receiver._forward_gps_to_backend(lat, lon, speed_kmh)
 
 				self.send_response(200)
@@ -135,7 +136,7 @@ class MobileGPSReceiver:
 				self._handle_request()
 
 			def log_message(self, fmt, *args):
-				pass # Suppress noisy HTTP logs
+				pass  # Suppress noisy HTTP logs
 
 		try:
 			self._http_server = HTTPServer((self._host, self._http_port), TraccarHandler)
@@ -219,18 +220,27 @@ class MobileGPSReceiver:
 				return time.time() - self._latest["timestamp"]
 		return float("inf")
 
-	def _poll_http_url_loop(self, poll_interval: float = 3.0):
-		"""Poll a remote HTTP URL that returns JSON with location information.
+	def _poll_http_url_loop(self, poll_interval: float = 2.0):
+		"""Poll a remote HTTP URL that returns JSON with GPS data.
 
-		Expected JSON shape (example):
-		  {"status":"success","mode":"real","location":{"lat":6.9271,"lng":79.8612}}
-		Falls back gracefully on parse errors.
+		Supports two formats:
+
+		1. Flat format (user's GPS source):
+		   {"lat": 20.93, "lng": 79.86, "speed": 70.0, "mode": "real"}
+
+		2. Nested format (legacy):
+		   {"status":"success", "location":{"lat":6.92, "lng":79.86}, "speed": 0}
+
+		Speed is assumed to be in km/h (no conversion).
+		Field names: lat/latitude, lng/lon/longitude are all accepted.
 		"""
 		try:
 			import requests
 		except Exception:
 			log.error("[GPS-POLL] 'requests' not available; cannot poll external GPS URL")
 			return
+
+		_consecutive_errors = 0
 
 		while self._running:
 			try:
@@ -243,27 +253,39 @@ class MobileGPSReceiver:
 				if not isinstance(data, dict):
 					time.sleep(poll_interval)
 					continue
-				status = data.get("status")
-				if status and str(status).lower() != "success":
-					time.sleep(poll_interval)
-					continue
-				loc = data.get("location") or data.get("loc") or {}
-				if not loc:
-					time.sleep(poll_interval)
-					continue
-				lat = loc.get("lat") or loc.get("latitude")
-				lng = loc.get("lng") or loc.get("lon") or loc.get("longitude")
+
+				# ── Try FLAT format first (most common):
+				#    {"lat": 20.93, "lng": 79.86, "speed": 70.0, "mode": "real"}
+				lat = data.get("lat") or data.get("latitude")
+				lng = data.get("lng") or data.get("lon") or data.get("longitude")
+				speed = data.get("speed", 0)
+
+				# ── If flat fields not found, try NESTED format:
+				#    {"status": "success", "location": {"lat": ..., "lng": ...}}
 				if lat is None or lng is None:
+					loc = data.get("location") or data.get("loc") or {}
+					if isinstance(loc, dict):
+						lat = loc.get("lat") or loc.get("latitude")
+						lng = loc.get("lng") or loc.get("lon") or loc.get("longitude")
+						speed = data.get("speed", 0) or loc.get("speed", 0)
+
+				if lat is None or lng is None:
+					if _consecutive_errors == 0:
+						log.warning(f"[GPS-POLL] No lat/lng found in response: {str(data)[:200]}")
+					_consecutive_errors += 1
 					time.sleep(poll_interval)
 					continue
-				speed = data.get("speed", 0) or loc.get("speed", 0)
+
+				# Speed is already in km/h from the source — no conversion needed
 				try:
 					self._update_gps(float(lat), float(lng), float(speed), accuracy=0)
-					log.debug(f"[GPS-POLL] Polled {self._http_url} → lat={lat}, lon={lng}, speed={speed}")
-					self._forward_gps_to_backend(lat, lng, speed)
+					_consecutive_errors = 0
+					log.debug(f"[GPS-POLL] ✓ lat={lat}, lon={lng}, speed={speed} km/h")
+					self._forward_gps_to_backend(float(lat), float(lng), float(speed))
 				except Exception as e:
 					log.debug(f"[GPS-POLL] Failed to update GPS from polled data: {e}")
 			except Exception as e:
-				log.debug(f"[GPS-POLL] Error polling {self._http_url}: {e}")
+				if _consecutive_errors == 0:
+					log.warning(f"[GPS-POLL] Error polling {self._http_url}: {e}")
+				_consecutive_errors += 1
 			time.sleep(poll_interval)
-
