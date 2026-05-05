@@ -150,8 +150,14 @@ class SmartBusPiClient:
         self.no_face_alerted = False
         self._force_verify = False
 
-        # Load previously verified driver from disk (offline resilience)
-        self._load_verified_driver_cache()
+        # ── verified_driver starts as None on every startup.
+        # We intentionally do NOT reload the verified_driver_cache here.
+        # Reason: keeping the old driver across restarts causes every new
+        # face (including strangers) to be reported as the cached driver
+        # whenever local+remote verification fails. The driver must be
+        # re-verified fresh each startup. The cache is only used by
+        # _verify_driver_remote() as a short-circuit when the network is down.
+        # self._load_verified_driver_cache()  ← intentionally removed
 
         # GPS from mobile phone (TCP socket + HTTP for Traccar Client) or remote poll URL
         # Prefer a configured `http_gps_url` (full URL) if provided; fall back to local HTTP port.
@@ -534,15 +540,14 @@ class SmartBusPiClient:
                             message="Unknown person — face does not match any registered driver")
             self.alarm.trigger("UNREGISTERED DRIVER")
 
-            # Also try server-side verification as fallback
+            # ── Fallback: try server-side verification ──
             remote_ok = self._verify_driver_remote(frame)
-            if not remote_ok and self.verified_driver:
-                log.info(f"[LOCAL VERIFY] Keeping previously verified driver: "
-                         f"{self.verified_driver} (offline/fallback)")
-            elif not remote_ok:
-                # Clear — genuinely unknown person
+            if not remote_ok:
+                # Network unreachable — do NOT keep a cached driver just because
+                # we're offline. Log and leave verified_driver as None so the
+                # overlay correctly shows "UNKNOWN" until a real match occurs.
                 self._clear_verified_driver_cache()
-                log.warning("[LOCAL VERIFY] No registered driver identified — violation logged")
+                log.warning("[LOCAL VERIFY] Verification failed (local+remote). No driver confirmed.")
         return result
 
     def _verify_driver_remote(self, frame) -> bool:
@@ -760,8 +765,14 @@ class SmartBusPiClient:
                             self.alarm.stop()
                         self.is_yawning = False
 
-                    # Update alertness score
-                    self.alertness.update(self.is_drowsy, self.is_yawning)
+                    # Update alertness score ONLY when a driver is verified.
+                    # Before verification, camera warmup / bad lighting can trigger
+                    # false drowsy frames and drain the score to 0 within seconds.
+                    if self.verified_driver:
+                        self.alertness.update(self.is_drowsy, self.is_yawning)
+                    else:
+                        # Reset score to 100 so the first verification always starts fresh
+                        self.alertness.score = 100.0
 
                     # Extra safety: if alertness drops to DANGER level, keep alarm on
                     if self.alertness.level == "DANGER" and not self.alarm.is_active:

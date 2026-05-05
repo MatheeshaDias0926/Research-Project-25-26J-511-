@@ -15,7 +15,10 @@ log = logging.getLogger("SmartBus")
 
 
 class LocalFaceVerifier:
-	MATCH_TOLERANCE = 0.45
+	# Lower than the face_recognition default of 0.6.
+	# 0.40 = strict: same person typically 0.20-0.38 | strangers typically 0.45-0.80
+	# Raise to 0.45 only if your registered driver is being rejected (high confidence images help).
+	MATCH_TOLERANCE = 0.40
 
 	def __init__(self, cache_path=None, pickle_path=None):
 		base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
