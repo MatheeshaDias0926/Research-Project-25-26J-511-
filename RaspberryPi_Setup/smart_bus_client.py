@@ -525,20 +525,26 @@ class SmartBusPiClient:
                             confidence=self.verified_driver_confidence,
                             alertnessScore=round(self.alertness.score, 1),
                             local=True)
+            # Reset the unrecognized alert tracker on successful verification
+            self._last_unrecognized_alert = 0
         else:
             log.warning(f"[LOCAL VERIFY] ✗ UNKNOWN PERSON: {result.get('message')}")
 
             # ── Unknown / unregistered driver violation ──
-            # Send violation alert immediately — this is a critical safety event
-            self.send_alert("verification", verified=False,
-                            driverName="Unknown",
-                            driverId="",
-                            confidence=result.get("confidence", 0),
-                            alertnessScore=round(self.alertness.score, 1),
-                            distance=result.get("distance", 0),
-                            local=True,
-                            message="Unknown person — face does not match any registered driver")
-            self.alarm.trigger("UNREGISTERED DRIVER")
+            # Rate-limit: only send alarm + alert once per 60 seconds during retry
+            # to avoid spamming the backend every 10 seconds
+            now = time.time()
+            if not hasattr(self, '_last_unrecognized_alert') or now - self._last_unrecognized_alert >= 60:
+                self._last_unrecognized_alert = now
+                self.send_alert("verification", verified=False,
+                                driverName="Unknown",
+                                driverId="",
+                                confidence=result.get("confidence", 0),
+                                alertnessScore=round(self.alertness.score, 1),
+                                distance=result.get("distance", 0),
+                                local=True,
+                                message="Unknown person — face does not match any registered driver")
+                self.alarm.trigger("UNREGISTERED DRIVER")
 
             # ── Fallback: try server-side verification ──
             remote_ok = self._verify_driver_remote(frame)
@@ -705,7 +711,10 @@ class SmartBusPiClient:
                 force = self._force_verify
                 if force:
                     self._force_verify = False
-                if force or (now - self.last_verify_time >= self.verify_interval):
+                # When driver is unrecognized, retry every 10 seconds (aggressive)
+                # Once verified, use the normal verify_interval (e.g. 300s)
+                retry_interval = 10 if not self.verified_driver else self.verify_interval
+                if force or (now - self.last_verify_time >= retry_interval):
                     if face_landmarks_list:
                         self.verify_driver_local(frame)
                     else:
