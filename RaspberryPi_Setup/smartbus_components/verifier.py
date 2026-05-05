@@ -15,10 +15,10 @@ log = logging.getLogger("SmartBus")
 
 
 class LocalFaceVerifier:
-	# Lower than the face_recognition default of 0.6.
-	# 0.40 = strict: same person typically 0.20-0.38 | strangers typically 0.45-0.80
-	# Raise to 0.45 only if your registered driver is being rejected (high confidence images help).
-	MATCH_TOLERANCE = 0.40
+	# Must match the ML service's MATCH_TOLERANCE (face_recognition_service.py line 30).
+	# Admin dashboard verification uses the ML service directly at 0.45.
+	# If this is different, a driver verified on the admin panel may be rejected by the Pi.
+	MATCH_TOLERANCE = 0.45
 
 	def __init__(self, cache_path=None, pickle_path=None):
 		base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -93,10 +93,12 @@ class LocalFaceVerifier:
 			FACE_REC_AVAILABLE = False
 
 		if not FACE_REC_AVAILABLE:
+			log.error("[FACE VERIFY] face_recognition library NOT installed — cannot verify")
 			return {"verified": False, "message": "face_recognition library not available"}
 
 		with self._lock:
 			if len(self.encodings) == 0:
+				log.warning("[FACE VERIFY] No face encodings loaded — cache may be empty. Run sync_face_cache first.")
 				return {"verified": False, "message": "No face encodings loaded"}
 
 		import cv2
@@ -113,10 +115,22 @@ class LocalFaceVerifier:
 		with self._lock:
 			distances = face_rec_lib.face_distance(self.encodings, probe_encoding)
 
+		# ── Diagnostic: log ALL per-driver distances so we can debug remotely ──
+		driver_best = {}  # {driver_id: min_distance}
+		for i, dist in enumerate(distances):
+			did = self.driver_ids[i] if i < len(self.driver_ids) else "?"
+			name = self.names[i] if i < len(self.names) else "?"
+			key = f"{name}({did})"
+			if key not in driver_best or dist < driver_best[key]:
+				driver_best[key] = float(dist)
+		log.info(f"[FACE VERIFY] Distances (threshold={self.MATCH_TOLERANCE}): "
+				 + ", ".join(f"{k}={v:.4f}" for k, v in sorted(driver_best.items(), key=lambda x: x[1])))
+
 		best_idx = int(np.argmin(distances))
 		best_dist = float(distances[best_idx])
 		confidence = round(max(0.0, (1.0 - best_dist)) * 100, 1)
 		is_match = best_dist <= self.MATCH_TOLERANCE
+
 
 		if is_match:
 			matched_name = self.names[best_idx]
