@@ -269,8 +269,9 @@ router.get("/driver-sessions", protect, async (req, res) => {
         let drivingLimits = null;
         let deviceOnline = false;
         let violationAlertConfig = null;
+        let edgeDevice = null;
         if (currentSession) {
-            const edgeDevice = await EdgeDevice.findOne({ deviceId: currentSession.deviceId });
+            edgeDevice = await EdgeDevice.findOne({ deviceId: currentSession.deviceId });
             if (edgeDevice) {
                 deviceOnline = edgeDevice.status === "active" && edgeDevice.lastPing &&
                     (Date.now() - new Date(edgeDevice.lastPing).getTime()) < 120000;
@@ -343,6 +344,9 @@ router.get("/driver-sessions", protect, async (req, res) => {
             continuousDrivingMinutes,
             deviceOnline,
             violationAlertConfig,
+            // Live driving state from edge device heartbeat
+            drivingState: edgeDevice?.drivingState || null,
+            currentRestMinutes: edgeDevice?.currentRestMinutes || 0,
         });
     } catch (error) {
         console.error("driver-sessions error:", error);
@@ -512,6 +516,14 @@ router.post("/heartbeat", authenticateDevice, async (req, res) => {
         // Drain pending commands
         const commands = device.pendingCommands.map(c => c.command);
         device.pendingCommands = [];
+
+        // ── Save driving state from Pi heartbeat ──
+        const { drivingState, continuousDrivingMinutes, totalDailyDrivingMinutes, currentRestMinutes } = req.body;
+        if (drivingState) device.drivingState = drivingState;
+        if (continuousDrivingMinutes != null) device.continuousDrivingMinutes = continuousDrivingMinutes;
+        if (totalDailyDrivingMinutes != null) device.totalDailyDrivingMinutes = totalDailyDrivingMinutes;
+        if (currentRestMinutes != null) device.currentRestMinutes = currentRestMinutes;
+
         await device.save();
 
         // ── Build driver-specific rules if a verified driver is reported ──

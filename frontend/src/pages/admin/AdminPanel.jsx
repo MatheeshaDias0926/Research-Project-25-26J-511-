@@ -2779,6 +2779,16 @@ const EdgeDeviceTab = () => {
                                   </Badge>
                                 </div>
                               )}
+                              {dev.drivingState && (
+                                <div style={{ marginTop: 6 }}>
+                                  <Badge
+                                    variant={dev.drivingState === "driving" ? "success" : "warning"}
+                                  >
+                                    {dev.drivingState === "driving" ? "🚗 Driving" : "💤 Resting"}
+                                    {dev.drivingState === "resting" && dev.currentRestMinutes > 0 && ` (${Math.round(dev.currentRestMinutes)} min)`}
+                                  </Badge>
+                                </div>
+                              )}
                               <p
                                 style={{
                                   fontSize: "var(--text-xs)",

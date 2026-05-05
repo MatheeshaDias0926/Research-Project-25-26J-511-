@@ -272,7 +272,7 @@ const OverviewTab = ({ user }) => {
           )}
         </div>
 
-        <div style={{ ...cardBoxStyle, borderLeft: piSession?.deviceOnline === false ? "4px solid #94a3b8" : (piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "4px solid #ef4444" : "4px solid #22c55e" }}>
+        <div style={{ ...cardBoxStyle, borderLeft: piSession?.deviceOnline === false ? "4px solid #94a3b8" : piSession?.drivingState === "resting" ? "4px solid #f59e0b" : (piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "4px solid #ef4444" : "4px solid #22c55e" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: 4 }}>Status</p>
@@ -285,11 +285,22 @@ const OverviewTab = ({ user }) => {
                     Need {piSession?.drivingLimits?.requiredRest || 360} min rest
                   </p>
                 </>
+              ) : piSession?.drivingState === "resting" ? (
+                <>
+                  <p style={{ fontSize: 22, fontWeight: 700, color: "#f59e0b" }}>RESTING</p>
+                  {piSession?.currentRestMinutes > 0 && (
+                    <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+                      Rest: {Math.round(piSession.currentRestMinutes)} min
+                    </p>
+                  )}
+                </>
+              ) : piSession?.drivingState === "driving" ? (
+                <p style={{ fontSize: 22, fontWeight: 700, color: "var(--color-success-500)" }}>DRIVING</p>
               ) : (
                 <p style={{ fontSize: 22, fontWeight: 700, color: "var(--color-success-500)" }}>ACTIVE</p>
               )}
             </div>
-            <AlertTriangle size={32} color={piSession?.deviceOnline === false ? "#94a3b8" : (piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "#ef4444" : "#22c55e"} />
+            <AlertTriangle size={32} color={piSession?.deviceOnline === false ? "#94a3b8" : piSession?.drivingState === "resting" ? "#f59e0b" : (piSession?.continuousDrivingMinutes >= (piSession?.drivingLimits?.maxContinuousDriving || 360)) ? "#ef4444" : "#22c55e"} />
           </div>
         </div>
 

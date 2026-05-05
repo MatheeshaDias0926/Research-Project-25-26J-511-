@@ -27,6 +27,15 @@ const edgeDeviceSchema = new mongoose.Schema(
       speed: { type: Number, default: 0 },
       updatedAt: { type: Date, default: null },
     },
+    // Live driving status reported by the Pi heartbeat
+    drivingState: {
+      type: String,
+      enum: ["driving", "resting", null],
+      default: null,
+    },
+    continuousDrivingMinutes: { type: Number, default: 0 },
+    totalDailyDrivingMinutes: { type: Number, default: 0 },
+    currentRestMinutes: { type: Number, default: 0 },
     firmwareVersion: { type: String, default: "1.0.0" },
 
     // Raspberry Pi remote configuration (admin-editable)
