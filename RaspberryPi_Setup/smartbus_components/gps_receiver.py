@@ -222,8 +222,9 @@ class MobileGPSReceiver:
 	def _poll_http_url_loop(self, poll_interval: float = 3.0):
 		"""Poll a remote HTTP URL that returns JSON with location information.
 
-		Expected JSON shape (example):
-		  {"status":"success","mode":"real","location":{"lat":6.9271,"lng":79.8612}}
+		Supported JSON formats:
+		  Flat:   {"lat": 6.9271, "lng": 79.8612, "speed": 60}
+		  Nested: {"status":"success", "location":{"lat":6.9271, "lng":79.8612}, "speed": 60}
 		Falls back gracefully on parse errors.
 		"""
 		try:
@@ -243,27 +244,50 @@ class MobileGPSReceiver:
 				if not isinstance(data, dict):
 					time.sleep(poll_interval)
 					continue
+
+				# Check for error status
 				status = data.get("status")
-				if status and str(status).lower() != "success":
+				if status and str(status).lower() not in ("success", "ok", "1", "true"):
 					time.sleep(poll_interval)
 					continue
-				loc = data.get("location") or data.get("loc") or {}
-				if not loc:
-					time.sleep(poll_interval)
-					continue
-				lat = loc.get("lat") or loc.get("latitude")
-				lng = loc.get("lng") or loc.get("lon") or loc.get("longitude")
+
+				# ── Extract lat/lng: support BOTH flat and nested formats ──
+				# Flat: {"lat": ..., "lng": ...}
+				# Nested: {"location": {"lat": ..., "lng": ...}}
+				lat = None
+				lng = None
+
+				# Try flat first (top-level keys)
+				if "lat" in data or "latitude" in data:
+					lat = data.get("lat") or data.get("latitude")
+					lng = data.get("lng") or data.get("lon") or data.get("longitude")
+				
+				# Try nested if flat didn't work
 				if lat is None or lng is None:
+					loc = data.get("location") or data.get("loc") or {}
+					if isinstance(loc, dict):
+						lat = loc.get("lat") or loc.get("latitude")
+						lng = loc.get("lng") or loc.get("lon") or loc.get("longitude")
+
+				if lat is None or lng is None:
+					log.debug(f"[GPS-POLL] No lat/lng found in response: {str(data)[:200]}")
 					time.sleep(poll_interval)
 					continue
-				speed = data.get("speed", 0) or loc.get("speed", 0)
+
+				# Speed: check top-level, then inside location
+				speed = data.get("speed", 0)
+				if not speed and isinstance(data.get("location"), dict):
+					speed = data["location"].get("speed", 0)
+
 				try:
-					self._update_gps(float(lat), float(lng), float(speed), accuracy=0)
-					log.debug(f"[GPS-POLL] Polled {self._http_url} → lat={lat}, lon={lng}, speed={speed}")
-					self._forward_gps_to_backend(lat, lng, speed)
+					lat_f = float(lat)
+					lng_f = float(lng)
+					speed_f = float(speed or 0)
+					self._update_gps(lat_f, lng_f, speed_f, accuracy=0)
+					log.info(f"[GPS-POLL] ✓ lat={lat_f:.6f}, lon={lng_f:.6f}, speed={speed_f:.1f} km/h")
+					self._forward_gps_to_backend(lat_f, lng_f, speed_f)
 				except Exception as e:
 					log.debug(f"[GPS-POLL] Failed to update GPS from polled data: {e}")
 			except Exception as e:
 				log.debug(f"[GPS-POLL] Error polling {self._http_url}: {e}")
 			time.sleep(poll_interval)
-
