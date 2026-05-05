@@ -209,8 +209,18 @@ class RoadAnalyzerWorker:
         # 2. Get speed from GPS via PiClient
         gps = self.pi_client.gps_receiver.latest
         current_speed = gps["speed"] if gps and "speed" in gps else 0.0
+
+        # Track speed history for acceleration detection (red-light needs this)
+        if not hasattr(self, '_prev_speed'):
+            self._prev_speed = 0.0
+        speed_increasing = current_speed > self._prev_speed + 1.0  # >1 km/h increase
+        self._prev_speed = current_speed
         
         # 3. Assess Violations
+        # ALL violations require speed > 5 km/h — a stationary bus cannot
+        # commit traffic violations (parked, bus stop, etc.)
+        moving = current_speed > 5.0
+
         # Prepare violations directory (RaspberryPi_Setup/uploads/violations)
         base_dir = os.path.dirname(os.path.dirname(__file__))
         violations_dir = os.path.join(base_dir, "uploads", "violations")
@@ -220,8 +230,8 @@ class RoadAnalyzerWorker:
         if red_dets:
             log.debug(f"[ROAD] Red detections candidate count={len(red_dets)} sample={red_dets[:5]}")
 
-        # Over speed is still gated by actual speed.
-        if current_speed > 5 and detected_limit and current_speed > detected_limit:
+        # ── Speed limit violation: speed > detected limit AND speed > 5 km/h ──
+        if moving and detected_limit and current_speed > detected_limit:
             conf = 0.0
             try:
                 dets = []
@@ -236,25 +246,31 @@ class RoadAnalyzerWorker:
                     conf = best.get("confidence", 0.0)
             except Exception:
                 pass
+            now = time.time()
+            can_post_speed = (now - self.last_speed_post_time) >= self.VIOLATION_COOLDOWN_SECONDS
             log.warning(f"🚨 [ROAD] SPEED VIOLATION! {current_speed} > {detected_limit} km/h (det_conf={conf:.2f}) GPS={gps}")
-            try:
-                ann = speed_res.plot()
-                ts = int(time.time() * 1000)
-                fname = f"speed_{self.pi_client.device_id}_{ts}.jpg"
-                fpath = os.path.join(violations_dir, fname)
-                cv2.imwrite(fpath, ann)
-                log.info(f"[ROAD] Saved speed capture: {fpath}")
-                if os.name == "nt":
-                    try:
-                        os.startfile(fpath)
-                    except Exception:
-                        pass
-            except Exception as e:
-                log.warning(f"[ROAD] Failed to save speed capture: {e}")
-            self.pi_client.post_traffic_violation("speed", current_speed, gps, frame=frame)
+            if can_post_speed:
+                try:
+                    ann = speed_res.plot()
+                    ts = int(time.time() * 1000)
+                    fname = f"speed_{self.pi_client.device_id}_{ts}.jpg"
+                    fpath = os.path.join(violations_dir, fname)
+                    cv2.imwrite(fpath, ann)
+                    log.info(f"[ROAD] Saved speed capture: {fpath}")
+                    if os.name == "nt":
+                        try:
+                            os.startfile(fpath)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    log.warning(f"[ROAD] Failed to save speed capture: {e}")
+                self.pi_client.post_traffic_violation("speed", current_speed, gps, frame=frame)
+                self.last_speed_post_time = now
 
-        # Red-light violations should not depend on GPS speed being valid.
-        if red_light_detected:
+        # ── Red-light violation: ONLY when speed > 5 km/h AND speed is INCREASING ──
+        # A driver braking at a red light (speed decreasing) is NOT a violation.
+        # A driver accelerating through a red light IS a violation.
+        if red_light_detected and moving and speed_increasing:
             now = time.time()
             can_post_red = (now - self.last_red_light_post_time) >= self.VIOLATION_COOLDOWN_SECONDS
             red_dets = []
@@ -268,7 +284,7 @@ class RoadAnalyzerWorker:
             except Exception:
                 pass
             summary = ", ".join([f"{d['class_name']}({d['confidence']:.2f})" for d in red_dets[:5]]) or "(none)"
-            log.warning(f"🚨 [ROAD] RED LIGHT DETECTED! detections={len(red_dets)} [{summary}] GPS={gps}")
+            log.warning(f"🚨 [ROAD] RED LIGHT VIOLATION! speed={current_speed:.1f}km/h (increasing) detections={len(red_dets)} [{summary}] GPS={gps}")
             if can_post_red:
                 try:
                     ann = red_res.plot()
@@ -283,35 +299,43 @@ class RoadAnalyzerWorker:
                 self.last_red_light_post_time = now
             else:
                 log.debug(f"[ROAD] Red-light cooldown: skipping post (last {now - self.last_red_light_post_time:.1f}s ago)")
+        elif red_light_detected and moving and not speed_increasing:
+            log.debug(f"[ROAD] Red light seen but speed DECREASING ({current_speed:.1f}km/h) — driver is braking, NOT a violation")
 
-        # Double-line violations should also be reported regardless of GPS speed.
-        if double_line_crossed:
-            log.warning(f"🚨 [ROAD] DOUBLE LINE VIOLATION! top={line_top_name} conf={line_top_conf:.2f} GPS={gps}")
-            try:
-                ann = line_res.plot()
-                ts = int(time.time() * 1000)
-                fname = f"double_line_{self.pi_client.device_id}_{ts}.jpg"
-                fpath = os.path.join(violations_dir, fname)
-                cv2.imwrite(fpath, ann)
-                log.info(f"[ROAD] Saved double-line capture: {fpath}")
-                if os.name == "nt":
-                    try:
-                        os.startfile(fpath)
-                    except Exception:
-                        pass
-            except Exception as e:
-                log.warning(f"[ROAD] Failed to save double-line capture: {e}")
-            self.pi_client.post_traffic_violation("double-line", current_speed, gps, frame=frame)
+        # ── Double-line violation: speed > 5 km/h + cooldown to prevent evidence spam ──
+        if double_line_crossed and moving:
+            now = time.time()
+            can_post_line = (now - self.last_double_line_post_time) >= self.VIOLATION_COOLDOWN_SECONDS
+            log.warning(f"🚨 [ROAD] DOUBLE LINE VIOLATION! top={line_top_name} conf={line_top_conf:.2f} speed={current_speed:.1f}km/h GPS={gps}")
+            if can_post_line:
+                try:
+                    ann = line_res.plot()
+                    ts = int(time.time() * 1000)
+                    fname = f"double_line_{self.pi_client.device_id}_{ts}.jpg"
+                    fpath = os.path.join(violations_dir, fname)
+                    cv2.imwrite(fpath, ann)
+                    log.info(f"[ROAD] Saved double-line capture: {fpath}")
+                    if os.name == "nt":
+                        try:
+                            os.startfile(fpath)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    log.warning(f"[ROAD] Failed to save double-line capture: {e}")
+                self.pi_client.post_traffic_violation("double-line", current_speed, gps, frame=frame)
+                self.last_double_line_post_time = now
+            else:
+                log.debug(f"[ROAD] Double-line cooldown: skipping (last {now - self.last_double_line_post_time:.1f}s ago)")
 
         self.latest_road_status = "ROAD MONITOR: OK"
         self.latest_road_color = (0, 200, 0)
-        if current_speed > 5 and detected_limit and current_speed > detected_limit:
+        if moving and detected_limit and current_speed > detected_limit:
             self.latest_road_status = f"ROAD MONITOR: SPEED {current_speed:.0f}>{detected_limit}"
             self.latest_road_color = (0, 165, 255)
-        if red_light_detected:
+        if red_light_detected and moving and speed_increasing:
             self.latest_road_status = "ROAD MONITOR: RED LIGHT"
             self.latest_road_color = (0, 0, 255)
-        if double_line_crossed:
+        if double_line_crossed and moving:
             self.latest_road_status = "ROAD MONITOR: DOUBLE LINE"
             self.latest_road_color = (0, 0, 255)
 
