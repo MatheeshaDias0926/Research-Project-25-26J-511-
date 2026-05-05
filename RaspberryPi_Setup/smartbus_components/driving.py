@@ -215,12 +215,21 @@ class DrivingTimeTracker:
 	def continuous_driving_minutes(self) -> float:
 		now = time.time()
 		local = self._continuous_driving_seconds(now) / 60
+		# When RESTING, only use the local (frozen) value.
+		# The server value keeps growing because the DriverSession is still
+		# open (sessionEnd=null) and the backend uses new Date() as the end,
+		# so max(local, server) would make the counter increase during rest.
+		if self.state == self.STATE_RESTING:
+			return local
 		return max(local, self._server_continuous_minutes)
 
 	@property
 	def total_daily_driving_minutes(self) -> float:
 		now = time.time()
 		local = self._daily_driving_seconds(now) / 60
+		# Same logic: when resting, use local frozen value only
+		if self.state == self.STATE_RESTING:
+			return local
 		return max(local, self._server_daily_minutes)
 
 	@property
