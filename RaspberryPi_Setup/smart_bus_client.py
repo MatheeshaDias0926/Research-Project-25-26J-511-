@@ -722,65 +722,72 @@ class SmartBusPiClient:
                     ear = (left_ear + right_ear) / 2.0
                     mar = mouth_aspect_ratio(landmarks, MOUTH, w, h)
 
-                    # --- Drowsiness ---
-                    if ear < self.ear_threshold:
-                        self.drowsy_counter += 1
-                    else:
-                        self.drowsy_counter = 0
-
-                    if self.drowsy_counter >= self.drowsy_frames:
-                        if not self.is_drowsy:
-                            self.is_drowsy = True
-                            log.warning(f"DROWSY detected! EAR={ear:.3f}")
-                            # *** Immediate local alarm ***
-                            self.alarm.trigger("DROWSINESS DETECTED")
-                            self.send_alert("drowsiness", drowsy=True, yawning=False,
-                                            ear=round(ear, 3), mar=round(mar, 3),
-                                            driverName=self.verified_driver or "Unknown",
-                                            driverId=self.verified_driver_id or "",
-                                            alertnessScore=round(self.alertness.score, 1))
-                    else:
-                        if self.is_drowsy:
-                            self.alarm.stop()
-                        self.is_drowsy = False
-
-                    # --- Yawning ---
-                    if mar > self.mar_threshold:
-                        self.yawn_counter += 1
-                    else:
-                        self.yawn_counter = 0
-
-                    if self.yawn_counter >= self.yawn_frames:
-                        if not self.is_yawning:
-                            self.is_yawning = True
-                            log.warning(f"YAWNING detected! MAR={mar:.3f}")
-                            self.alarm.trigger("EXCESSIVE YAWNING")
-                            self.send_alert("drowsiness", drowsy=False, yawning=True,
-                                            ear=round(ear, 3), mar=round(mar, 3),
-                                            driverName=self.verified_driver or "Unknown",
-                                            driverId=self.verified_driver_id or "",
-                                            alertnessScore=round(self.alertness.score, 1))
-                    else:
-                        if self.is_yawning:
-                            self.alarm.stop()
-                        self.is_yawning = False
-
-                    # Update alertness score ONLY when a driver is verified.
-                    # Before verification, camera warmup / bad lighting can trigger
-                    # false drowsy frames and drain the score to 0 within seconds.
+                    # ── Drowsiness + yawning + alertness: ONLY after driver is verified.
+                    # Before verification, camera warmup / bad lighting triggers false
+                    # EAR/MAR readings. Sending drowsiness alerts with "Unknown" driver
+                    # creates ghost sessions on the backend, corrupting the admin panel.
                     if self.verified_driver:
+                        # --- Drowsiness ---
+                        if ear < self.ear_threshold:
+                            self.drowsy_counter += 1
+                        else:
+                            self.drowsy_counter = 0
+
+                        if self.drowsy_counter >= self.drowsy_frames:
+                            if not self.is_drowsy:
+                                self.is_drowsy = True
+                                log.warning(f"DROWSY detected! EAR={ear:.3f}")
+                                # *** Immediate local alarm ***
+                                self.alarm.trigger("DROWSINESS DETECTED")
+                                self.send_alert("drowsiness", drowsy=True, yawning=False,
+                                                ear=round(ear, 3), mar=round(mar, 3),
+                                                driverName=self.verified_driver or "Unknown",
+                                                driverId=self.verified_driver_id or "",
+                                                alertnessScore=round(self.alertness.score, 1))
+                        else:
+                            if self.is_drowsy:
+                                self.alarm.stop()
+                            self.is_drowsy = False
+
+                        # --- Yawning ---
+                        if mar > self.mar_threshold:
+                            self.yawn_counter += 1
+                        else:
+                            self.yawn_counter = 0
+
+                        if self.yawn_counter >= self.yawn_frames:
+                            if not self.is_yawning:
+                                self.is_yawning = True
+                                log.warning(f"YAWNING detected! MAR={mar:.3f}")
+                                self.alarm.trigger("EXCESSIVE YAWNING")
+                                self.send_alert("drowsiness", drowsy=False, yawning=True,
+                                                ear=round(ear, 3), mar=round(mar, 3),
+                                                driverName=self.verified_driver or "Unknown",
+                                                driverId=self.verified_driver_id or "",
+                                                alertnessScore=round(self.alertness.score, 1))
+                        else:
+                            if self.is_yawning:
+                                self.alarm.stop()
+                            self.is_yawning = False
+
+                        # Update alertness score
                         self.alertness.update(self.is_drowsy, self.is_yawning)
+
+                        # Extra safety: if alertness drops to DANGER level, keep alarm on
+                        if self.alertness.level == "DANGER" and not self.alarm.is_active:
+                            self.alarm.trigger("ALERTNESS CRITICAL")
+
+                        # Stop alarm only when driver is fully alert again
+                        if self.alertness.level == "ALERT" and self.alarm.is_active:
+                            self.alarm.stop()
                     else:
-                        # Reset score to 100 so the first verification always starts fresh
+                        # No verified driver yet — reset all counters so stale state
+                        # from before verification doesn't carry over
+                        self.drowsy_counter = 0
+                        self.yawn_counter = 0
+                        self.is_drowsy = False
+                        self.is_yawning = False
                         self.alertness.score = 100.0
-
-                    # Extra safety: if alertness drops to DANGER level, keep alarm on
-                    if self.alertness.level == "DANGER" and not self.alarm.is_active:
-                        self.alarm.trigger("ALERTNESS CRITICAL")
-
-                    # Stop alarm only when driver is fully alert again
-                    if self.alertness.level == "ALERT" and self.alarm.is_active:
-                        self.alarm.stop()
 
                     # Draw overlay
                     score_text = f"Alertness: {self.alertness.score:.0f} [{self.alertness.level}]"
