@@ -302,6 +302,7 @@ export default function LiveDetection() {
   const telemetry = routeData?.telemetry || null;
   const isOnRoute = Boolean(route?.onRoute);
   const routeStatus = route?.status || "unknown";
+  const currentRouteNo = route?.currentRouteNo || route?.matchedRouteNo || "N/A";
   const matchedRouteNo = route?.matchedRouteNo || "N/A";
   const expectedRouteNo = route?.expectedRouteNo || "Not assigned";
   const distanceToMatched =
@@ -563,6 +564,7 @@ export default function LiveDetection() {
                 }}
               >
                 <InfoBox label="Expected Route" value={expectedRouteNo} />
+                <InfoBox label="Current Route" value={currentRouteNo} />
                 <InfoBox label="Matched Route" value={matchedRouteNo} />
                 <InfoBox label="Status" value={routeStatus} />
                 <InfoBox

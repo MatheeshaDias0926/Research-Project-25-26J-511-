@@ -50,14 +50,21 @@ class RouteMatcher:
         pt_m = self._pt_m(lon, lat)
 
         matched_no, matched_d = self._min_route(all_routes, pt_m)
+        matched_route = all_routes.get(matched_no) if matched_no else None
 
         expected_no = expected_route["routeNo"] if expected_route else None
+        expected_name = expected_route.get("name") if expected_route else None
         expected_d = pt_m.distance(expected_route["geom_m"]) if expected_route else None
         threshold = float(expected_route["buffer_m"]) if expected_route else self.default_buffer_m
+        matched_name = matched_route.get("name") if matched_route else None
+        matched_threshold = float(matched_route["buffer_m"]) if matched_route else self.default_buffer_m
 
-        # on-route decision uses expected route
+        # When an expected route exists, use it as the source of truth.
+        # Otherwise, treat the nearest known route as the current route from GPS.
         on_route = False
         if expected_d is not None and expected_d <= threshold:
+            on_route = True
+        elif expected_route is None and matched_d is not None and matched_d <= matched_threshold:
             on_route = True
 
         if on_route:
@@ -81,11 +88,17 @@ class RouteMatcher:
             # optional extra label: on some other route corridor
             if matched_no and matched_d <= threshold and expected_d is not None and matched_d < expected_d:
                 status = f"{status}_likely_on_route_{matched_no}"
+            elif expected_route is None and matched_no and matched_d <= matched_threshold:
+                status = f"{status}_likely_on_route_{matched_no}"
 
         return {
             "busId": bus_id,
             "expectedRouteNo": expected_no,
+            "expectedRouteName": expected_name,
             "matchedRouteNo": matched_no,
+            "matchedRouteName": matched_name,
+            "currentRouteNo": matched_no,
+            "currentRouteName": matched_name,
             "distanceToExpected_m": float(expected_d) if expected_d is not None else None,
             "distanceToMatched_m": float(matched_d) if matched_no is not None else None,
             "onRoute": bool(on_route),

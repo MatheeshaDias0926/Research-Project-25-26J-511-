@@ -777,6 +777,7 @@ def bus_route_status():
                     "routeStatus": route_data.get("status"),
                     "offRouteSeconds": route_data.get("offRouteSeconds"),
                     "expectedRouteNo": route_data.get("expectedRouteNo"),
+                    "currentRouteNo": route_data.get("currentRouteNo"),
                     "matchedRouteNo": route_data.get("matchedRouteNo"),
                 },
             )

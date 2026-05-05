@@ -1,6 +1,12 @@
 {
   "routes": [
     {
+      "routeNo": "177",
+      "name": "Kaduwela -> Kollupitiya",
+      "buffer_m": 80.0,
+      "file": "route_177.geojson"
+    },
+    {
       "routeNo": "138",
       "name": "Dummy 138 (Fort -> Maharagama)",
       "buffer_m": 80.0,

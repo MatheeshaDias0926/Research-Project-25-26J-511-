@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "route_177",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "routeNo": "177", "name": "Kaduwela -> Kollupitiya", "buffer_m": 80.0 }, "geometry": { "type": "LineString", "coordinates": [ [ 79.982, 6.934 ], [ 79.975, 6.9315 ], [ 79.968, 6.925 ], [ 79.957, 6.9105 ], [ 79.9535, 6.9065 ], [ 79.945, 6.904 ], [ 79.9195, 6.9022 ], [ 79.91, 6.9035 ], [ 79.9, 6.907 ], [ 79.8943, 6.9094 ], [ 79.888, 6.9115 ], [ 79.877, 6.9147 ], [ 79.87, 6.9155 ], [ 79.865, 6.9158 ], [ 79.852, 6.916 ], [ 79.8485, 6.9157 ] ] } }
+]
+}

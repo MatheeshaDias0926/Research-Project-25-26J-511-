@@ -6,11 +6,11 @@
 #define GREEN_LED 16
 #define RED_LED 2
 
-// #define WIFI_SSID "Dialog 4G 509"
-// #define WIFI_PASSWORD "thushan2021"
+#define WIFI_SSID "Dialog 4G 509"
+#define WIFI_PASSWORD "thushan2021"
 
-#define WIFI_SSID "Thushan's iPhone"
-#define WIFI_PASSWORD "thushan123"
+// #define WIFI_SSID "Thushan's iPhone"
+// #define WIFI_PASSWORD "thushan123"
 
 #define MQTT_SERVER "broker.hivemq.com"
 #define MQTT_PORT 1883

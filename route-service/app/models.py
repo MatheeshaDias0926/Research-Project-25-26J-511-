@@ -16,7 +16,11 @@ class RouteCheckResponse(BaseModel):
     ok: bool
     busId: str
     expectedRouteNo: Optional[str]
+    expectedRouteName: Optional[str]
     matchedRouteNo: Optional[str]
+    matchedRouteName: Optional[str]
+    currentRouteNo: Optional[str]
+    currentRouteName: Optional[str]
     distanceToExpected_m: Optional[float]
     distanceToMatched_m: Optional[float]
     onRoute: bool
