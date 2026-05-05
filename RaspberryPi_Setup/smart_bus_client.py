@@ -440,7 +440,7 @@ class SmartBusPiClient:
             log.warning(f"[DRIVING STATUS] Report failed: {e}")
 
     def sync_face_cache(self):
-        """Download latest face encodings from backend."""
+        """Download latest face encodings from backend and update both JSON cache and pickle."""
         try:
             log.info(f"[CACHE SYNC] Downloading face encodings from {self.backend_url}...")
             resp = requests.get(
@@ -450,9 +450,31 @@ class SmartBusPiClient:
             if resp.status_code == 200:
                 data = resp.json()
                 count = data.get("count", len(data.get("encodings", [])))
+
+                # Update in-memory verifier + write face_cache.json
                 self.face_verifier.update_cache(data)
+
+                # ── Also overwrite the local pickle so it stays in sync with the server.
+                # Without this, a stale pickle (e.g. from a Colab training session with
+                # different driver IDs) would silently override the correct cache on the
+                # next Pi restart because _load_pickle() ran before _load_cache(). ──
+                try:
+                    import pickle as _pickle
+                    pickle_data = {
+                        "encodings": [e for e in self.face_verifier.encodings],
+                        "names":     list(self.face_verifier.names),
+                        "driver_ids": list(self.face_verifier.driver_ids),
+                    }
+                    with open(FACE_PICKLE_PATH, "wb") as pf:
+                        _pickle.dump(pickle_data, pf)
+                    log.info(f"[CACHE SYNC] Pickle updated with {count} encodings → {FACE_PICKLE_PATH}")
+                except Exception as pe:
+                    log.warning(f"[CACHE SYNC] Could not update pickle (non-critical): {pe}")
+
+                # Log which driver IDs are now loaded — makes mismatches visible in logs
+                unique_ids = list(dict.fromkeys(self.face_verifier.driver_ids))
+                log.info(f"[CACHE SYNC] ✓ {count} encodings loaded | Driver IDs: {unique_ids}")
                 self.last_cache_sync = time.time()
-                log.info(f"[CACHE SYNC] Success — {count} encodings cached locally")
             else:
                 log.warning(f"[CACHE SYNC] Failed — HTTP {resp.status_code}: {resp.text[:200]}")
         except Exception as e:
@@ -465,8 +487,14 @@ class SmartBusPiClient:
             log.info("[LOCAL VERIFY] Cache empty — syncing face cache first...")
             self.sync_face_cache()
 
+        # Diagnostic: show which driver IDs are loaded so mismatches are visible in logs
+        unique_ids = list(dict.fromkeys(self.face_verifier.driver_ids))
+        log.info(f"[LOCAL VERIFY] Verifying against {len(self.face_verifier.encodings)} encodings "
+                 f"| Driver IDs in DB: {unique_ids}")
+
         result = self.face_verifier.verify(frame)
         self.last_verify_time = time.time()
+
 
         if result.get("verified"):
             self.verified_driver = result.get("driver", "Unknown")

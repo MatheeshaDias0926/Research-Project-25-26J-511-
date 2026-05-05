@@ -25,9 +25,13 @@ class LocalFaceVerifier:
 		self.encodings: list[np.ndarray] = []
 		self.names: list[str] = []
 		self.driver_ids: list[str] = []
-		self._load_pickle()
+		# ── Load priority: JSON cache (server-synced) FIRST, then pickle as offline fallback.
+		# The pickle may be a stale Colab-generated file with wrong driver IDs; the JSON cache
+		# is always written by sync_face_cache() from the authoritative ML service. ──
+		self._load_cache()
 		if len(self.encodings) == 0:
-			self._load_cache()
+			log.info("[FACE DB] JSON cache empty — trying local pickle as offline fallback")
+			self._load_pickle()
 
 	def _load_pickle(self):
 		if not os.path.exists(self._pickle_path):
