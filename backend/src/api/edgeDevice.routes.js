@@ -305,30 +305,38 @@ router.get("/driver-sessions", protect, async (req, res) => {
         // Walk recent sessions backward to find true continuous block
         let continuousDrivingMinutes = 0;
         if (currentSession) {
-            const lookback = new Date(Date.now() - 48 * 60 * 60 * 1000);
-            const allRecent = await DriverSession.find({
-                $or: [
-                    { driverRef: driver._id },
-                    { driverId: driver.licenseNumber },
-                ],
-                verified: true,
-                sessionStart: { $gte: lookback },
-            }).sort({ sessionStart: -1 }).lean();
+            // Prefer the Pi's speed-aware value when device is online.
+            // The Pi pauses the timer when speed < 5 km/h (bus parked),
+            // but the server has no speed data and keeps counting.
+            if (deviceOnline && edgeDevice?.continuousDrivingMinutes != null) {
+                continuousDrivingMinutes = Math.round(edgeDevice.continuousDrivingMinutes);
+            } else {
+                // Fallback: server-side calculation from session records
+                const lookback = new Date(Date.now() - 48 * 60 * 60 * 1000);
+                const allRecent = await DriverSession.find({
+                    $or: [
+                        { driverRef: driver._id },
+                        { driverId: driver.licenseNumber },
+                    ],
+                    verified: true,
+                    sessionStart: { $gte: lookback },
+                }).sort({ sessionStart: -1 }).lean();
 
-            const requiredRestMs = (driver.drivingRules?.requiredRestMinutes || 360) * 60 * 1000;
-            let blockEnd = new Date();
-            let blockStart = new Date(allRecent[0]?.sessionStart || Date.now());
+                const requiredRestMs = (driver.drivingRules?.requiredRestMinutes || 360) * 60 * 1000;
+                let blockEnd = new Date();
+                let blockStart = new Date(allRecent[0]?.sessionStart || Date.now());
 
-            for (let i = 1; i < allRecent.length; i++) {
-                const prevEnd = allRecent[i].sessionEnd
-                    ? new Date(allRecent[i].sessionEnd)
-                    : new Date();
-                const gap = new Date(allRecent[i - 1].sessionStart) - prevEnd;
-                if (gap >= requiredRestMs) break;
-                blockStart = new Date(allRecent[i].sessionStart);
+                for (let i = 1; i < allRecent.length; i++) {
+                    const prevEnd = allRecent[i].sessionEnd
+                        ? new Date(allRecent[i].sessionEnd)
+                        : new Date();
+                    const gap = new Date(allRecent[i - 1].sessionStart) - prevEnd;
+                    if (gap >= requiredRestMs) break;
+                    blockStart = new Date(allRecent[i].sessionStart);
+                }
+
+                continuousDrivingMinutes = Math.round((blockEnd - blockStart) / 60000);
             }
-
-            continuousDrivingMinutes = Math.round((blockEnd - blockStart) / 60000);
         }
 
         res.json({
@@ -601,7 +609,12 @@ router.post("/heartbeat", authenticateDevice, async (req, res) => {
 
             serverDrivingHistory = {
                 totalDailyDrivingMinutes: Math.round(totalDailyDrivingMs / 60000),
-                continuousDrivingMinutes: Math.round(continuousDrivingMs / 60000),
+                // Use the Pi's speed-aware value when available (it pauses when
+                // speed < 5 km/h). The session-based calculation doesn't know
+                // about speed and keeps counting when the bus is parked.
+                continuousDrivingMinutes: device.continuousDrivingMinutes != null
+                    ? Math.round(device.continuousDrivingMinutes)
+                    : Math.round(continuousDrivingMs / 60000),
                 lastRestDurationMinutes: Math.round(lastRestDurationMs / 60000),
                 lastRestEndTime: lastRestEndTime?.toISOString() || null,
                 sessionCount: recentSessions.length,

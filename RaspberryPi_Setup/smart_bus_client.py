@@ -857,7 +857,17 @@ class SmartBusPiClient:
                 face_detected = bool(face_landmarks_list)
                 gps_now = self.gps_receiver.latest
                 current_speed = gps_now["speed"] if gps_now and self.gps_receiver.age_seconds < 15 else None
-                driving_warnings = self.driving_tracker.update(face_detected, now, speed_kmh=current_speed)
+
+                # Key insight: "driving" means the vehicle is MOVING.
+                # If the bus is stopped (speed < 5 km/h), the driver is just
+                # sitting/waiting — this should NOT count as driving time even
+                # if the face is visible. Drowsiness detection above is unaffected
+                # since it uses face_landmarks_list directly.
+                driving_face = face_detected
+                if current_speed is not None and current_speed < 5.0:
+                    driving_face = False
+
+                driving_warnings = self.driving_tracker.update(driving_face, now, speed_kmh=current_speed)
 
                 # Trigger alarm for driving limit violations
                 for warn in driving_warnings:
