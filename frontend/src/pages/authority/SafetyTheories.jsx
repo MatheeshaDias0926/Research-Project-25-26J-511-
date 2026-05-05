@@ -118,26 +118,25 @@ const SafetyTheories = () => {
                 <CardTitle>Rollover Prediction Model</CardTitle>
               </CardHeader>
               <CardContent>
-                <p
-                  style={{
-                    color: "#475569",
-                    marginBottom: "24px",
-                    lineHeight: "1.6",
-                  }}
-                >
-                  The core of our safety system is the{" "}
-                  <strong style={{ color: "#2563eb" }}>Digital Twin</strong>{" "}
-                  model for the Ashok Leyland Viking bus. It predicts rollover
-                  risk in real-time by comparing the vehicle's{" "}
-                  <strong style={{ color: "#2563eb" }}>
-                    Lateral Acceleration
-                  </strong>{" "}
-                  against its{" "}
-                  <strong style={{ color: "#2563eb" }}>
-                    Static Stability Factor (SSF)
-                  </strong>
-                  .
-                </p>
+                <div style={{ marginBottom: "24px", lineHeight: "1.6" }}>
+                  <p style={{ color: "#475569", marginBottom: "12px" }}>
+                    The core of our safety system is the{" "}
+                    <strong style={{ color: "#2563eb" }}>Digital Twin</strong>{" "}
+                    model for the Ashok Leyland Viking bus. It predicts rollover
+                    risk in real-time by comparing the vehicle's{" "}
+                    <strong style={{ color: "#2563eb" }}>
+                      Lateral Acceleration
+                    </strong>{" "}
+                    against its{" "}
+                    <strong style={{ color: "#2563eb" }}>
+                      Static Stability Factor (SSF)
+                    </strong>
+                    .
+                  </p>
+                  <p style={{ color: "#475569", padding: "12px", background: "#f0fdf4", borderLeft: "4px solid #22c55e", borderRadius: "4px" }}>
+                    <strong>Scientific Validity:</strong> Because real-world crash data is scarce and dangerous to collect, we generate training data synthetically on the fly. By utilizing industry-standard equations from regulatory bodies like the <strong>NHTSA</strong> and <strong>AASHTO</strong>, we accurately calculate the exact physical tipping points under thousands of conditions to train our Machine Learning models.
+                  </p>
+                </div>
 
                 <div
                   style={{
@@ -201,6 +200,9 @@ const SafetyTheories = () => {
                           SSF = T / (2 × h_CoG)
                         </code>
                       </div>
+                      <p style={{ fontSize: "12px", color: "#475569", marginTop: "8px", fontStyle: "italic", borderTop: "1px dashed #cbd5e1", paddingTop: "8px" }}>
+                        <strong>Industry Standard:</strong> Exact formula used by the <strong>NHTSA</strong> to determine the rollover resistance rating of commercial vehicles.
+                      </p>
                     </div>
 
                     <div
@@ -249,6 +251,9 @@ const SafetyTheories = () => {
                           a_lat = v² / (r × g)
                         </code>
                       </div>
+                      <p style={{ fontSize: "12px", color: "#475569", marginTop: "8px", fontStyle: "italic", borderTop: "1px dashed #cbd5e1", paddingTop: "8px" }}>
+                        <strong>Industry Standard:</strong> Newtonian kinematics used by <strong>AASHTO</strong> to design curved roads and set safe speed limits.
+                      </p>
                     </div>
                   </div>
 
@@ -563,7 +568,10 @@ const SafetyTheories = () => {
               <CardContent>
                 <p style={{ color: "#475569", marginBottom: "16px" }}>
                   The most critical variable. Standing passengers significantly
-                  raise the CoG, making the bus unstable.
+                  raise the CoG, making the bus unstable. 
+                  <span style={{ display: "block", marginTop: "8px", fontSize: "13px", fontStyle: "italic", color: "#64748b" }}>
+                    <strong>Industry Standard:</strong> Based on the mechanical engineering principle of <strong>First Moments of Mass</strong> to dynamically calculate the composite center of gravity.
+                  </span>
                 </p>
                 <div
                   style={{
@@ -667,13 +675,16 @@ const SafetyTheories = () => {
                 <CardTitle>Stopping Distance Calculation</CardTitle>
               </CardHeader>
               <CardContent>
-                <p style={{ color: "#475569", marginBottom: "24px" }}>
+                <p style={{ color: "#475569", marginBottom: "12px" }}>
                   Calculates the total distance required to bring the bus to a
                   halt, considering{" "}
                   <strong style={{ color: "#2563eb" }}>Reaction Time</strong>{" "}
                   and{" "}
                   <strong style={{ color: "#ef4444" }}>Braking Distance</strong>
                   .
+                </p>
+                <p style={{ fontSize: "13px", color: "#64748b", fontStyle: "italic", marginBottom: "24px", padding: "10px", background: "#f8fafc", borderRadius: "6px", borderLeft: "3px solid #3b82f6" }}>
+                  <strong>Industry Standard:</strong> This exact kinematic formula is used universally by <strong>accident reconstruction experts</strong> and modern <strong>Autonomous Emergency Braking (AEB)</strong> systems.
                 </p>
 
                 {/* Formula Visual */}
