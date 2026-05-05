@@ -754,6 +754,14 @@ router.post("/driver-alert", authenticateDevice, async (req, res) => {
                 if (driverDoc) driverRef = driverDoc._id;
             }
 
+            // Derive alertness level from score so the admin panel always shows a badge
+            let alertnessLevel = null;
+            if (alertnessScore != null) {
+                if (alertnessScore >= 75) alertnessLevel = "ALERT";
+                else if (alertnessScore >= 40) alertnessLevel = "TIRED";
+                else alertnessLevel = "DANGER";
+            }
+
             // Create new session
             await DriverSession.create({
                 deviceId: device.deviceId,
@@ -766,7 +774,9 @@ router.post("/driver-alert", authenticateDevice, async (req, res) => {
                 confidence: confidence || 0,
                 local: !!local,
                 alertnessScore: alertnessScore ?? null,
+                alertnessLevel,
             });
+
         } else if (type === "drowsiness" || type === "no_face") {
             // Find or create a session for this device so events are never dropped
             let currentSession = await DriverSession.findOne({

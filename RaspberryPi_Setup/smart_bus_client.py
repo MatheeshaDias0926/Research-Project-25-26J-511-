@@ -26,13 +26,23 @@ import mediapipe as mp
 from mediapipe.tasks.python import vision as mp_vision
 from mediapipe.tasks.python.core import base_options as mp_base_options
 
-# Optional: face_recognition for local verification
+# face_recognition is REQUIRED for local driver verification
 try:
     import face_recognition as face_rec_lib
     FACE_REC_AVAILABLE = True
-except Exception:
+except Exception as _fre:
     FACE_REC_AVAILABLE = False
-    print("[WARN] face_recognition library not installed. Local face verification disabled.")
+    print("=" * 65)
+    print("[CRITICAL] face_recognition library is NOT installed!")
+    print("  Local driver verification will ALWAYS fail without it.")
+    print()
+    print("  To install on Raspberry Pi:")
+    print("    sudo apt-get install -y cmake build-essential libopenblas-dev liblapack-dev")
+    print("    pip install dlib>=19.24.0 face_recognition>=1.3.0")
+    print()
+    print(f"  Import error: {_fre}")
+    print("=" * 65)
+
 
 # Optional: GPIO for hardware buzzer
 try:
