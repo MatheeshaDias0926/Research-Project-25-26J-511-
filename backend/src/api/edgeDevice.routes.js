@@ -84,6 +84,91 @@ router.get("/monitoring", protect, isAdmin, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/edge-devices/live-locations
+ * @desc    Get all edge devices with their assigned bus live location, occupancy,
+ *          speed, driver info, and online status. Used by admin "Live Bus Locations" page.
+ * @access  Private (Admin only)
+ */
+router.get("/live-locations", protect, isAdmin, async (req, res) => {
+    try {
+        const devices = await EdgeDevice.find({ assignedBus: { $ne: null } })
+            .populate({
+                path: "assignedBus",
+                select: "licensePlate routeId capacity status liveLocation currentStatus assignedDriver assignedConductor",
+                populate: [
+                    { path: "currentStatus", select: "currentOccupancy speed footboardStatus riskScore timestamp" },
+                    { path: "assignedDriver", select: "name licenseNumber status" },
+                    { path: "assignedConductor", select: "username fullName" },
+                ],
+            })
+            .lean();
+
+        const now = Date.now();
+        const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+
+        // For each device, also grab latest driver session
+        const result = [];
+        for (const dev of devices) {
+            const bus = dev.assignedBus;
+            if (!bus) continue;
+
+            const isOnline = dev.lastPing && (now - new Date(dev.lastPing).getTime()) < ONLINE_THRESHOLD_MS;
+
+            // Get the latest active driver session for this device
+            const latestSession = await DriverSession.findOne({
+                deviceId: dev.deviceId,
+                sessionEnd: null,
+            }).sort({ createdAt: -1 }).lean();
+
+            result.push({
+                deviceId: dev.deviceId,
+                deviceName: dev.name,
+                deviceType: dev.type,
+                deviceStatus: dev.status,
+                firmwareVersion: dev.firmwareVersion,
+                isOnline,
+                lastPing: dev.lastPing,
+                bus: {
+                    _id: bus._id,
+                    licensePlate: bus.licensePlate,
+                    routeId: bus.routeId,
+                    capacity: bus.capacity,
+                    status: bus.status,
+                    liveLocation: bus.liveLocation || null,
+                    currentOccupancy: bus.currentStatus?.currentOccupancy ?? 0,
+                    speed: bus.liveLocation?.speed ?? bus.currentStatus?.speed ?? 0,
+                    riskScore: bus.currentStatus?.riskScore ?? 0,
+                    footboardStatus: bus.currentStatus?.footboardStatus ?? false,
+                    lastDataTimestamp: bus.currentStatus?.timestamp ?? null,
+                },
+                driver: latestSession?.verified ? {
+                    name: latestSession.driverName,
+                    licenseNumber: latestSession.driverId,
+                    status: "active",
+                } : null,
+                conductor: bus.assignedConductor ? {
+                    username: bus.assignedConductor.username,
+                    fullName: bus.assignedConductor.fullName,
+                } : null,
+                activeSession: latestSession ? {
+                    driverName: latestSession.driverName,
+                    verified: latestSession.verified,
+                    confidence: latestSession.confidence,
+                    alertnessScore: latestSession.alertnessScore,
+                    alertnessLevel: latestSession.alertnessLevel,
+                    sessionStart: latestSession.sessionStart,
+                } : null,
+            });
+        }
+
+        res.json(result);
+    } catch (error) {
+        console.error("live-locations error:", error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
+/**
  * @route   GET /api/edge-devices/sessions/:deviceId
  * @desc    Get session history for a specific device (Admin panel detail)
  * @access  Private (Admin only)

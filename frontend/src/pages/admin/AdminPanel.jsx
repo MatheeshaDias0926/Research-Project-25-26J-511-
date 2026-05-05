@@ -70,11 +70,12 @@ import AuthorityScenarioSimulator from "../authority/AuthorityScenarioSimulator"
 import AuthorityPhysicsCheck from "../authority/AuthorityPhysicsCheck";
 import SafetyTheories from "../authority/SafetyTheories";
 import ViolationsTab from "./ViolationsTab";
+import LiveLocationTab from "./LiveLocationTab";
 
 // ─── Tab Navigation ────────────────────────────────────────
 const TABS = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
-  { key: "live-map", label: "Live Map", icon: MapPin },
+  { key: "live-map", label: "Live Location", icon: MapPin },
   { key: "fleet", label: "Fleet Management", icon: Bus },
   { key: "assignments", label: "Bus Assignments", icon: Link2 },
   { key: "violations", label: "Violations", icon: AlertOctagon },
@@ -4472,7 +4473,7 @@ const AdminPanel = () => {
       case "overview":
         return <OverviewTab />;
       case "live-map":
-        return <LiveMapTab />;
+        return <LiveLocationTab />;
       case "fleet":
         return <FleetTab />;
       case "assignments":
