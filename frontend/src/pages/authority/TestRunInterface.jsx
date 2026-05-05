@@ -268,6 +268,15 @@ const TestRunInterface = () => {
     } catch (err) { alert("Failed to set occupancy"); }
   };
 
+  const handleDisableOccupancy = async () => {
+    if (!selectedBus) return;
+    try {
+      setManualOccupancy("");
+      await api.post("/test-run/set-occupancy", { licensePlate: selectedBus, occupancy: null });
+      fetchBusStatus();
+    } catch (err) { alert("Failed to disable occupancy override"); }
+  };
+
   const handleSetSpeedMultiplier = async () => {
     if (!selectedBus) return;
     try {
@@ -439,24 +448,33 @@ const TestRunInterface = () => {
           </Card>
 
           {/* Stats Grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             <Card>
-              <CardContent style={{ padding: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ padding: 8, background: "#eff6ff", borderRadius: 8, color: "#3b82f6" }}><Gauge size={20}/></div>
+              <CardContent style={{ padding: 12, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                <div style={{ padding: 6, background: "#eff6ff", borderRadius: 8, color: "#3b82f6" }}><Gauge size={16}/></div>
                 <div>
-                  <div style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>Speed</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{busData?.status?.speed?.toFixed(1) || "0.0"} <span style={{ fontSize: 11, color: "#94a3b8" }}>km/h</span></div>
+                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 500 }}>Speed</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap" }}>{busData?.status?.speed?.toFixed(1) || "0.0"} <span style={{ fontSize: 9, color: "#94a3b8" }}>km/h</span></div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent style={{ padding: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ padding: 8, background: busData?.status?.footboardStatus ? "#fef2f2" : "#f0fdf4", borderRadius: 8, color: busData?.status?.footboardStatus ? "#ef4444" : "#22c55e" }}>
-                  {busData?.status?.footboardStatus ? <AlertTriangle size={20}/> : <ShieldCheck size={20}/>}
+              <CardContent style={{ padding: 12, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                <div style={{ padding: 6, background: "#f5f3ff", borderRadius: 8, color: "#8b5cf6" }}><Users size={16}/></div>
+                <div>
+                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 500 }}>Passengers</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{busData?.status?.currentOccupancy || 0}</div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent style={{ padding: 12, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                <div style={{ padding: 6, background: busData?.status?.footboardStatus ? "#fef2f2" : "#f0fdf4", borderRadius: 8, color: busData?.status?.footboardStatus ? "#ef4444" : "#22c55e" }}>
+                  {busData?.status?.footboardStatus ? <AlertTriangle size={16}/> : <ShieldCheck size={16}/>}
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>Footboard</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: busData?.status?.footboardStatus ? "#ef4444" : "#22c55e" }}>
+                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 500 }}>Footboard</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: busData?.status?.footboardStatus ? "#ef4444" : "#22c55e", whiteSpace: "nowrap" }}>
                     {busData?.status?.footboardStatus ? "VIOLATION" : "CLEAR"}
                   </div>
                 </div>
@@ -623,7 +641,10 @@ const TestRunInterface = () => {
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               <Input type="number" placeholder="Manual count" value={manualOccupancy} onChange={e => setManualOccupancy(e.target.value)} style={{ flex: 1 }} />
-              <Button onClick={handleSetOccupancy} size="sm">Set</Button>
+              <Button onClick={handleSetOccupancy} size="sm" variant={busData?.manualOccupancyActive ? "outline" : "default"}>Set</Button>
+              {busData?.manualOccupancyActive && (
+                <Button onClick={handleDisableOccupancy} size="sm" variant="destructive">Disable</Button>
+              )}
             </div>
           </CardContent>
         </Card>
