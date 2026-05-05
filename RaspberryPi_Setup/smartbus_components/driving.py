@@ -131,7 +131,16 @@ class DrivingTimeTracker:
 				return current_start - prev_end
 		return 0
 
-	def update(self, face_detected: bool, now: float = None):
+	def update(self, face_detected: bool, now: float = None, speed_kmh: float = None):
+		"""Update driving/resting state.
+
+		Args:
+			face_detected: Whether a face is visible in the camera.
+			now: Current timestamp (defaults to time.time()).
+			speed_kmh: Current GPS speed in km/h (None if unavailable).
+				When speed < 5 km/h AND no face, switches to resting much faster
+				(15s instead of rest_timeout) since the bus is clearly stopped.
+		"""
 		if now is None:
 			now = time.time()
 		warnings = []
@@ -155,13 +164,19 @@ class DrivingTimeTracker:
 		else:
 			if self.state == self.STATE_DRIVING:
 				elapsed_no_face = now - self._last_face_time
-				if elapsed_no_face >= self.rest_timeout:
+				# If speed is very low (bus stopped), switch to resting much sooner
+				# No point saying "driving" when the bus is parked with no driver visible
+				effective_timeout = self.rest_timeout
+				if speed_kmh is not None and speed_kmh < 5.0:
+					effective_timeout = min(self.rest_timeout, 15)
+				if elapsed_no_face >= effective_timeout:
 					if self._periods and self._periods[-1][1] is None:
 						self._periods[-1][1] = self._last_face_time
 					self.state = self.STATE_RESTING
 					self._rest_start = now
 					self._save_state()
-					log.info(f"[DRIVING] State → RESTING (no face for {elapsed_no_face:.0f}s)")
+					log.info(f"[DRIVING] State → RESTING (no face for {elapsed_no_face:.0f}s, speed={speed_kmh:.1f}km/h)" if speed_kmh is not None
+							 else f"[DRIVING] State → RESTING (no face for {elapsed_no_face:.0f}s)")
 
 		if self.state == self.STATE_DRIVING:
 			local_continuous_sec = self._continuous_driving_seconds(now)

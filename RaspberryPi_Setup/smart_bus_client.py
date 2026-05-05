@@ -788,6 +788,12 @@ class SmartBusPiClient:
                         self.is_drowsy = False
                         self.is_yawning = False
                         self.alertness.score = 100.0
+                        # Log periodically so user can see why drowsiness is disabled
+                        if not hasattr(self, '_last_drowsy_skip_log') or now - self._last_drowsy_skip_log >= 60:
+                            self._last_drowsy_skip_log = now
+                            log.warning("[DROWSINESS] SKIPPED — driver not verified yet. "
+                                       "Face verification must succeed before drowsiness/yawning detection activates. "
+                                       "Check face_cache.json and verify logs above.")
 
                     # Draw overlay
                     score_text = f"Alertness: {self.alertness.score:.0f} [{self.alertness.level}]"
@@ -840,7 +846,9 @@ class SmartBusPiClient:
 
                 # ── Driving time tracking ──
                 face_detected = bool(face_landmarks_list)
-                driving_warnings = self.driving_tracker.update(face_detected, now)
+                gps_now = self.gps_receiver.latest
+                current_speed = gps_now["speed"] if gps_now and self.gps_receiver.age_seconds < 15 else None
+                driving_warnings = self.driving_tracker.update(face_detected, now, speed_kmh=current_speed)
 
                 # Trigger alarm for driving limit violations
                 for warn in driving_warnings:
