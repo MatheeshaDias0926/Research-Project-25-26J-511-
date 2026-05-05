@@ -139,6 +139,16 @@ const DeviceInfoCard = ({ dev, isSelected, onSelect }) => {
       {/* Grid info */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", fontSize: 13 }}>
         <div style={{ color: "var(--text-muted)" }}>
+          <MapPin size={12} style={{ display: "inline", marginRight: 4 }} />
+          Location
+        </div>
+        <div style={{ fontWeight: 600, fontSize: 11 }}>
+          {loc?.lat != null && loc?.lon != null
+            ? `${loc.lat.toFixed(5)}, ${loc.lon.toFixed(5)}`
+            : "No GPS"}
+        </div>
+
+        <div style={{ color: "var(--text-muted)" }}>
           <Users size={12} style={{ display: "inline", marginRight: 4 }} />
           Passengers
         </div>
@@ -162,10 +172,10 @@ const DeviceInfoCard = ({ dev, isSelected, onSelect }) => {
 
         <div style={{ color: "var(--text-muted)" }}>
           <Clock size={12} style={{ display: "inline", marginRight: 4 }} />
-          Last Update
+          GPS Updated
         </div>
         <div style={{ fontWeight: 600, fontSize: 12 }}>
-          {formatTime(dev.lastPing)}
+          {formatTime(loc?.updatedAt || dev.lastPing)}
         </div>
       </div>
 

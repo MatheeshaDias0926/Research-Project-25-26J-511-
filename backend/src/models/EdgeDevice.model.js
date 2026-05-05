@@ -20,6 +20,13 @@ const edgeDeviceSchema = new mongoose.Schema(
       default: null,
     },
     lastPing: { type: Date, default: null },
+    // GPS data directly from this edge device (not shared with IoT simulator)
+    lastGps: {
+      lat: { type: Number, default: null },
+      lon: { type: Number, default: null },
+      speed: { type: Number, default: 0 },
+      updatedAt: { type: Date, default: null },
+    },
     firmwareVersion: { type: String, default: "1.0.0" },
 
     // Raspberry Pi remote configuration (admin-editable)

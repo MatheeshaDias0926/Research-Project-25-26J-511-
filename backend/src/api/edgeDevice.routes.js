@@ -94,7 +94,7 @@ router.get("/live-locations", protect, isAdmin, async (req, res) => {
         const devices = await EdgeDevice.find({ assignedBus: { $ne: null } })
             .populate({
                 path: "assignedBus",
-                select: "licensePlate routeId capacity status liveLocation currentStatus assignedDriver assignedConductor",
+                select: "licensePlate routeId capacity status currentStatus assignedDriver assignedConductor",
                 populate: [
                     { path: "currentStatus", select: "currentOccupancy speed footboardStatus riskScore timestamp" },
                     { path: "assignedDriver", select: "name licenseNumber status" },
@@ -120,6 +120,11 @@ router.get("/live-locations", protect, isAdmin, async (req, res) => {
                 sessionEnd: null,
             }).sort({ createdAt: -1 }).lean();
 
+            // Use GPS from edge device itself (not from bus.liveLocation which IoT simulator can overwrite)
+            const edgeGps = dev.lastGps?.lat != null && dev.lastGps?.lon != null
+                ? dev.lastGps
+                : null;
+
             result.push({
                 deviceId: dev.deviceId,
                 deviceName: dev.name,
@@ -134,9 +139,14 @@ router.get("/live-locations", protect, isAdmin, async (req, res) => {
                     routeId: bus.routeId,
                     capacity: bus.capacity,
                     status: bus.status,
-                    liveLocation: bus.liveLocation || null,
+                    liveLocation: edgeGps ? {
+                        lat: edgeGps.lat,
+                        lon: edgeGps.lon,
+                        speed: edgeGps.speed || 0,
+                        updatedAt: edgeGps.updatedAt,
+                    } : null,
                     currentOccupancy: bus.currentStatus?.currentOccupancy ?? 0,
-                    speed: bus.liveLocation?.speed ?? bus.currentStatus?.speed ?? 0,
+                    speed: edgeGps?.speed ?? bus.currentStatus?.speed ?? 0,
                     riskScore: bus.currentStatus?.riskScore ?? 0,
                     footboardStatus: bus.currentStatus?.footboardStatus ?? false,
                     lastDataTimestamp: bus.currentStatus?.timestamp ?? null,
@@ -474,13 +484,24 @@ router.post("/heartbeat", authenticateDevice, async (req, res) => {
 
         // ── Save GPS location to the assigned bus (from mobile phone → Pi) ──
         const { gps } = req.body;
-        if (gps && gps.lat != null && gps.lon != null && device.assignedBus) {
-            await Bus.findByIdAndUpdate(device.assignedBus, {
-                "liveLocation.lat": gps.lat,
-                "liveLocation.lon": gps.lon,
-                "liveLocation.speed": gps.speed || 0,
-                "liveLocation.updatedAt": new Date(),
-            });
+        if (gps && gps.lat != null && gps.lon != null) {
+            // Save on the device itself (authoritative edge device GPS)
+            device.lastGps = {
+                lat: gps.lat,
+                lon: gps.lon,
+                speed: gps.speed || 0,
+                updatedAt: new Date(),
+            };
+
+            // Also update the bus's liveLocation for backward compatibility
+            if (device.assignedBus) {
+                await Bus.findByIdAndUpdate(device.assignedBus, {
+                    "liveLocation.lat": gps.lat,
+                    "liveLocation.lon": gps.lon,
+                    "liveLocation.speed": gps.speed || 0,
+                    "liveLocation.updatedAt": new Date(),
+                });
+            }
             console.log(`[EdgeDevice ${device.deviceId}] GPS updated: lat=${gps.lat}, lon=${gps.lon}, speed=${gps.speed || 0} km/h`);
         } else {
             console.log(`[EdgeDevice ${device.deviceId}] Heartbeat received (no GPS data — phone may not be sending to Pi port 8080)`);
@@ -632,16 +653,19 @@ router.post("/gps-update", async (req, res) => {
         if (!device) {
             return res.status(404).json({ message: `Device not found: ${deviceId}` });
         }
-        if (!device.assignedBus) {
-            return res.status(400).json({ message: "Device has no assigned bus" });
-        }
+        // Save on the device itself (authoritative edge device GPS)
+        device.lastGps = { lat, lon, speed, updatedAt: new Date() };
+        await device.save();
 
-        await Bus.findByIdAndUpdate(device.assignedBus, {
-            "liveLocation.lat": lat,
-            "liveLocation.lon": lon,
-            "liveLocation.speed": speed,
-            "liveLocation.updatedAt": new Date(),
-        });
+        // Also update bus liveLocation for backward compatibility
+        if (device.assignedBus) {
+            await Bus.findByIdAndUpdate(device.assignedBus, {
+                "liveLocation.lat": lat,
+                "liveLocation.lon": lon,
+                "liveLocation.speed": speed,
+                "liveLocation.updatedAt": new Date(),
+            });
+        }
 
         res.json({ ok: true, lat, lon, speed });
     } catch (error) {
@@ -665,14 +689,20 @@ router.get("/gps-update", async (req, res) => {
 
         const device = await EdgeDevice.findOne({ deviceId });
         if (!device) return res.status(404).json({ message: `Device not found: ${deviceId}` });
-        if (!device.assignedBus) return res.status(400).json({ message: "Device has no assigned bus" });
 
-        await Bus.findByIdAndUpdate(device.assignedBus, {
-            "liveLocation.lat": lat,
-            "liveLocation.lon": lon,
-            "liveLocation.speed": speed,
-            "liveLocation.updatedAt": new Date(),
-        });
+        // Save on the device itself (authoritative edge device GPS)
+        device.lastGps = { lat, lon, speed, updatedAt: new Date() };
+        await device.save();
+
+        // Also update bus liveLocation for backward compatibility
+        if (device.assignedBus) {
+            await Bus.findByIdAndUpdate(device.assignedBus, {
+                "liveLocation.lat": lat,
+                "liveLocation.lon": lon,
+                "liveLocation.speed": speed,
+                "liveLocation.updatedAt": new Date(),
+            });
+        }
 
         res.json({ ok: true, lat, lon, speed });
     } catch (error) {
