@@ -227,34 +227,35 @@ class RoadAnalyzerWorker:
             log.debug(f"[ROAD] Red detections candidate count={len(red_dets)} sample={red_dets[:5]}")
 
         # ── Speed limit violation: speed > detected limit AND speed > 5 km/h ──
+        # ONE detection per 5 seconds: 1 log + 1 evidence image + 1 backend POST
         if detected_limit:
-            log.info(f"[ROAD] Speed sign detected: {detected_limit} km/h | Current speed: {current_speed:.1f} km/h | Over limit: {current_speed > detected_limit}")
+            log.debug(f"[ROAD] Speed sign: {detected_limit} km/h | GPS speed: {current_speed:.1f} km/h")
         if moving and detected_limit and current_speed > detected_limit:
-            conf = 0.0
-            try:
-                dets = []
-                if speed_res.boxes is not None:
-                    for b in speed_res.boxes:
-                        dets.append({
-                            "class_name": _resolve_class_name(speed_res.names, int(b.cls.item())),
-                            "confidence": float(b.conf.item())
-                        })
-                if dets:
-                    best = max(dets, key=lambda d: d.get("confidence", 0))
-                    conf = best.get("confidence", 0.0)
-            except Exception:
-                pass
             now = time.time()
-            can_post_speed = (now - self.last_speed_post_time) >= self.VIOLATION_COOLDOWN_SECONDS
-            log.warning(f"🚨 [ROAD] SPEED VIOLATION! {current_speed} > {detected_limit} km/h (det_conf={conf:.2f}) GPS={gps}")
-            if can_post_speed:
+            if (now - self.last_speed_post_time) >= self.VIOLATION_COOLDOWN_SECONDS:
+                self.last_speed_post_time = now
+                conf = 0.0
+                try:
+                    dets = []
+                    if speed_res.boxes is not None:
+                        for b in speed_res.boxes:
+                            dets.append({
+                                "class_name": _resolve_class_name(speed_res.names, int(b.cls.item())),
+                                "confidence": float(b.conf.item())
+                            })
+                    if dets:
+                        best = max(dets, key=lambda d: d.get("confidence", 0))
+                        conf = best.get("confidence", 0.0)
+                except Exception:
+                    pass
+                log.warning(f"🚨 [ROAD] SPEED VIOLATION! {current_speed:.1f} > {detected_limit} km/h (conf={conf:.2f}) GPS={gps}")
                 try:
                     ann = speed_res.plot()
                     ts = int(time.time() * 1000)
                     fname = f"speed_{self.pi_client.device_id}_{ts}.jpg"
                     fpath = os.path.join(violations_dir, fname)
                     cv2.imwrite(fpath, ann)
-                    log.info(f"[ROAD] Saved speed capture: {fpath}")
+                    log.info(f"[ROAD] Saved speed evidence: {fpath}")
                     if os.name == "nt":
                         try:
                             os.startfile(fpath)
@@ -263,55 +264,50 @@ class RoadAnalyzerWorker:
                 except Exception as e:
                     log.warning(f"[ROAD] Failed to save speed capture: {e}")
                 self.pi_client.post_traffic_violation("speed", current_speed, gps, frame=frame)
-                self.last_speed_post_time = now
 
-        # ── Red-light violation: ONLY when speed > 5 km/h ──
-        # If the bus is moving through a red light, it's a violation.
-        # The YOLO model handles detection accuracy; we just gate on speed
-        # to ignore parked buses near traffic lights.
+        # ── Red-light violation: speed > 5 km/h ──
+        # ONE detection per 5 seconds: 1 log + 1 evidence image + 1 backend POST
         if red_light_detected and moving:
             now = time.time()
-            can_post_red = (now - self.last_red_light_post_time) >= self.VIOLATION_COOLDOWN_SECONDS
-            red_dets = []
-            try:
-                if red_res.boxes is not None:
-                    for b in red_res.boxes:
-                        red_dets.append({
-                            "class_name": _resolve_class_name(red_res.names, int(b.cls.item())),
-                            "confidence": float(b.conf.item())
-                        })
-            except Exception:
-                pass
-            summary = ", ".join([f"{d['class_name']}({d['confidence']:.2f})" for d in red_dets[:5]]) or "(none)"
-            log.warning(f"🚨 [ROAD] RED LIGHT VIOLATION! speed={current_speed:.1f}km/h detections={len(red_dets)} [{summary}] GPS={gps}")
-            if can_post_red:
+            if (now - self.last_red_light_post_time) >= self.VIOLATION_COOLDOWN_SECONDS:
+                self.last_red_light_post_time = now
+                red_dets = []
+                try:
+                    if red_res.boxes is not None:
+                        for b in red_res.boxes:
+                            red_dets.append({
+                                "class_name": _resolve_class_name(red_res.names, int(b.cls.item())),
+                                "confidence": float(b.conf.item())
+                            })
+                except Exception:
+                    pass
+                summary = ", ".join([f"{d['class_name']}({d['confidence']:.2f})" for d in red_dets[:5]]) or "(none)"
+                log.warning(f"🚨 [ROAD] RED LIGHT VIOLATION! speed={current_speed:.1f}km/h [{summary}] GPS={gps}")
                 try:
                     ann = red_res.plot()
                     ts = int(time.time() * 1000)
                     fname = f"red_{self.pi_client.device_id}_{ts}.jpg"
                     fpath = os.path.join(violations_dir, fname)
                     cv2.imwrite(fpath, ann)
-                    log.info(f"[ROAD] Saved red-light capture: {fpath}")
+                    log.info(f"[ROAD] Saved red-light evidence: {fpath}")
                 except Exception as e:
                     log.warning(f"[ROAD] Failed to save red capture: {e}")
                 self.pi_client.post_traffic_violation("red-light", current_speed, gps, frame=frame)
-                self.last_red_light_post_time = now
-            else:
-                log.debug(f"[ROAD] Red-light cooldown: skipping post (last {now - self.last_red_light_post_time:.1f}s ago)")
 
-        # ── Double-line violation: speed > 5 km/h + cooldown to prevent evidence spam ──
+        # ── Double-line violation: speed > 5 km/h ──
+        # ONE detection per 5 seconds: 1 log + 1 evidence image + 1 backend POST
         if double_line_crossed and moving:
             now = time.time()
-            can_post_line = (now - self.last_double_line_post_time) >= self.VIOLATION_COOLDOWN_SECONDS
-            log.warning(f"🚨 [ROAD] DOUBLE LINE VIOLATION! top={line_top_name} conf={line_top_conf:.2f} speed={current_speed:.1f}km/h GPS={gps}")
-            if can_post_line:
+            if (now - self.last_double_line_post_time) >= self.VIOLATION_COOLDOWN_SECONDS:
+                self.last_double_line_post_time = now
+                log.warning(f"🚨 [ROAD] DOUBLE LINE VIOLATION! conf={line_top_conf:.2f} speed={current_speed:.1f}km/h GPS={gps}")
                 try:
                     ann = line_res.plot()
                     ts = int(time.time() * 1000)
                     fname = f"double_line_{self.pi_client.device_id}_{ts}.jpg"
                     fpath = os.path.join(violations_dir, fname)
                     cv2.imwrite(fpath, ann)
-                    log.info(f"[ROAD] Saved double-line capture: {fpath}")
+                    log.info(f"[ROAD] Saved double-line evidence: {fpath}")
                     if os.name == "nt":
                         try:
                             os.startfile(fpath)
@@ -320,9 +316,6 @@ class RoadAnalyzerWorker:
                 except Exception as e:
                     log.warning(f"[ROAD] Failed to save double-line capture: {e}")
                 self.pi_client.post_traffic_violation("double-line", current_speed, gps, frame=frame)
-                self.last_double_line_post_time = now
-            else:
-                log.debug(f"[ROAD] Double-line cooldown: skipping (last {now - self.last_double_line_post_time:.1f}s ago)")
 
         self.latest_road_status = "ROAD MONITOR: OK"
         self.latest_road_color = (0, 200, 0)
