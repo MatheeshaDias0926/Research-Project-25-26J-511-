@@ -4,8 +4,8 @@ const violationLogSchema = new mongoose.Schema(
   {
     busId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
       ref: "Bus",
+      default: null,
     },
     driverRef: {
       type: mongoose.Schema.Types.ObjectId,

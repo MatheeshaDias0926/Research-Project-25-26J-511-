@@ -210,11 +210,7 @@ class RoadAnalyzerWorker:
         gps = self.pi_client.gps_receiver.latest
         current_speed = gps["speed"] if gps and "speed" in gps else 0.0
 
-        # Track speed history for acceleration detection (red-light needs this)
-        if not hasattr(self, '_prev_speed'):
-            self._prev_speed = 0.0
-        speed_increasing = current_speed > self._prev_speed + 1.0  # >1 km/h increase
-        self._prev_speed = current_speed
+
         
         # 3. Assess Violations
         # ALL violations require speed > 5 km/h — a stationary bus cannot
@@ -231,6 +227,8 @@ class RoadAnalyzerWorker:
             log.debug(f"[ROAD] Red detections candidate count={len(red_dets)} sample={red_dets[:5]}")
 
         # ── Speed limit violation: speed > detected limit AND speed > 5 km/h ──
+        if detected_limit:
+            log.info(f"[ROAD] Speed sign detected: {detected_limit} km/h | Current speed: {current_speed:.1f} km/h | Over limit: {current_speed > detected_limit}")
         if moving and detected_limit and current_speed > detected_limit:
             conf = 0.0
             try:
@@ -267,10 +265,11 @@ class RoadAnalyzerWorker:
                 self.pi_client.post_traffic_violation("speed", current_speed, gps, frame=frame)
                 self.last_speed_post_time = now
 
-        # ── Red-light violation: ONLY when speed > 5 km/h AND speed is INCREASING ──
-        # A driver braking at a red light (speed decreasing) is NOT a violation.
-        # A driver accelerating through a red light IS a violation.
-        if red_light_detected and moving and speed_increasing:
+        # ── Red-light violation: ONLY when speed > 5 km/h ──
+        # If the bus is moving through a red light, it's a violation.
+        # The YOLO model handles detection accuracy; we just gate on speed
+        # to ignore parked buses near traffic lights.
+        if red_light_detected and moving:
             now = time.time()
             can_post_red = (now - self.last_red_light_post_time) >= self.VIOLATION_COOLDOWN_SECONDS
             red_dets = []
@@ -284,7 +283,7 @@ class RoadAnalyzerWorker:
             except Exception:
                 pass
             summary = ", ".join([f"{d['class_name']}({d['confidence']:.2f})" for d in red_dets[:5]]) or "(none)"
-            log.warning(f"🚨 [ROAD] RED LIGHT VIOLATION! speed={current_speed:.1f}km/h (increasing) detections={len(red_dets)} [{summary}] GPS={gps}")
+            log.warning(f"🚨 [ROAD] RED LIGHT VIOLATION! speed={current_speed:.1f}km/h detections={len(red_dets)} [{summary}] GPS={gps}")
             if can_post_red:
                 try:
                     ann = red_res.plot()
@@ -299,8 +298,6 @@ class RoadAnalyzerWorker:
                 self.last_red_light_post_time = now
             else:
                 log.debug(f"[ROAD] Red-light cooldown: skipping post (last {now - self.last_red_light_post_time:.1f}s ago)")
-        elif red_light_detected and moving and not speed_increasing:
-            log.debug(f"[ROAD] Red light seen but speed DECREASING ({current_speed:.1f}km/h) — driver is braking, NOT a violation")
 
         # ── Double-line violation: speed > 5 km/h + cooldown to prevent evidence spam ──
         if double_line_crossed and moving:
@@ -332,7 +329,7 @@ class RoadAnalyzerWorker:
         if moving and detected_limit and current_speed > detected_limit:
             self.latest_road_status = f"ROAD MONITOR: SPEED {current_speed:.0f}>{detected_limit}"
             self.latest_road_color = (0, 165, 255)
-        if red_light_detected and moving and speed_increasing:
+        if red_light_detected and moving:
             self.latest_road_status = "ROAD MONITOR: RED LIGHT"
             self.latest_road_color = (0, 0, 255)
         if double_line_crossed and moving:
