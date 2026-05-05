@@ -114,9 +114,11 @@ def main():
     # Trackers and Annotators
     box_annotator = sv.BoxAnnotator(thickness=2)
     tracker = sv.ByteTrack()
+    trace_annotator = sv.TraceAnnotator(thickness=2, trace_length=60)
     
     prev_in = 0
     prev_out = 0
+    
     footboard_entry_times = {} # Maps tracker_id -> timestamp they entered the footboard zone
     
     print("CV Passenger Counter started. Press 'q' to quit.")
@@ -183,15 +185,21 @@ def main():
                     current_occupancy -= new_crossings
                     prev_out = line_zone.out_count
 
-            labels = [f"ID:{tracker_id}" for tracker_id in detections.tracker_id]
+            # Add confidence to show YOLOv8 accuracy
+            if hasattr(detections, 'confidence') and detections.confidence is not None:
+                labels = [f"ID:{tracker_id} | {conf:.2f}" for tracker_id, conf in zip(detections.tracker_id, detections.confidence)]
+            else:
+                labels = [f"ID:{tracker_id}" for tracker_id in detections.tracker_id]
         else:
             labels = ["Person" for _ in range(len(detections))]
 
         # Visualizations
-        label_annotator = sv.LabelAnnotator()
+        label_annotator = sv.LabelAnnotator(text_scale=0.5, text_thickness=1)
         annotated_frame = box_annotator.annotate(scene=frame.copy(), detections=detections)
         
         if len(detections) > 0:
+            # Draw tracking trails to prove ID consistency
+            annotated_frame = trace_annotator.annotate(scene=annotated_frame, detections=detections)
             annotated_frame = label_annotator.annotate(scene=annotated_frame, detections=detections, labels=labels)
             
         annotated_frame = line_zone_annotator.annotate(annotated_frame, line_counter=line_zone)

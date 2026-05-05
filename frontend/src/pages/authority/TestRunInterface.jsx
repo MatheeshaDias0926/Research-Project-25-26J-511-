@@ -21,14 +21,19 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
-const createBusIcon = (riskScore) => {
+const createBusIcon = (riskScore, occupancy) => {
   let color = "#22c55e";
   if (riskScore > 0.7) color = "#dc2626";
   else if (riskScore > 0.5) color = "#f97316";
   else if (riskScore > 0.3) color = "#eab308";
+  
+  const occBadge = occupancy !== undefined 
+    ? `<div style="position:absolute;top:-10px;right:-10px;background:#0f172a;color:white;font-size:15px;font-weight:800;border-radius:12px;padding:2px 8px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);z-index:100;">${occupancy}</div>`
+    : '';
+
   return L.divIcon({
     className: "custom-bus-icon",
-    html: `<div style="background:${color};width:40px;height:40px;border-radius:50%;border:3px solid rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.35);font-size:20px;">🚌</div>`,
+    html: `<div style="position:relative;background:${color};width:40px;height:40px;border-radius:50%;border:3px solid rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.35);font-size:20px;">🚌${occBadge}</div>`,
     iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -22],
   });
 };
@@ -366,12 +371,13 @@ const TestRunInterface = () => {
 
               {/* Live Bus Marker — smooth interpolation */}
               {busPos && (
-                <SmoothBusMarker position={busPos} icon={createBusIcon(riskScore)}>
+                <SmoothBusMarker position={busPos} icon={createBusIcon(riskScore, busData?.status?.currentOccupancy || 0)}>
                   <Popup>
                     <strong>{selectedBus}</strong><br/>
                     Speed: {busData?.status?.speed?.toFixed(1) || 0} km/h<br/>
                     Risk: {riskScore.toFixed(3)}<br/>
-                    Source: {gpsInfo.label}
+                    Source: {gpsInfo.label}<br/>
+                    Passengers: {busData?.status?.currentOccupancy || 0}
                   </Popup>
                 </SmoothBusMarker>
               )}
