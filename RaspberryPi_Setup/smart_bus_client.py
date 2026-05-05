@@ -2,15 +2,9 @@
 Smart Bus - Raspberry Pi 5 Edge Client
 =======================================
 Runs on-board a bus with a USB/CSI camera. Performs locally on the device:
-  1. Drowsiness & Alertness Detection (MediaPipe Face Landmarker)
-  2. Traffic Violation Detection (YOLO — red light, double line, speed)
-  3. Driving Time Tracking
-  4. Local alarms (GPIO buzzer + audio)
-
-Face verification is performed REMOTELY via Backend → ML Service
-(same path as the admin panel) to guarantee identical matching.
-
-All logs are queued offline and auto-uploaded when backend is reachable.
+  1. Driver Face Verification (offline-capable)
+  2. Drowsiness & Alertness Detection (MediaPipe Face Landmarker)
+  3. Alerting and queueing of events to backend
 """
 
 import cv2
@@ -18,15 +12,36 @@ import time
 import base64
 import json
 import os
+import pickle
+import socket
+import struct
 import argparse
 import threading
 import logging
+import numpy as np
 import requests
 
 # MediaPipe Tasks API
 import mediapipe as mp
 from mediapipe.tasks.python import vision as mp_vision
 from mediapipe.tasks.python.core import base_options as mp_base_options
+
+# face_recognition is REQUIRED for local driver verification
+try:
+    import face_recognition as face_rec_lib
+    FACE_REC_AVAILABLE = True
+except Exception as _fre:
+    FACE_REC_AVAILABLE = False
+    print("=" * 65)
+    print("[CRITICAL] face_recognition library is NOT installed!")
+    print("  Local driver verification will ALWAYS fail without it.")
+    print()
+    print("  To install on Raspberry Pi:")
+    print("    sudo apt-get install -y cmake build-essential libopenblas-dev liblapack-dev")
+    print("    pip install dlib>=19.24.0 face_recognition>=1.3.0")
+    print()
+    print(f"  Import error: {_fre}")
+    print("=" * 65)
 
 
 # Optional: GPIO for hardware buzzer
@@ -62,14 +77,19 @@ FACE_LANDMARKER_MODEL_PATHS = [
     os.path.join(SCRIPT_DIR, "face_landmarker.task"),
     os.path.join(os.path.dirname(SCRIPT_DIR), "Face_Mesh", "face_landmarker.task"),
 ]
+FACE_CACHE_PATH = os.path.join(SCRIPT_DIR, "face_cache.json")
+FACE_PICKLE_PATH = os.path.join(SCRIPT_DIR, "face_Recognition.pickle")
+ALERT_QUEUE_PATH = os.path.join(SCRIPT_DIR, "alert_queue.json")
 ALARM_SOUND_PATH = os.path.join(SCRIPT_DIR, "alarm.wav")
+VERIFIED_DRIVER_CACHE_PATH = os.path.join(SCRIPT_DIR, "verified_driver_cache.json")
 DRIVING_STATE_PATH = os.path.join(SCRIPT_DIR, "driving_state.json")
 
 # Component imports
 from smartbus_components.utils import eye_aspect_ratio, mouth_aspect_ratio
 from smartbus_components.alarm import LocalAlarm
-from smartbus_components.alert_queue import OfflineQueue
+from smartbus_components.alert_queue import AlertQueue
 from smartbus_components.gps_receiver import MobileGPSReceiver
+from smartbus_components.verifier import LocalFaceVerifier
 from smartbus_components.alertness import AlertnessTracker
 from smartbus_components.driving import DrivingTimeTracker
 from smartbus_components.mediapipe_adapter import create_face_landmarker
@@ -86,14 +106,14 @@ class SmartBusPiClient:
                  ear_threshold=0.25, mar_threshold=0.50,
                  drowsy_frames=15, yawn_frames=10,
                  verify_interval=300, heartbeat_interval=60,
-                 gpio_pin=18,
+                 cache_sync_interval=1800, gpio_pin=18,
                  no_face_alert_timeout=30,
                  rest_timeout=60, max_continuous_driving=360,
                  max_daily_driving=480, required_rest=360,
                  cooldown=0, http_gps_port=8080, http_gps_url=None):
         self.backend_url = backend_url.rstrip("/")
         self.device_id = device_id
-        # --- Handle both Int (local) and Str (URL) ---
+        # --- FIX: Handle both Int (local) and Str (URL) ---
         try:
             if str(camera_index).isdigit():
                 self.camera_index = int(camera_index)
@@ -113,6 +133,7 @@ class SmartBusPiClient:
         # Intervals (seconds)
         self.verify_interval = verify_interval
         self.heartbeat_interval = heartbeat_interval
+        self.cache_sync_interval = cache_sync_interval
 
         # State
         self.drowsy_counter = 0
@@ -124,11 +145,22 @@ class SmartBusPiClient:
         self.verified_driver_confidence = None
         self.last_verify_time = 0
         self.last_heartbeat_time = 0
+        self.last_cache_sync = 0
         self.last_face_seen = time.time()
         self.no_face_alerted = False
         self._force_verify = False
 
-        # GPS from mobile phone or external URL
+        # ── verified_driver starts as None on every startup.
+        # We intentionally do NOT reload the verified_driver_cache here.
+        # Reason: keeping the old driver across restarts causes every new
+        # face (including strangers) to be reported as the cached driver
+        # whenever local+remote verification fails. The driver must be
+        # re-verified fresh each startup. The cache is only used by
+        # _verify_driver_remote() as a short-circuit when the network is down.
+        # self._load_verified_driver_cache()  ← intentionally removed
+
+        # GPS from mobile phone (TCP socket + HTTP for Traccar Client) or remote poll URL
+        # Prefer a configured `http_gps_url` (full URL) if provided; fall back to local HTTP port.
         self.gps_receiver = MobileGPSReceiver(http_port=http_gps_port, http_url=http_gps_url)
         self.gps_receiver._backend_url = self.backend_url
         self.gps_receiver._backend_headers = self.headers
@@ -145,7 +177,8 @@ class SmartBusPiClient:
 
         # Sub-systems
         self.alarm = LocalAlarm(gpio_pin=gpio_pin)
-        self.offline_queue = OfflineQueue()
+        self.alert_queue = AlertQueue()
+        self.face_verifier = LocalFaceVerifier()
         self.alertness = AlertnessTracker()
         self.driving_tracker = DrivingTimeTracker(
             rest_timeout=rest_timeout,
@@ -155,7 +188,52 @@ class SmartBusPiClient:
             cooldown_minutes=cooldown,
         )
 
-    # ── Network helpers ──
+    # ── Verified driver cache (offline persistence) ──
+
+    def _load_verified_driver_cache(self):
+        """Load previously verified driver details from disk."""
+        if not os.path.exists(VERIFIED_DRIVER_CACHE_PATH):
+            return
+        try:
+            with open(VERIFIED_DRIVER_CACHE_PATH, "r") as f:
+                data = json.load(f)
+            self.verified_driver = data.get("driver_name")
+            self.verified_driver_id = data.get("driver_id")
+            self.verified_driver_confidence = data.get("confidence")
+            verified_at = data.get("verified_at", 0)
+            age_hours = (time.time() - verified_at) / 3600
+            log.info(f"[OFFLINE] Loaded cached driver: {self.verified_driver} "
+                     f"(verified {age_hours:.1f}h ago, confidence {self.verified_driver_confidence}%)")
+        except Exception as e:
+            log.warning(f"[OFFLINE] Failed to load verified driver cache: {e}")
+
+    def _save_verified_driver_cache(self):
+        """Persist current verified driver details to disk."""
+        data = {
+            "driver_name": self.verified_driver,
+            "driver_id": self.verified_driver_id,
+            "confidence": self.verified_driver_confidence,
+            "verified_at": time.time(),
+        }
+        try:
+            with open(VERIFIED_DRIVER_CACHE_PATH, "w") as f:
+                json.dump(data, f)
+            log.info(f"[OFFLINE] Verified driver cached to disk: {self.verified_driver}")
+        except Exception as e:
+            log.error(f"[OFFLINE] Failed to save verified driver cache: {e}")
+
+    def _clear_verified_driver_cache(self):
+        """Remove verified driver cache from disk."""
+        self.verified_driver = None
+        self.verified_driver_id = None
+        self.verified_driver_confidence = None
+        try:
+            if os.path.exists(VERIFIED_DRIVER_CACHE_PATH):
+                os.remove(VERIFIED_DRIVER_CACHE_PATH)
+        except Exception:
+            pass
+
+    # ── Network helpers (fire-and-forget, queue on failure) ──
 
     def _network_available(self) -> bool:
         """Check if the backend is reachable using the health endpoint."""
@@ -182,7 +260,7 @@ class SmartBusPiClient:
         gps = self.gps_receiver.latest
         self.latest_gps = gps
         payload = {
-            "firmwareVersion": "pi-3.0.0",
+            "firmwareVersion": "pi-2.3.0",
             "alertnessScore": round(self.alertness.score, 1),
             "alertnessLevel": self.alertness.level,
             "verifiedDriver": self.verified_driver,
@@ -238,7 +316,8 @@ class SmartBusPiClient:
             # Handle pending commands from admin
             commands = data.get("commands", [])
             if "sync_cache" in commands:
-                log.info("[CMD] Admin requested cache sync — ignored (remote verification mode)")
+                log.info("[CMD] Admin requested cache sync")
+                self.sync_face_cache()
             if "verify_now" in commands:
                 log.info("[CMD] Admin requested immediate verification")
                 self._force_verify = True
@@ -251,22 +330,21 @@ class SmartBusPiClient:
 
     def send_alert(self, alert_type, **kwargs):
         payload = {"type": alert_type, **kwargs}
-        endpoint = "/api/edge-devices/driver-alert"
         try:
             log.info(f"[ALERT] Sending {alert_type} alert to backend...")
             resp = requests.post(
-                f"{self.backend_url}{endpoint}",
+                f"{self.backend_url}/api/edge-devices/driver-alert",
                 headers=self.headers, json=payload, timeout=5,
             )
             if resp.status_code == 200:
                 log.info(f"[ALERT] {alert_type} sent successfully")
             else:
                 log.warning(f"[ALERT] Server returned HTTP {resp.status_code}: {resp.text[:200]}")
-                self.offline_queue.push(endpoint, payload)
+                self.alert_queue.push(payload)
         except Exception as e:
             # Network down — queue for later
-            self.offline_queue.push(endpoint, payload)
-            log.warning(f"[ALERT] Queued offline ({alert_type}): {e} | Queue size: {self.offline_queue.size}")
+            self.alert_queue.push(payload)
+            log.warning(f"[ALERT] Queued offline ({alert_type}): {e} | Queue size: {self.alert_queue.size}")
 
     def post_traffic_violation(self, violation_type, speed, gps, frame=None):
         """Sends a traffic violation payload to the backend with optional evidence image."""
@@ -294,11 +372,10 @@ class SmartBusPiClient:
                 log.error(f"[VIOLATION] Failed to encode evidence image: {e}")
                 image_size = 0
         
-        endpoint = "/api/edge-devices/traffic-violations"
         try:
             log.info(f"[VIOLATION] Sending {violation_type} at {speed} km/h (image: {image_size} bytes)...")
             resp = requests.post(
-                f"{self.backend_url}{endpoint}",
+                f"{self.backend_url}/api/edge-devices/traffic-violations",
                 headers=self.headers, json=payload, timeout=10,
             )
             log.debug(f"[VIOLATION] Backend response: {resp.status_code}")
@@ -315,34 +392,28 @@ class SmartBusPiClient:
             else:
                 log.error(f"✗ [VIOLATION] Server returned HTTP {resp.status_code}: {resp.text[:500]}")
         except requests.exceptions.Timeout:
-            log.error(f"✗ [VIOLATION] Request timeout — queuing for retry")
-            self.offline_queue.push(endpoint, payload)
+            log.error(f"✗ [VIOLATION] Request timeout after 10s (large image size: {image_size} bytes?)")
         except Exception as e:
-            log.error(f"✗ [VIOLATION] Failed to send {violation_type}: {e} — queuing for retry")
-            self.offline_queue.push(endpoint, payload)
+            log.error(f"✗ [VIOLATION] Failed to send {violation_type}: {e}")
 
-    def flush_offline_queue(self):
-        """Try to send all queued offline items (alerts, violations, etc.)."""
-        items = self.offline_queue.drain()
-        if not items:
-            return
+    def flush_alert_queue(self):
+        """Try to send all queued alerts."""
+        alerts = self.alert_queue.drain()
         failed = []
-        for item in items:
-            endpoint = item.get("endpoint", "/api/edge-devices/driver-alert")
-            payload = item.get("payload", item)  # backward compat with old alert_queue
+        for alert in alerts:
             try:
                 requests.post(
-                    f"{self.backend_url}{endpoint}",
-                    headers=self.headers, json=payload, timeout=5,
+                    f"{self.backend_url}/api/edge-devices/driver-alert",
+                    headers=self.headers, json=alert, timeout=5,
                 )
             except Exception:
-                failed.append(item)
+                failed.append(alert)
         # Re-queue failures
         for a in failed:
-            self.offline_queue.push(a.get("endpoint", "/api/edge-devices/driver-alert"),
-                                     a.get("payload", a))
-        sent = len(items) - len(failed)
-        log.info(f"[OFFLINE Q] Flush: {sent} sent, {len(failed)} re-queued")
+            self.alert_queue.push(a)
+        if alerts:
+            sent = len(alerts) - len(failed)
+            log.info(f"Alert queue flush: {sent} sent, {len(failed)} re-queued")
 
     def send_driving_status(self):
         """Report driving/resting state and accumulated times to backend."""
@@ -384,87 +455,153 @@ class SmartBusPiClient:
         except Exception as e:
             log.warning(f"[DRIVING STATUS] Report failed: {e}")
 
-    # ── Face verification (REMOTE — via Backend → ML Service) ──
+    def sync_face_cache(self):
+        """Download latest face encodings from backend and update both JSON cache and pickle."""
+        try:
+            log.info(f"[CACHE SYNC] Downloading face encodings from {self.backend_url}...")
+            resp = requests.get(
+                f"{self.backend_url}/api/edge-devices/face-cache",
+                headers=self.headers, timeout=15,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                count = data.get("count", len(data.get("encodings", [])))
 
-    def verify_driver(self, frame):
-        """Verify the driver by sending the camera frame to the Backend → ML Service.
+                # Update in-memory verifier + write face_cache.json
+                self.face_verifier.update_cache(data)
 
-        This uses the SAME verification pipeline as the admin panel, ensuring
-        identical matching behavior. No local face_recognition library needed.
+                # ── Also overwrite the local pickle so it stays in sync with the server.
+                # Without this, a stale pickle (e.g. from a Colab training session with
+                # different driver IDs) would silently override the correct cache on the
+                # next Pi restart because _load_pickle() ran before _load_cache(). ──
+                try:
+                    import pickle as _pickle
+                    pickle_data = {
+                        "encodings": [e for e in self.face_verifier.encodings],
+                        "names":     list(self.face_verifier.names),
+                        "driver_ids": list(self.face_verifier.driver_ids),
+                    }
+                    with open(FACE_PICKLE_PATH, "wb") as pf:
+                        _pickle.dump(pickle_data, pf)
+                    log.info(f"[CACHE SYNC] Pickle updated with {count} encodings → {FACE_PICKLE_PATH}")
+                except Exception as pe:
+                    log.warning(f"[CACHE SYNC] Could not update pickle (non-critical): {pe}")
 
-        If the backend is unreachable, verification is skipped and the driver
-        remains as "Unknown" until connectivity is restored.
-        """
+                # Log which driver IDs are now loaded — makes mismatches visible in logs
+                unique_ids = list(dict.fromkeys(self.face_verifier.driver_ids))
+                log.info(f"[CACHE SYNC] ✓ {count} encodings loaded | Driver IDs: {unique_ids}")
+                self.last_cache_sync = time.time()
+            else:
+                log.warning(f"[CACHE SYNC] Failed — HTTP {resp.status_code}: {resp.text[:200]}")
+        except Exception as e:
+            log.warning(f"[CACHE SYNC] Failed (offline?): {e}")
+
+    def verify_driver_local(self, frame):
+        """Verify the driver using local cached encodings."""
+        # Auto-sync face cache if empty
+        if len(self.face_verifier.encodings) == 0:
+            log.info("[LOCAL VERIFY] Cache empty — syncing face cache first...")
+            self.sync_face_cache()
+
+        # Diagnostic: show which driver IDs are loaded so mismatches are visible in logs
+        unique_ids = list(dict.fromkeys(self.face_verifier.driver_ids))
+        log.info(f"[LOCAL VERIFY] Verifying against {len(self.face_verifier.encodings)} encodings "
+                 f"| Driver IDs in DB: {unique_ids}")
+
+        result = self.face_verifier.verify(frame)
         self.last_verify_time = time.time()
 
+
+        if result.get("verified"):
+            self.verified_driver = result.get("driver", "Unknown")
+            self.verified_driver_id = result.get("driver_id")
+            self.verified_driver_confidence = result.get("confidence", 0)
+            log.info(f"[LOCAL VERIFY] ✓ Driver: {self.verified_driver} "
+                     f"({self.verified_driver_confidence:.1f}%)")
+            self._save_verified_driver_cache()
+            self.send_alert("verification", verified=True,
+                            driverName=self.verified_driver,
+                            driverId=self.verified_driver_id or "",
+                            confidence=self.verified_driver_confidence,
+                            alertnessScore=round(self.alertness.score, 1),
+                            local=True)
+        else:
+            log.warning(f"[LOCAL VERIFY] ✗ UNKNOWN PERSON: {result.get('message')}")
+
+            # ── Unknown / unregistered driver violation ──
+            # Send violation alert immediately — this is a critical safety event
+            self.send_alert("verification", verified=False,
+                            driverName="Unknown",
+                            driverId="",
+                            confidence=result.get("confidence", 0),
+                            alertnessScore=round(self.alertness.score, 1),
+                            distance=result.get("distance", 0),
+                            local=True,
+                            message="Unknown person — face does not match any registered driver")
+            self.alarm.trigger("UNREGISTERED DRIVER")
+
+            # ── Fallback: try server-side verification ──
+            remote_ok = self._verify_driver_remote(frame)
+            if not remote_ok:
+                # Network unreachable — do NOT keep a cached driver just because
+                # we're offline. Log and leave verified_driver as None so the
+                # overlay correctly shows "UNKNOWN" until a real match occurs.
+                self._clear_verified_driver_cache()
+                log.warning("[LOCAL VERIFY] Verification failed (local+remote). No driver confirmed.")
+        return result
+
+    def _verify_driver_remote(self, frame) -> bool:
+        """Fallback: verify via backend ML service (network required).
+        Returns True if remote verification succeeded (match or definite no-match).
+        Returns False if network is unavailable (offline).
+        """
         try:
-            # Encode frame as JPEG base64
+            log.info("[REMOTE VERIFY] Attempting server-side face verification...")
             _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
             b64 = base64.b64encode(buf).decode("utf-8")
-            log.info(f"[VERIFY] Sending face to Backend → ML Service for verification...")
-
             resp = requests.post(
                 f"{self.backend_url}/api/edge-devices/verify-face",
-                headers=self.headers,
-                json={"imageBase64": b64},
-                timeout=15,
+                headers=self.headers, json={"imageBase64": b64}, timeout=15,
             )
             result = resp.json()
-
             if result.get("verified"):
                 self.verified_driver = result.get("driver", "Unknown")
                 self.verified_driver_id = result.get("driver_id")
                 self.verified_driver_confidence = result.get("confidence", 0)
-                log.info(f"[VERIFY] ✓ Driver: {self.verified_driver} "
-                         f"(confidence: {self.verified_driver_confidence:.1f}%, "
-                         f"distance: {result.get('distance', '?')})")
+                log.info(f"[REMOTE VERIFY] Driver: {self.verified_driver} "
+                         f"(confidence: {self.verified_driver_confidence:.1f}%)")
+                self._save_verified_driver_cache()
                 self.send_alert("verification", verified=True,
                                 driverName=self.verified_driver,
                                 driverId=self.verified_driver_id or "",
                                 confidence=self.verified_driver_confidence,
-                                alertnessScore=round(self.alertness.score, 1))
+                                local=False)
             else:
-                log.warning(f"[VERIFY] ✗ UNKNOWN — {result.get('message', 'no match')} "
-                            f"(distance: {result.get('distance', '?')})")
-                # Clear any previously verified driver
-                self.verified_driver = None
-                self.verified_driver_id = None
-                self.verified_driver_confidence = None
-                self.send_alert("verification", verified=False,
-                                driverName="Unknown", driverId="",
-                                confidence=result.get("confidence", 0),
-                                alertnessScore=round(self.alertness.score, 1),
-                                distance=result.get("distance", 0),
-                                message="Unknown person — no match in registered drivers")
-                self.alarm.trigger("UNREGISTERED DRIVER")
-
-            return result
-
-        except requests.exceptions.ConnectionError:
-            log.warning("[VERIFY] Backend unreachable — skipping verification. "
-                        "Driver stays as: " + (self.verified_driver or "Unknown"))
-            return {"verified": False, "message": "Backend unreachable"}
-        except requests.exceptions.Timeout:
-            log.warning("[VERIFY] Backend timeout — skipping verification")
-            return {"verified": False, "message": "Backend timeout"}
+                log.warning(f"[REMOTE VERIFY] No match: {result.get('message', 'unknown')}")
+                # Server confirmed no match — clear cached driver
+                self._clear_verified_driver_cache()
+            return True
         except Exception as e:
-            log.error(f"[VERIFY] Unexpected error: {e}")
-            return {"verified": False, "message": str(e)}
+            log.warning(f"[REMOTE VERIFY] Failed (offline?): {e}")
+            return False
 
     # ── Background threads ──
 
     def _bg_heartbeat_loop(self):
-        """Background thread: heartbeat + offline queue flush."""
+        """Background thread: heartbeat + queue flush + cache sync."""
         log.info(f"[BG THREAD] Heartbeat loop started (interval: {self.heartbeat_interval}s)")
         while True:
             time.sleep(self.heartbeat_interval)
             self.send_heartbeat()
-            self.flush_offline_queue()
+            self.flush_alert_queue()
+
+            if time.time() - self.last_cache_sync >= self.cache_sync_interval:
+                self.sync_face_cache()
 
     # ── Main loop ──
 
     def run(self):
-        log.info("Smart Bus Pi Client  v3.0 (remote verification, offline queue)")
+        log.info("Smart Bus Pi Client  v2.4 (GPS socket, face pickle, strict verification)")
         log.info(f"  Backend : {self.backend_url}")
         log.info(f"  Device  : {self.device_id}")
         log.info(f"  Headers : x-device-id={self.headers['x-device-id']}")
@@ -474,7 +611,9 @@ class SmartBusPiClient:
             log.info(f"  GPS     : External URL {self.gps_receiver._http_url} (polling) + local TCP 5555")
         else:
             log.info(f"  GPS     : TCP port 5555 + HTTP port {self.gps_receiver._http_port} (Traccar Client)")
-        log.info(f"  Verify  : REMOTE (Backend → ML Service) — same as admin panel")
+        log.info(f"  Face DB : pickle={os.path.exists(FACE_PICKLE_PATH)}, "
+                 f"json={os.path.exists(FACE_CACHE_PATH)}, "
+                 f"loaded={len(self.face_verifier.encodings)} encodings")
         log.info(f"  EAR thr : {self.ear_threshold}")
         log.info(f"  MAR thr : {self.mar_threshold}")
         log.info(f"  Driving : rest_timeout={self.driving_tracker.rest_timeout}s, "
@@ -527,8 +666,9 @@ class SmartBusPiClient:
 
         # Initial sync
         self.send_heartbeat()
+        self.sync_face_cache()
 
-        # Start background thread for heartbeat / offline queue flush
+        # Start background thread for heartbeat / queue / cache
         bg = threading.Thread(target=self._bg_heartbeat_loop, daemon=True)
         bg.start()
 
@@ -561,13 +701,13 @@ class SmartBusPiClient:
                 face_landmarks_list = results.face_landmarks or []
                 now = time.time()
 
-                # ── Driver verification (periodic, remote via Backend → ML Service) ──
+                # ── Driver verification (periodic, local-first, or forced by admin) ──
                 force = self._force_verify
                 if force:
                     self._force_verify = False
                 if force or (now - self.last_verify_time >= self.verify_interval):
                     if face_landmarks_list:
-                        self.verify_driver(frame)
+                        self.verify_driver_local(frame)
                     else:
                         self.last_verify_time = now
 
@@ -834,6 +974,8 @@ def interactive_setup(saved):
                               default=saved.get("verify_interval", 300), cast=int)
     heartbeat_interval = _prompt("Heartbeat interval (seconds)",
                                  default=saved.get("heartbeat_interval", 60), cast=int)
+    cache_sync_interval = _prompt("Face cache sync interval (seconds)",
+                                  default=saved.get("cache_sync_interval", 1800), cast=int)
 
     print("")
     print("── Driving Time Rules ──")
@@ -867,6 +1009,7 @@ def interactive_setup(saved):
         "no_face_timeout": no_face_timeout,
         "verify_interval": verify_interval,
         "heartbeat_interval": heartbeat_interval,
+        "cache_sync_interval": cache_sync_interval,
         "rest_timeout": rest_timeout,
         "max_continuous_driving": max_continuous,
         "max_daily_driving": max_daily,
@@ -886,7 +1029,7 @@ def interactive_setup(saved):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v3.0 - remote verification, offline queue)")
+    parser = argparse.ArgumentParser(description="Smart Bus Raspberry Pi 5 Edge Client (v2.4 - GPS socket, face pickle, strict verify)")
     parser.add_argument("--backend", default=None, help="Backend URL (e.g. http://192.168.1.100:3000)")
     parser.add_argument("--device-id", default=None, help="Device ID registered in admin panel")
     parser.add_argument("--camera", type=str, default=None, help="Driver Camera index or IP URL")
@@ -895,6 +1038,7 @@ def main():
     parser.add_argument("--mar-threshold", type=float, default=None, help="MAR threshold for yawning")
     parser.add_argument("--verify-interval", type=int, default=None, help="Driver re-verification interval (seconds)")
     parser.add_argument("--heartbeat-interval", type=int, default=None, help="Heartbeat interval (seconds)")
+    parser.add_argument("--cache-sync-interval", type=int, default=None, help="Face cache sync interval (seconds)")
     parser.add_argument("--gpio-pin", type=int, default=None, help="GPIO pin for buzzer (default: 18)")
     parser.add_argument("--no-face-timeout", type=int, default=None, help="Seconds without face before alert")
     parser.add_argument("--rest-timeout", type=int, default=None, help="Seconds without face to switch to resting")
@@ -931,6 +1075,7 @@ def main():
             "no_face_timeout":       args.no_face_timeout or saved.get("no_face_timeout", 30),
             "verify_interval":       args.verify_interval or saved.get("verify_interval", 300),
             "heartbeat_interval":    args.heartbeat_interval or saved.get("heartbeat_interval", 60),
+            "cache_sync_interval":   args.cache_sync_interval or saved.get("cache_sync_interval", 1800),
             "rest_timeout":          args.rest_timeout or saved.get("rest_timeout", 60),
             "max_continuous_driving": args.max_continuous_driving or saved.get("max_continuous_driving", 360),
             "max_daily_driving":     args.max_daily_driving or saved.get("max_daily_driving", 480),
@@ -953,6 +1098,7 @@ def main():
         mar_threshold=cfg["mar_threshold"],
         verify_interval=cfg["verify_interval"],
         heartbeat_interval=cfg["heartbeat_interval"],
+        cache_sync_interval=cfg["cache_sync_interval"],
         gpio_pin=cfg["gpio_pin"],
         no_face_alert_timeout=cfg["no_face_timeout"],
         rest_timeout=cfg["rest_timeout"],
