@@ -94,7 +94,7 @@ router.get("/live-locations", protect, isAdmin, async (req, res) => {
         const devices = await EdgeDevice.find({ assignedBus: { $ne: null } })
             .populate({
                 path: "assignedBus",
-                select: "licensePlate routeId capacity status currentStatus assignedDriver assignedConductor",
+                select: "licensePlate routeId capacity status liveLocation currentStatus assignedDriver assignedConductor",
                 populate: [
                     { path: "currentStatus", select: "currentOccupancy speed footboardStatus riskScore timestamp" },
                     { path: "assignedDriver", select: "name licenseNumber status" },
@@ -120,10 +120,12 @@ router.get("/live-locations", protect, isAdmin, async (req, res) => {
                 sessionEnd: null,
             }).sort({ createdAt: -1 }).lean();
 
-            // Use GPS from edge device itself (not from bus.liveLocation which IoT simulator can overwrite)
-            const edgeGps = dev.lastGps?.lat != null && dev.lastGps?.lon != null
-                ? dev.lastGps
-                : null;
+            // Prefer GPS from edge device (lastGps), fall back to bus.liveLocation
+            // lastGps is authoritative (only written by edge device)
+            // bus.liveLocation can be overwritten by IoT simulator, so it's the fallback
+            const hasEdgeGps = dev.lastGps?.lat != null && dev.lastGps?.lon != null;
+            const hasBusGps = bus.liveLocation?.lat != null && bus.liveLocation?.lon != null;
+            const gpsSource = hasEdgeGps ? dev.lastGps : (hasBusGps ? bus.liveLocation : null);
 
             result.push({
                 deviceId: dev.deviceId,
@@ -139,14 +141,14 @@ router.get("/live-locations", protect, isAdmin, async (req, res) => {
                     routeId: bus.routeId,
                     capacity: bus.capacity,
                     status: bus.status,
-                    liveLocation: edgeGps ? {
-                        lat: edgeGps.lat,
-                        lon: edgeGps.lon,
-                        speed: edgeGps.speed || 0,
-                        updatedAt: edgeGps.updatedAt,
+                    liveLocation: gpsSource ? {
+                        lat: gpsSource.lat,
+                        lon: gpsSource.lon,
+                        speed: gpsSource.speed || 0,
+                        updatedAt: gpsSource.updatedAt,
                     } : null,
                     currentOccupancy: bus.currentStatus?.currentOccupancy ?? 0,
-                    speed: edgeGps?.speed ?? bus.currentStatus?.speed ?? 0,
+                    speed: gpsSource?.speed ?? bus.currentStatus?.speed ?? 0,
                     riskScore: bus.currentStatus?.riskScore ?? 0,
                     footboardStatus: bus.currentStatus?.footboardStatus ?? false,
                     lastDataTimestamp: bus.currentStatus?.timestamp ?? null,

@@ -120,7 +120,7 @@ class MobileGPSReceiver:
 					return
 
 				receiver._update_gps(lat, lon, speed_kmh, accuracy)
-				log.info(f"[GPS-HTTP] Traccar: lat={lat:.6f}, lon={lon:.6f}, "
+				log.debug(f"[GPS-HTTP] Traccar: lat={lat:.6f}, lon={lon:.6f}, "
 						 f"speed={speed_kmh:.1f} km/h")
 				receiver._forward_gps_to_backend(lat, lon, speed_kmh)
 
@@ -135,7 +135,7 @@ class MobileGPSReceiver:
 				self._handle_request()
 
 			def log_message(self, fmt, *args):
-				log.info(f"[GPS-HTTP] {self.client_address[0]} → {fmt % args}")
+				pass # Suppress noisy HTTP logs
 
 		try:
 			self._http_server = HTTPServer((self._host, self._http_port), TraccarHandler)
@@ -259,7 +259,7 @@ class MobileGPSReceiver:
 				speed = data.get("speed", 0) or loc.get("speed", 0)
 				try:
 					self._update_gps(float(lat), float(lng), float(speed), accuracy=0)
-					log.info(f"[GPS-POLL] Polled {self._http_url} → lat={lat}, lon={lng}, speed={speed}")
+					log.debug(f"[GPS-POLL] Polled {self._http_url} → lat={lat}, lon={lng}, speed={speed}")
 					self._forward_gps_to_backend(lat, lng, speed)
 				except Exception as e:
 					log.debug(f"[GPS-POLL] Failed to update GPS from polled data: {e}")

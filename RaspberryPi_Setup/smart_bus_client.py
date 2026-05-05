@@ -256,7 +256,8 @@ class SmartBusPiClient:
             "gps": {"lat": gps["lat"], "lon": gps["lon"], "speed": gps["speed"]} if gps else None,
         }
         try:
-            log.info(f"[HEARTBEAT] Sending to {self.backend_url}/api/edge-devices/heartbeat ...")
+            gps_info = f"GPS({gps['lat']:.5f},{gps['lon']:.5f}, {gps['speed']:.1f}km/h)" if gps else "NO_GPS"
+            log.info(f"[HEARTBEAT] 📡 Sending: {gps_info} | Driver: {self.verified_driver or 'Unknown'} | Alert: {self.alertness.level}")
             resp = requests.post(
                 f"{self.backend_url}/api/edge-devices/heartbeat",
                 headers=self.headers, json=payload, timeout=5,
@@ -410,7 +411,7 @@ class SmartBusPiClient:
             "driverId": self.verified_driver_id,
         }
         try:
-            log.info(f"[DRIVING STATUS] Reporting: {dt.state}, cont={payload['continuousDrivingMinutes']}m, daily={payload['totalDailyDrivingMinutes']}m")
+            log.info(f"[DRIVING STATUS] ⏱️ Report: {dt.state}, cont={payload['continuousDrivingMinutes']}m, daily={payload['totalDailyDrivingMinutes']}m")
             resp = requests.post(
                 f"{self.backend_url}/api/edge-devices/driving-status",
                 headers=self.headers, json=payload, timeout=5,
@@ -548,7 +549,6 @@ class SmartBusPiClient:
         log.info(f"[BG THREAD] Heartbeat loop started (interval: {self.heartbeat_interval}s)")
         while True:
             time.sleep(self.heartbeat_interval)
-            log.info(f"[BG THREAD] Running heartbeat cycle...")
             self.send_heartbeat()
             self.flush_alert_queue()
 
