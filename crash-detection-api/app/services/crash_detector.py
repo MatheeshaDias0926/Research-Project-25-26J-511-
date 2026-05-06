@@ -62,9 +62,6 @@ class CrashDetector:
             feature_vectors = np.array(feature_vectors)
 
             # Fixed normalization using expected sensor ranges
-            # Features: [max_acc_x, max_acc_y, max_acc_z, max_gyro_x, max_gyro_y, max_gyro_z, max_acc_mag, max_gyro_mag]
-            # Normal driving: acc ~0-3 m/s², gyro ~0-10 deg/s, acc_mag ~9.8, gyro_mag ~0-15
-            # Crash: acc ~10-50 m/s², gyro ~100-500 deg/s
             feature_ranges = np.array([20.0, 20.0, 20.0, 250.0, 250.0, 250.0, 30.0, 500.0])
             normalized_features = feature_vectors / feature_ranges
 
@@ -86,21 +83,21 @@ class CrashDetector:
             logger.info(f"Bus {bus_id} Metrics - Error: {max_error:.4f}, Accel: {max_acceleration:.2f}, Jerk: {max_jerk:.2f}, Pitch: {max_pitch:.1f}, Roll: {max_roll:.1f}")
 
             error_threshold = 0.15
-            jerk_threshold = 5000.0  # Heavy-duty: ignores fast hand-slashes
-            tilt_threshold = 85.0    # Heavy-duty: requires near-total rollover
+            jerk_threshold = 5000.0  
+            tilt_threshold = 85.0   
             
-            # LATERAL IMPACT DETECTION (X and Y axes) on the flagged window
+            
             max_lat_x = max([abs(r.acceleration_x) for r in flagged_window])
             max_lat_y = max([abs(r.acceleration_y) for r in flagged_window])
             max_lateral = max(max_lat_x, max_lat_y)
-            lat_threshold = 25.0     # Heavy-duty: requires a high-velocity hit
+            lat_threshold = 25.0     
             
-            # Check for active movement
+            
             all_accels = [np.sqrt(r.acceleration_x**2 + r.acceleration_y**2 + r.acceleration_z**2) for r in flagged_window]
             window_variance = np.var(all_accels)
-            is_moving = window_variance > 0.1   # Solid movement only
+            is_moving = window_variance > 0.1  
             
-            # Multi-factor crash detection logic
+            
             ml_match = (max_error > error_threshold) and is_moving
             jerk_detected = (max_jerk > jerk_threshold) and is_moving
             impact_detected = (max_lateral > lat_threshold) and is_moving
