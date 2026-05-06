@@ -96,24 +96,24 @@ class FeatureExtractor:
         max_jerk = 0.0
         for i in range(1, len(window)):
             # Acceleration magnitude at n
-            acc_n = np.sqrt(
-                window[i].acceleration_x ** 2 +
-                window[i].acceleration_y ** 2 +
-                window[i].acceleration_z ** 2
-            )
+            acc_n = np.sqrt(window[i].acceleration_x**2 + window[i].acceleration_y**2 + window[i].acceleration_z**2)
             # Acceleration magnitude at n-1
-            acc_prev = np.sqrt(
-                window[i-1].acceleration_x ** 2 +
-                window[i-1].acceleration_y ** 2 +
-                window[i-1].acceleration_z ** 2
-            )
+            acc_prev = np.sqrt(window[i-1].acceleration_x**2 + window[i-1].acceleration_y**2 + window[i-1].acceleration_z**2)
             
+            diff = abs(acc_n - acc_prev)
+            
+            # NOISE GATE: If the change is tiny (sensor noise), ignore it
+            if diff < 0.3:
+                continue
+
             # Time difference in seconds
             dt = (window[i].timestamp - window[i-1].timestamp).total_seconds()
-            if dt <= 0:
-                dt = 0.02  # Assume 50Hz if timestamp is missing or identical
+            
+            # STABILITY FIX: If dt is too small (timestamp jitter), assume 100Hz (0.01s)
+            if dt < 0.01:
+                dt = 0.01
                 
-            jerk = abs(acc_n - acc_prev) / dt
+            jerk = diff / dt
             max_jerk = max(max_jerk, jerk)
             
         return max_jerk

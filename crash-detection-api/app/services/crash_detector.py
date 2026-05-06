@@ -85,27 +85,37 @@ class CrashDetector:
 
             logger.info(f"Bus {bus_id} Metrics - Error: {max_error:.4f}, Accel: {max_acceleration:.2f}, Jerk: {max_jerk:.2f}, Pitch: {max_pitch:.1f}, Roll: {max_roll:.1f}")
 
-            error_threshold = self.settings.reconstruction_error_threshold
-            accel_threshold = 10.0   # Balanced for toy vehicles
-            jerk_threshold = 120.0   # ignores noise, catches wall hits
-            tilt_threshold = 56.0    # Final rollover threshold for toy vehicle
+            error_threshold = 0.08
+            jerk_threshold = 600.0   # Sensitive for toy impacts
+            tilt_threshold = 55.0
             
-            # Multi-factor crash detection logic: Any single factor triggers it
-            ml_match = max_error > error_threshold
-            jerk_detected = max_jerk > jerk_threshold
-            accel_detected = max_acceleration > accel_threshold
-            rollover_detected = max_pitch > tilt_threshold or max_roll > tilt_threshold
+            # LATERAL IMPACT DETECTION (X and Y axes) on the flagged window
+            max_lat_x = max([abs(r.acceleration_x) for r in flagged_window])
+            max_lat_y = max([abs(r.acceleration_y) for r in flagged_window])
+            max_lateral = max(max_lat_x, max_lat_y)
+            lat_threshold = 6.0      # Detectable hit on X or Y axis
             
-            crash_detected = ml_match or jerk_detected or accel_detected or rollover_detected
-
+            # Check for active movement
+            all_accels = [np.sqrt(r.acceleration_x**2 + r.acceleration_y**2 + r.acceleration_z**2) for r in flagged_window]
+            window_variance = np.var(all_accels)
+            is_moving = window_variance > 0.005 
+            
+            # Multi-factor crash detection logic
+            ml_match = (max_error > error_threshold) and is_moving
+            jerk_detected = (max_jerk > jerk_threshold) and is_moving
+            impact_detected = max_lateral > lat_threshold
+            rollover_detected = (max_pitch > tilt_threshold or max_roll > tilt_threshold) and is_moving
+            
+            crash_detected = ml_match or jerk_detected or impact_detected or rollover_detected
+            
             if crash_detected:
                 reasons = []
                 if ml_match: reasons.append("ML")
                 if jerk_detected: reasons.append("Jerk")
-                if accel_detected: reasons.append("Accel")
+                if impact_detected: reasons.append("Impact")
                 if rollover_detected: reasons.append("Rollover")
                 reason_str = "/".join(reasons)
-                logger.warning(f"🚨 CRASH DETECTED for Bus {bus_id} | Reasons: {reason_str} | Accel: {max_acceleration:.2f} m/s², Jerk: {max_jerk:.2f}")
+                logger.warning(f"🚨 CRASH DETECTED for Bus {bus_id} | Reasons: {reason_str} | Accel: {max_acceleration:.2f} m/s², Lat: {max_lateral:.2f}")
             else:
                 logger.info(f"Bus {bus_id} - Normal Driving")
             confidence = min(
