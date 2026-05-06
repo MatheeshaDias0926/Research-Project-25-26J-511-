@@ -39,6 +39,10 @@ export const getCrashes = async (req, res, next) => {
     }
 };
 
+// Simple in-memory cache to prevent duplicate reports (Anti-flood)
+const lastCrashReports = new Map();
+const COOLDOWN_MS = 30000; // 30 seconds
+
 /**
  * @desc    Report a crash event
  * @route   POST /api/crashes
@@ -48,6 +52,23 @@ export const reportCrash = async (req, res, next) => {
     try {
         const { busId, bus_id, location, severity, max_acceleration, reconstruction_error } = req.body;
         const resolvedBusId = busId || bus_id;
+
+        // --- ANTI-FLOOD CHECK ---
+        const now = Date.now();
+        const lastReportTime = lastCrashReports.get(resolvedBusId);
+        
+        if (lastReportTime && (now - lastReportTime < COOLDOWN_MS)) {
+            console.log(`[CrashController] Duplicate report ignored for ${resolvedBusId} (Cooldown active)`);
+            return res.status(200).json({ 
+                success: true, 
+                message: "Duplicate report ignored (Cooldown active)",
+                isDuplicate: true 
+            });
+        }
+        
+        // Update last report time
+        lastCrashReports.set(resolvedBusId, now);
+        // -----------------------
 
         // 1. Validate bus exists
         console.log(`[CrashController] Received report for busId: ${resolvedBusId}`);
