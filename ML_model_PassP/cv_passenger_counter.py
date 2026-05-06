@@ -121,6 +121,13 @@ def main():
     
     footboard_entry_times = {} # Maps tracker_id -> timestamp they entered the footboard zone
     
+    # --- ByteTrack ID Consistency Metrics ---
+    id_switch_count = 0
+    total_tracked_frames = 0  # sum of detections across all frames
+    prev_frame_ids = {}  # Maps bbox center (approx) -> tracker_id from previous frame
+    all_unique_ids = set()
+    frame_count = 0
+    
     print("CV Passenger Counter started. Press 'q' to quit.")
     print("-------------------------------------------------")
     
@@ -138,6 +145,26 @@ def main():
         
         # Update tracker with current detections
         detections = tracker.update_with_detections(detections)
+        
+        # --- ID Consistency Tracking ---
+        frame_count += 1
+        if len(detections) > 0 and detections.tracker_id is not None:
+            current_frame_ids = {}
+            for i, t_id in enumerate(detections.tracker_id):
+                all_unique_ids.add(t_id)
+                total_tracked_frames += 1
+                # Use bbox center as spatial key to match across frames
+                cx = int((detections.xyxy[i][0] + detections.xyxy[i][2]) / 2)
+                cy = int((detections.xyxy[i][1] + detections.xyxy[i][3]) / 2)
+                spatial_key = (cx // 40, cy // 40)  # grid bucket ~40px
+                current_frame_ids[spatial_key] = t_id
+            
+            # Check for ID switches: same spatial bucket, different ID
+            for key, new_id in current_frame_ids.items():
+                if key in prev_frame_ids and prev_frame_ids[key] != new_id:
+                    id_switch_count += 1
+            
+            prev_frame_ids = current_frame_ids
         
         # Check Footboard Status (Are any detections inside the footboard polygon for > 5s?)
         if len(detections) > 0 and detections.tracker_id is not None:
@@ -213,6 +240,14 @@ def main():
             
         cv2.putText(annotated_frame, occ_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         cv2.putText(annotated_frame, fb_text, (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, fb_text_color, 2)
+        
+        # Display ID Consistency metric on screen
+        if total_tracked_frames > 0:
+            id_consistency = (1 - id_switch_count / total_tracked_frames) * 100
+        else:
+            id_consistency = 100.0
+        consistency_text = f"ID Consistency: {id_consistency:.1f}% (Switches: {id_switch_count})"
+        cv2.putText(annotated_frame, consistency_text, (20, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
         # Show the video feed
         cv2.imshow("Passenger Counter (Footboard Camera)", annotated_frame)
@@ -222,6 +257,21 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
+    
+    # Print final ID Consistency report
+    if total_tracked_frames > 0:
+        final_consistency = (1 - id_switch_count / total_tracked_frames) * 100
+    else:
+        final_consistency = 100.0
+    print("\n" + "=" * 50)
+    print("  ByteTrack ID Consistency Report")
+    print("=" * 50)
+    print(f"  Total Frames Processed:    {frame_count}")
+    print(f"  Total Tracked Detections:  {total_tracked_frames}")
+    print(f"  Unique IDs Assigned:       {len(all_unique_ids)}")
+    print(f"  ID Switches Detected:      {id_switch_count}")
+    print(f"  ID Consistency:            {final_consistency:.2f}%")
+    print("=" * 50)
 
 if __name__ == "__main__":
     main()
